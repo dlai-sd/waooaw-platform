@@ -11,7 +11,7 @@ const roleLabels: Record<string, string> = {
   founder: 'Founder',
 };
 
-export function RequestAccessPanel({ access }: { access: PlatformAccess }) {
+export function RequestAccessPanel({ access, subject = null }: { access: PlatformAccess; subject?: string | null }) {
   const roles = access.requestableRoles;
   const [role, setRole] = useState(roles[0] ?? '');
   const [justification, setJustification] = useState('');
@@ -20,9 +20,12 @@ export function RequestAccessPanel({ access }: { access: PlatformAccess }) {
 
   if (!access.emailVerified) {
     return (
-      <p role="alert">
-        Staff access needs a signed-in account whose email address is verified. Verify your email, then come back.
-      </p>
+      <section aria-labelledby="request-access-title" className="workbench-section">
+        <h2 id="request-access-title">Request staff access</h2>
+        <p className="workbench-message workbench-message-error" role="alert">
+          Staff access needs a signed-in account whose email address is verified. Verify your email, then come back.
+        </p>
+      </section>
     );
   }
 
@@ -53,49 +56,63 @@ export function RequestAccessPanel({ access }: { access: PlatformAccess }) {
   }
 
   return (
-    <section aria-labelledby="request-access-title">
+    <section aria-labelledby="request-access-title" className="workbench-section">
       <h2 id="request-access-title">Request staff access</h2>
       <p>
         Signed in as <strong>{access.email}</strong>. Access is granted only after the Founder approves your request.
       </p>
+      {subject ? (
+        <p className="workbench-hint">
+          Your sign-in ID: <code className="access-subject">{subject}</code>. A role is tied to this ID as well as to
+          your email, so if it does not appear after you sign in a different way, give this ID to the Founder.
+        </p>
+      ) : null}
       {access.administrator ? <p>You already hold a staff role.</p> : null}
-      <label>
-        Role
-        <select onChange={(event) => setRole(event.target.value)} value={role}>
-          {roles.map((value) => (
-            <option key={value} value={value}>
-              {roleLabels[value] ?? value}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Why do you need it?
-        <textarea
-          maxLength={500}
-          onChange={(event) => setJustification(event.target.value)}
-          rows={4}
-          value={justification}
-        />
-      </label>
-      <p>
-        <button
-          className="primary-command"
-          disabled={busy || tooShort || role === '' || pending}
-          onClick={() => void submit()}
-          type="button"
-        >
-          Send request
-        </button>
-      </p>
-      {pending ? <p>You already have a request waiting for a decision.</p> : null}
+      <form
+        className="workbench-form access-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <label className="access-field">
+          <span>Role</span>
+          <select onChange={(event) => setRole(event.target.value)} value={role}>
+            {roles.map((value) => (
+              <option key={value} value={value}>
+                {roleLabels[value] ?? value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="access-field">
+          <span>Why do you need it?</span>
+          <textarea
+            maxLength={500}
+            onChange={(event) => setJustification(event.target.value)}
+            rows={4}
+            value={justification}
+          />
+        </label>
+        <p className="workbench-hint">At least 10 characters, up to 500.</p>
+        <div className="workbench-actions">
+          <button className="primary-command" disabled={busy || tooShort || role === '' || pending} type="submit">
+            Send request
+          </button>
+        </div>
+      </form>
+      {pending ? <p className="workbench-hint">You already have a request waiting for a decision.</p> : null}
       {message ? (
-        <p aria-live="polite" role={message.kind === 'error' ? 'alert' : 'status'}>
+        <p
+          aria-live="polite"
+          className={`workbench-message ${message.kind === 'error' ? 'workbench-message-error' : 'workbench-message-success'}`}
+          role={message.kind === 'error' ? 'alert' : 'status'}
+        >
           {message.text}
         </p>
       ) : null}
       {access.requests.length > 0 ? (
-        <ul aria-label="Your requests">
+        <ul aria-label="Your requests" className="access-list">
           {access.requests.map((request) => (
             <li key={request.requestId}>
               {roleLabels[request.role] ?? request.role}: {request.status.toLowerCase()}

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Store,
   Tag,
+  UserCheck,
   UserRound,
   Vault,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ export function ProtectedAppShell({
   identitySession,
   locale = 'en',
   messages,
+  showAccess = false,
   showKeyVaultAdmin = false,
   showPricingAdmin = false,
   showProviderAdmin = false,
@@ -62,6 +64,7 @@ export function ProtectedAppShell({
   identitySession?: IdentitySession;
   locale?: SupportedLocale;
   messages: Messages;
+  showAccess?: boolean;
   showKeyVaultAdmin?: boolean;
   showPricingAdmin?: boolean;
   showProviderAdmin?: boolean;
@@ -85,9 +88,15 @@ export function ProtectedAppShell({
     ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
     ...(showPricingAdmin ? [{ href: '/admin/pricing', label: 'Pricing', icon: Tag }] : []),
     ...(showProviderAdmin ? [{ href: '/admin/providers', label: 'Providers', icon: KeyRound }] : []),
+    ...(showAccess ? [{ href: '/access', label: 'Access', icon: UserCheck }] : []),
   ];
   const links =
-    variant === 'founder' ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }] : customerLinks;
+    variant === 'founder'
+      ? [
+          { href: '/founder', label: messages.founderHome, icon: ShieldCheck },
+          { href: '/founder/access', label: 'Access', icon: UserCheck },
+        ]
+      : customerLinks;
   useEffect(() => {
     if (identitySession) recordAuthTransition('SESSION_RESOLVED');
   }, [identitySession]);
@@ -152,6 +161,10 @@ export function ProtectedAppShell({
           <Link href="/settings">
             <Settings aria-hidden="true" size={18} />
             Settings
+          </Link>
+          <Link href="/access">
+            <UserCheck aria-hidden="true" size={18} />
+            Staff access
           </Link>
           <AccountSwitchCommand label="Switch account" />
           <SignOutCommand label="Sign out" />

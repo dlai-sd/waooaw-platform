@@ -61,11 +61,15 @@ export function AccessApprovals() {
   }
 
   return (
-    <section aria-labelledby="access-approvals-title">
-      <h1 id="access-approvals-title">Staff access</h1>
-      {message ? <output aria-live="polite">{message}</output> : null}
+    <section aria-labelledby="access-approvals-title" className="workbench-stack">
+      <h2 id="access-approvals-title">Decide on staff access</h2>
+      {message ? (
+        <output aria-live="polite" className="workbench-message">
+          {message}
+        </output>
+      ) : null}
       {stepUp ? (
-        <p>
+        <div className="workbench-actions">
           <button
             className="secondary-link"
             onClick={() =>
@@ -79,44 +83,53 @@ export function AccessApprovals() {
           >
             Confirm with multi-factor sign-in
           </button>
-        </p>
+        </div>
       ) : null}
 
-      <h2>Waiting for your decision</h2>
-      {requests.length === 0 ? <p>No requests are waiting.</p> : null}
-      <ul aria-label="Pending requests">
-        {requests.map((request) => (
-          <li key={request.requestId}>
-            <strong>{request.email}</strong> asks for <strong>{request.role}</strong>
-            <br />
-            <q>{request.justification}</q>
-            <br />
-            <button className="primary-command" onClick={() => void decide(request, 'APPROVE')} type="button">
-              Approve
-            </button>{' '}
-            <button className="secondary-link" onClick={() => void decide(request, 'REJECT')} type="button">
-              Reject
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <h2>Who holds a staff role</h2>
-      <ul aria-label="Active grants">
-        {grants.map((grant) => (
-          <li key={grant.grantId}>
-            {grant.email}: {grant.role} ({grant.source === 'CONFIG' ? 'set in the environment' : 'approved'})
-            {grant.revocable ? (
-              <>
-                {' '}
-                <button className="secondary-link" onClick={() => void revoke(grant)} type="button">
-                  Remove
+      <section aria-labelledby="access-waiting-title" className="workbench-section">
+        <h3 id="access-waiting-title">Waiting for your decision</h3>
+        {requests.length === 0 ? <p className="workbench-hint">No requests are waiting.</p> : null}
+        <ul aria-label="Pending requests" className="connections-list">
+          {requests.map((request) => (
+            <li className="workbench-section access-card" key={request.requestId}>
+              <p>
+                <strong>{request.email}</strong> asks for <strong>{request.role}</strong>
+              </p>
+              <p>
+                <q>{request.justification}</q>
+              </p>
+              <div className="workbench-actions">
+                <button className="primary-command" onClick={() => void decide(request, 'APPROVE')} type="button">
+                  Approve
                 </button>
-              </>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+                <button className="secondary-link" onClick={() => void decide(request, 'REJECT')} type="button">
+                  Reject
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="access-holders-title" className="workbench-section">
+        <h3 id="access-holders-title">Who holds a staff role</h3>
+        <ul aria-label="Active grants" className="connections-list">
+          {grants.map((grant) => (
+            <li className="workbench-section access-card" key={grant.grantId}>
+              <p>
+                {grant.email}: {grant.role} ({grant.source === 'CONFIG' ? 'set in the environment' : 'approved'})
+              </p>
+              {grant.revocable ? (
+                <div className="workbench-actions">
+                  <button className="secondary-link" onClick={() => void revoke(grant)} type="button">
+                    Remove
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
     </section>
   );
 }

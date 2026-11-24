@@ -108,4 +108,20 @@ describe('RequestAccessPanel', () => {
     expect(screen.getByText('Pricing administrator: pending')).toBeVisible();
     expect(screen.getByText('other: rejected')).toBeVisible();
   });
+
+  it('shows the person their own sign-in ID so the Founder can tie a role to it, and nothing when there is none', () => {
+    const { rerender } = render(<RequestAccessPanel access={access} subject="8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10" />);
+    expect(screen.getByText('8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10')).toBeVisible();
+    expect(screen.getByText(/give this ID to the Founder/)).toBeVisible();
+
+    rerender(<RequestAccessPanel access={access} subject={null} />);
+    expect(screen.queryByText(/Your sign-in ID/)).not.toBeInTheDocument();
+  });
+
+  it('does not show the sign-in ID when the email is not verified', () => {
+    render(
+      <RequestAccessPanel access={{ ...access, emailVerified: false }} subject="8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10" />
+    );
+    expect(screen.queryByText('8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10')).not.toBeInTheDocument();
+  });
 });

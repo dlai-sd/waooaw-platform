@@ -30,6 +30,16 @@ function requiredDetails(control: HTMLElement): HTMLDetailsElement {
 }
 
 describe('ProtectedAppShell account menu', () => {
+  it('offers Staff access to every signed-in person from the account menu', () => {
+    render(
+      <ProtectedAppShell locale="en" messages={getMessages('en')} variant="customer">
+        <p>Page</p>
+      </ProtectedAppShell>
+    );
+
+    expect(screen.getByRole('link', { name: 'Staff access', hidden: true })).toHaveAttribute('href', '/access');
+  });
+
   it('closes on an outside pointer interaction', () => {
     render(
       <ProtectedAppShell locale="en" messages={getMessages('en')} variant="customer">

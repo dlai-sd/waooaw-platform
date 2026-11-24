@@ -400,6 +400,50 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/v1/platform/me/roles') {
+    const founder = request.headers.authorization?.includes('fixture-founder-token') === true;
+    json(response, {
+      email: founder ? 'founder@example.com' : 'asha@example.com',
+      emailVerified: true,
+      roles: founder ? ['founder', 'pricing_admin'] : [],
+      founder,
+      pricingAdmin: founder,
+      requestableRoles: ['pricing_admin', 'admission_operator', 'operations_authority'],
+      requests: [],
+    });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/platform/access-requests') {
+    json(response, {
+      requests: [
+        {
+          requestId: '11111111-2222-4333-8444-555555555555',
+          email: 'ravi@example.com',
+          role: 'pricing_admin',
+          status: 'PENDING',
+          justification: 'I maintain the price list for the Digital Marketing agent.',
+        },
+      ],
+    });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/platform/grants') {
+    json(response, {
+      grants: [
+        {
+          grantId: '66666666-7777-4888-9999-000000000000',
+          email: 'founder@example.com',
+          role: 'founder',
+          source: 'CONFIG',
+          revocable: false,
+        },
+      ],
+    });
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/providers') {
     if (identityProviderDelayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, identityProviderDelayMs));
