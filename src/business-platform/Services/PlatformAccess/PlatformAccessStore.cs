@@ -1,4 +1,4 @@
-// Implements: work-contracts/WC-137-platform-access-and-environment-feature-settings.md WC137-R003, WC137-R004, WC137-R005
+// Implements: work-contracts/WC-137-platform-access-and-environment-feature-settings.md WC137-R003, WC137-R004, WC137-R005; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R011
 // Constitutional basis: C-009, C-023, C-026, C-059, C-063
 
 using Microsoft.EntityFrameworkCore;
@@ -209,7 +209,33 @@ public sealed class PostgresPlatformAccessStore(
                 continue;
             }
             if (founder.Subject is null)
+            {
+                // WC-167 R011: an environment that opts in releases the stored sign-in identity at every start, so the
+                // first verified sign-in with the configured email ties it again. Only a BOOTSTRAP grant is touched.
+                if (!founder.RebindOnStart)
+                    continue;
+                var released = await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    UPDATE business.platform_role_grants
+                    SET subject = NULL
+                    WHERE email_normalized = {email} AND role = 'founder' AND source = 'BOOTSTRAP'
+                        AND revoked_at IS NULL AND subject IS NOT NULL
+                    """,
+                    ct
+                );
+                if (released > 0)
+                    await AppendEventAsync(
+                        db,
+                        "FOUNDER_SUBJECT_RELEASED",
+                        Configuration,
+                        email,
+                        "founder",
+                        null,
+                        now,
+                        ct
+                    );
                 continue;
+            }
             var rebound = await db.Database.ExecuteSqlInterpolatedAsync(
                 $"""
                 UPDATE business.platform_role_grants

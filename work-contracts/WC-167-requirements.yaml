@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-167
 contract_path: work-contracts/WC-167-acceptance-demo-readiness.md
-contract_digest: 505c1e0744b4faf2c70069db53791ebf5590c301da7c18b97f308909d13a803a
+contract_digest: b03e9fcbadc941a5ba4afe1790337a9bafaf66568610ccd43921dee3df5938fa
 implementation_scope: true
 result: PLANNED
 
@@ -74,3 +74,9 @@ requirements:
     source: WC-167 Canonical Requirement Index, R010
     observable_outcome: The staff access screens use the portal page layout and control styling, are reachable from the menus, show a signed-in person their own sign-in ID, and pass the R006 test layers in light and dark at 360, 768 and 1440.
     test_path_or_plan: web/tests/e2e/wc167-access.spec.ts (5 checks on chromium 360, 768 and 1440, light and dark, no sideways scroll, zero serious or critical axe findings, styled controls, menu entries, sign-in ID shown); web/lib/token-subject.test.ts; web/components/admin/access/RequestAccessPanel.test.tsx; web/components/shell/ProtectedAppShell.test.tsx; pnpm tsc and eslint in the TypeScript runner; the Demo read-back of the menu after the next deployment is still to do.
+
+  - <<: *defaults
+    requirement_id: WC167-R011
+    source: WC-167 Canonical Requirement Index, R011
+    observable_outcome: A Founder in an environment that opts in with rebind_on_start keeps the Founder role across deployments without any step on /access; another identity gets nothing in the window; UAT and production stay strict.
+    test_path_or_plan: tests/business-platform.Tests/PlatformAccess/PlatformAccessStorePostgresTests.cs (release then re-tie, no release when off or with a configured subject, intruder gets nothing); PlatformAccessTests.cs option validation; tests/pipeline/test_goal006_deployment_inputs.py; terraform validate on the workload module; the Demo read-back of the Founder menu after the next deployment is still to do.

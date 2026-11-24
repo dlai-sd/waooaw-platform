@@ -187,6 +187,13 @@ public sealed class PlatformAccessOptionsValidatorTests
         Assert.True(Valid(new PlatformAccessOptions { Founders = [new() { Email = "Owner@Example.org", Subject = "abcdefgh12" }] }));
     }
 
+    [Fact]
+    public void RebindOnStartIsValidAloneButNeverWithAConfiguredSubject()
+    {
+        Assert.True(Valid(new PlatformAccessOptions { Founders = [new() { Email = "owner@example.org", RebindOnStart = true }] }));
+        Assert.False(Valid(new PlatformAccessOptions { Founders = [new() { Email = "owner@example.org", Subject = "abcdefgh12", RebindOnStart = true }] }));
+    }
+
     [Theory]
     [InlineData("not an email", null)]
     [InlineData("", null)]

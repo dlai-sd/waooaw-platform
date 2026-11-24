@@ -109,16 +109,21 @@ def feature_settings_inputs(configuration: Mapping[str, Any]) -> dict[str, Any]:
         for founder in founders:
             if (
                 not isinstance(founder, Mapping)
-                or set(founder) - {"email", "subject"}
+                or set(founder) - {"email", "subject", "rebind_on_start"}
                 or not isinstance(founder.get("email"), str)
                 or FOUNDER_EMAIL.fullmatch(founder["email"]) is None
                 or (
                     founder.get("subject") is not None
                     and (not isinstance(founder["subject"], str) or FOUNDER_SUBJECT.fullmatch(founder["subject"]) is None)
                 )
+                or (founder.get("rebind_on_start") is not None and not isinstance(founder["rebind_on_start"], bool))
+                or (founder.get("rebind_on_start") is True and founder.get("subject") is not None)
                 or founder["email"] in seen
             ):
-                raise ValueError("every Founder needs a unique lower-case email and an optional safe identity-provider subject")
+                raise ValueError(
+                    "every Founder needs a unique lower-case email, an optional safe identity-provider subject, "
+                    "and an optional boolean rebind_on_start that cannot be combined with a subject"
+                )
             seen.add(founder["email"])
         inputs["platform_access"] = {"founders": [dict(founder) for founder in founders]}
     return inputs

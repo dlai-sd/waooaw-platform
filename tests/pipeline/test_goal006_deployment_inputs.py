@@ -222,7 +222,7 @@ def test_feature_settings_and_founders_pass_through_unchanged_for_any_environmen
         "trial_identity_binding_mode": "RECORD",
         "whatsapp_stop_acknowledgement_enabled": True,
     }
-    access = {"founders": [{"email": "founder@example.org", "subject": "a1b2c3d4-e5f6"}, {"email": "second@example.org"}]}
+    access = {"founders": [{"email": "founder@example.org", "subject": "a1b2c3d4-e5f6"}, {"email": "second@example.org", "rebind_on_start": True}]}
     for environment in ("demo", "uat", "prod"):
         inputs = create_inputs(
             environment,
@@ -288,6 +288,8 @@ def test_acceptance_synthetic_tenants_setting_must_be_a_boolean() -> None:
         {"platform_access": {"founders": [{"email": "a@example.org"}, {"email": "a@example.org"}]}},
         {"platform_access": {"founders": [{"email": "a@example.org", "subject": "short"}]}},
         {"platform_access": {"founders": [{"email": "a@example.org", "role": "founder"}]}},
+        {"platform_access": {"founders": [{"email": "a@example.org", "rebind_on_start": "true"}]}},
+        {"platform_access": {"founders": [{"email": "a@example.org", "subject": "a1b2c3d4-e5f6", "rebind_on_start": True}]}},
         {"platform_access": {"admins": [{"email": "a@example.org"}]}},
     ],
 )
