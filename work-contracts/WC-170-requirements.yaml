@@ -1,0 +1,76 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-170
+contract_path: work-contracts/WC-170-real-agent-work-end-to-end.md
+contract_digest: 6284e9ca4fd878beb288c9bfb81a661f0f1c02907db6766d2eda7b26c5b3b288
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: To be fixed at the phase A exit; rows are candidates until the Founder accepts the groomed stories
+  initial_state: blocked
+  dependencies: WC-169 read back; the Founder accepts the groomed stories before any implementation
+  residual_risk: PG-17 to PG-23 are ungroomed and DMA domain-authority input is an outside dependency
+  completion_rule: Candidate rows are confirmed or replaced at the phase A exit; each confirmed row needs executable evidence and a Demo read-back
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC170-R001
+    source: WC-170 Candidate Requirement Index, R001
+    observable_outcome: Domain vocabulary specializes without agent branching in the shared kernel.
+    test_path_or_plan: Conformance scenario to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R002
+    source: WC-170 Candidate Requirement Index, R002
+    observable_outcome: The customer sees and governs the locked intent artifact that controls execution.
+    test_path_or_plan: Journey step to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R003
+    source: WC-170 Candidate Requirement Index, R003
+    observable_outcome: Proposal and approval are visibly distinct from scope-boundary confirmation.
+    test_path_or_plan: Journey step to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R004
+    source: WC-170 Candidate Requirement Index, R004
+    observable_outcome: The status and action timeline show proposed, approved, executing, completed, failed and halted states.
+    test_path_or_plan: Journey step to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R005
+    source: WC-170 Candidate Requirement Index, R005
+    observable_outcome: A customer traces an outcome claim to work and evidence.
+    test_path_or_plan: Journey step to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R006
+    source: WC-170 Candidate Requirement Index, R006
+    observable_outcome: Ad spend is authorized, attributable and reconciles to the provider and the wallet.
+    test_path_or_plan: Reconciliation test to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R007
+    source: WC-170 Candidate Requirement Index, R007
+    observable_outcome: Business KPIs lead and technical metrics support.
+    test_path_or_plan: Report to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R008
+    source: WC-170 Candidate Requirement Index, R008
+    observable_outcome: The conversation stories run on Demo with the conversation flag on.
+    test_path_or_plan: Acceptance slice 1c run.
+
+  - <<: *defaults
+    requirement_id: WC170-R009
+    source: WC-170 Candidate Requirement Index, R009
+    observable_outcome: The platform funds platform-owned work and the customer funds hired work; no work runs unfunded.
+    test_path_or_plan: Funding test and Demo read-back to be defined at phase A.
+
+  - <<: *defaults
+    requirement_id: WC170-R010
+    source: WC-170 Candidate Requirement Index, R010
+    observable_outcome: Stop halts agent work mid-execution and evidence shows it.
+    test_path_or_plan: Journey step to be defined at phase A.

@@ -1,0 +1,126 @@
+# WAOOAW Roadmap
+
+**This is the only roadmap and the only progress record for platform delivery. Read it before proposing, planning or starting any work that is not already assigned by a Work Contract.**
+Any change to the iterations, milestones, order, scope or Work Contract numbers below is a deviation and needs the Founder's written approval in the current conversation or on the pull request (section 8). Agents and offices never edit this file to suit their own plan.
+
+| Field | Value |
+|---|---|
+| Authority | Founder (Yogesh Khandge), decisions of 2026-11-24 (section 6) |
+| Document class | Class 3 Governed (GENESIS Decision Classification). Changes need Founder approval on top of normal pull request review. It cannot override a Class 1 or Class 2 decision |
+| Strategy | **Platform-led, DMA-proved** |
+| Current iteration | **Iteration 1 (WC-168)**: contracts written, implementation not yet authorized |
+| Last updated | 2026-11-24 |
+
+## 1. The landscape in one page
+
+- **WAOOAW is a platform where businesses employ autonomous digital professionals (agents) under constitutional governance.** The Founder and administrators run the platform; customers hire agents; agents perform inside the platform's rules.
+- **Platform-led, DMA-proved.** We build the platform (operator screens, plumbing, monitoring, alerts, billing, lifecycle) one capability per iteration. Each iteration is done only when the Digital Marketing agent (DMA) runs through it end to end on Demo for a synthetic customer. A later iteration adds a second agent using declarations only, to prove the shared layer stayed agent-neutral.
+- **Agents declare, the platform provides.** An agent supplies a declaration (goals, measures, packages such as Starter, Runner and Winner, alerts, conformance scenarios). The platform supplies everything else. Adding an agent must not need a change to the shared kernel.
+- **Customer journey:** discover, trial or interview, hire and pay, connect accounts, the agent works, approve, see results, renew or stop.
+- **One Work Contract per iteration, one sizable pull request per iteration, one Environment Deployment per iteration.** A repair pull request is allowed only when the Demo read-back fails.
+
+### Which document governs what (do not invent another)
+
+| Concern | Governing document |
+|---|---|
+| What an agent must declare, and what the shared platform provides | `architecture/reference/agent-experience-platform-architecture.md` (Agent Experience Contract, section 6.2; kernel and extension tiers, sections 5 and 6) |
+| Customer rights and relationship across channels | `architecture/reference/product/agent-employment-experience-contract.md` |
+| Behavior every agent inherits | `architecture/reference/agents/AGENT-BASE-SPEC.md` |
+| Signals the platform sends to agents | `adr/ADR-035-platform-agent-contract-standard.md` |
+| How the runtime calls an admitted agent | `adr/ADR-049-agent-runtime-adapter-transport-and-isolation.md` |
+| Packages and pricing for DMA | `architecture/reference/billing/dma-bundle-definitions.md` |
+| Shared product gaps PG-01 to PG-37 | `architecture/reference/product/waooaw-product-gap-register.md` |
+| Customer journey acceptance on Demo | `architecture/reference/acceptance/customer-journey-acceptance-architecture.md`, ADR-054, ADR-055 |
+| Settings, flags, staff roles | `standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md` |
+| What each Work Contract delivers | `SPRINT-REGISTRY.md`, then the Work Contract file |
+| Where the institution stands right now | `constitution/PROJECT_STATE.md` |
+
+Historic planning (the GOAL files, WC-064 to WC-069 "Iteration 1 to 5" for the Founder commercial governance program, the August 2026 platform-first and customer-first sessions) is preserved and is **not** this roadmap. Its numbering is untouched. In this file "Iteration" always means the six iterations below.
+
+## 2. Roadmap
+
+| Iteration | Work Contract | Platform capability | Milestone | Status |
+|---|---|---|---|---|
+| 1 | WC-168 | One roadmap and a working operator console on Demo | **M1** Founder signs in and every operator screen works with DMA data | Contract written, implementation not authorized |
+| 2 | WC-169 | Paid hire and connected accounts | **M2** Synthetic customer completes discover to connected accounts; one valid calibration report | Contract written, starts after WC-168 is read back |
+| 3 | WC-170 | Real agent work end to end (AE-02, PG-17 to PG-23) | **M3** DMA does approved, reconciled work for a synthetic customer | Gated skeleton: grooming first, build only after the Founder accepts the stories |
+| 4 | WC-171 | Alerts, monitoring, oversight (PG-24; 30 proactive alerts a month) | **M4** Founder and administrators see, are alerted to, and resolve problems without database access | Number reserved, contract not written |
+| 5 | WC-172 | Safe to charge real customers (PG-26, billing and funding, UAT promotion) | **M5** Founder approval to take real money | Number reserved, contract not written |
+| 6 | WC-173 | Platform proven by a second agent (PG-25, PG-31 to PG-34) | **M6** Second agent plays with no kernel change | Number reserved, contract not written |
+
+Work Contract numbers WC-168 to WC-173 are reserved for this roadmap. All other work takes WC-174 or higher.
+
+Later, after M6: more agents, multi-agent workplace, mobile, retiring legacy projections (PG-27 to PG-30, PG-35 to PG-37).
+
+## 3. What each milestone means
+
+| Milestone | Done when (all of these) |
+|---|---|
+| M1 | WC-168 requirements read back on Demo; Providers lists providers; Pricing shows authorized DMA Starter, Runner and Winner from one price source; Key Vault page follows the platform Founder grant; this file is the only roadmap and is pointed to from README, PROJECT_STATE, AGENT-ENTRY and BOOTSTRAP |
+| M2 | Acceptance slices 1 and 2 run on Demo; vault holds 12 of 12 secrets; one calibration report with every NOT-WITNESSED or FAIL item owned; WhatsApp STOP can resume; Meta App Review and WhatsApp template submissions made |
+| M3 | Founder accepted the groomed stories; a synthetic customer completes brief, approval, execution, spend reconciliation and results trace on Demo |
+| M4 | Alerts, monitoring and exception handling work for Founder and administrators on Demo without database access |
+| M5 | Lifecycle rights, pro-rata billing, payer and funder, tax invoices proven on Demo; UAT promotion done; Founder approves taking real money |
+| M6 | A second agent runs the same journey from declarations only |
+
+## 4. How every iteration runs
+
+1. **Groom ahead.** The next iteration's Work Contract lands as a docs-only commit inside the current pull request.
+2. **Build.** All stories in one branch and one pull request, tested in Docker, hooks as usual. Implementation starts only after the Founder authorizes it for that iteration.
+3. **Deploy.** The Founder runs one Environment Deployment of Demo after merge.
+4. **Read back.** The agent reads Demo (logs, Azure CLI, Founder screenshots) and records each requirement as pass or fail in the Work Contract ledger.
+5. **Prove.** A DMA synthetic-customer run through the acceptance harness.
+6. **Close.** The progress record below, the ledger, README and PROJECT_STATE are refreshed in the same pull request or the repair pull request.
+
+## 5. Progress record (update at iteration close, not in between)
+
+| Iteration | Merged | Deployed | Read back | Proof run |
+|---|---|---|---|---|
+| 1 | no | no | no | no |
+| 2 to 6 | no | no | no | no |
+
+## 6. Founder decisions behind this roadmap (all 2026-11-24)
+
+| Decision | Founder words |
+|---|---|
+| Strategy | "i will go with Platform-led, DMA-proved ... The shared layer stays agent-neutral, and every capability is tested by a real agent before it counts as done." |
+| Direction | "I want to approach this from WAOOAW founder+administrator side ... we will build features and automation from founder+Administrative side ... and each agent will come and perform using this features and boundries." |
+| One roadmap | "any waooaw office/agent session understand one clear and loud landscape of waooaw and it must understand only one roadmap and its current progress. Any deviation from it will need founders approval." |
+| Size of work | "Lets not do small PRs and go after sizable work on in single PR" |
+| Numbering | "lets not tourch historic stuff ... you will use next available number for work contract" |
+| Order | "Does the ordering fit ... yes i am good" and "i am good with this" |
+| Authorization to commit contracts | "Approve committing WC-168 and WC-169 in full and WC-170 as the gated skeleton ... Yes." |
+
+## 7. Constitutional compliance check of how this roadmap was decided
+
+Run 2026-11-24 by the Platform IT Expert (INST-010) before committing. Result: **PASS with two stated limits.**
+
+| Check | Finding |
+|---|---|
+| Who decided | The Founder, in conversation, with the words recorded in section 6. The agent proposed options with trade-offs and did not choose the strategy (C-064 Three-Human Institution; C-065 SDLC Separation of Duties) |
+| Authority level | A roadmap is Class 3 Governed. It sets order of work, not architecture, so it needs no ADR and changes no Class 1 or Class 2 decision. The Founder's approval requirement for deviation is stricter than normal Class 3 review, by his decision |
+| Authorization tier | Writing contracts and documents needs Founder approval, which was given. Writing implementation code is a separate gate (C-066, BOOTSTRAP implementation gate) and is not granted by this file |
+| Separation of duties | The author does not approve or merge. The Founder merges (C-065) |
+| Traceability | Every iteration maps to a Work Contract number and existing identifiers (PG, AE, WC, ADR) with no new vocabulary (C-059) |
+| Evidence | Each iteration ends with a Demo read-back and a ledger, not an assertion (C-023 Evidence First) |
+| Honest limits | Milestones M3 to M6 depend on ungroomed gaps (PG-17 to PG-37) and on outside lead times (Meta App Review, WhatsApp template, DMA domain input). They are plans, not promises (C-049 Honest Limitation) |
+| Docker-only | All validation runs in Docker (C-080) |
+| Limit 1 | Iteration 3 onward are outlines until groomed; the Founder must accept stories before build |
+| Limit 2 | The single-source rule is enforced by a test for pointers and Work Contract files, not for the content of decisions; deviation control still depends on agents reading the pointer |
+
+## 8. Deviation procedure
+
+A deviation is any change to iteration order, scope, Work Contract numbers, milestones, the strategy, or starting work that is not in a listed Work Contract.
+
+1. Stop. Do not start the deviating work.
+2. Tell the Founder in one sentence what differs and why, with the cost of not deviating.
+3. Proceed only on the Founder's written approval. Record it in section 6 and in the Work Contract.
+4. If the Founder declines, continue on the roadmap.
+
+Emergencies (security, production incidents, Founder-assigned urgent fixes) are handled under their own governance and recorded here afterwards as a one-line entry in section 9.
+
+## 9. Deviation and change log
+
+| Date | Change | Approved by |
+|---|---|---|
+| 2026-11-24 | Roadmap created | Founder |

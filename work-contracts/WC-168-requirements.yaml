@@ -1,0 +1,102 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-168
+contract_path: work-contracts/WC-168-operator-console-works-on-demo.md
+contract_digest: 663e79fd749059cbbc438a34b97fdb929b69b7e12464872b35e39cb86c261c29
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Tests in the Python, .NET and TypeScript runners where code changes, plus a read-back from Demo for each Demo outcome; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorizes implementation for this iteration before any code is written; PR #639 merged
+  residual_risk: RC-1 cause is a candidate until the owner and privileges are read on Demo; RC-2 and RC-3 are unproven
+  completion_rule: Executable evidence and the Demo read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC168-R001
+    source: WC-168 Canonical Requirement Index, R001
+    observable_outcome: ROADMAP.md is the only roadmap; README, PROJECT_STATE, AGENT-ENTRY and BOOTSTRAP point to it; a test fails when a pointer, a Work Contract file or the current iteration line is missing or inconsistent.
+    test_path_or_plan: tests/pipeline/test_roadmap_single_source.py in the quality-scripts gate; platform state refresh and check.
+
+  - <<: *defaults
+    requirement_id: WC168-R002
+    source: WC-168 Canonical Requirement Index, R002
+    observable_outcome: The document map in ROADMAP.md names the governing document for each concern and every listed path exists.
+    test_path_or_plan: tests/pipeline/test_roadmap_single_source.py path existence check.
+
+  - <<: *defaults
+    requirement_id: WC168-R003
+    source: WC-168 Canonical Requirement Index, R003
+    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; business_app can select from every business table the application queries after the fix.
+    test_path_or_plan: Governed read record in the contract; a real-database test that applies the whole init chain and asserts business_app privileges; Demo read-back of /admin/providers.
+
+  - <<: *defaults
+    requirement_id: WC168-R004
+    source: WC-168 Canonical Requirement Index, R004
+    observable_outcome: Every init-chain table with a wrong owner or missing business_app privilege is listed, fixed at its source and recorded.
+    test_path_or_plan: The same real-database test with the sweep list recorded in the Implementation Record.
+
+  - <<: *defaults
+    requirement_id: WC168-R005
+    source: WC-168 Canonical Requirement Index, R005
+    observable_outcome: After deployment /admin/providers on Demo lists providers, the Meta row opens, web logs show no list_failed, and no credential value is shown or logged.
+    test_path_or_plan: Demo read-back with Log Analytics query and Founder screenshot.
+
+  - <<: *defaults
+    requirement_id: WC168-R006
+    source: WC-168 Canonical Requirement Index, R006
+    observable_outcome: DMA Starter, Runner and Winner exist as authorized packages; the Marketplace price equals the authorized price; one price source is named.
+    test_path_or_plan: Pricing admin and Marketplace read-back; a test that the Marketplace and Pricing agree; Founder authorizes the packages on the Pricing screen.
+
+  - <<: *defaults
+    requirement_id: WC168-R007
+    source: WC-168 Canonical Requirement Index, R007
+    observable_outcome: The Pricing Overview does not say Healthy when zero packages were checked.
+    test_path_or_plan: Web component test for the zero-package state.
+
+  - <<: *defaults
+    requirement_id: WC168-R008
+    source: WC-168 Canonical Requirement Index, R008
+    observable_outcome: The Azure Key Vault page and menu appear for a signed-in Founder through the platform Founder grant and still refuse everyone else.
+    test_path_or_plan: web/lib/key-vault-admin tests and shell tests; Demo read-back.
+
+  - <<: *defaults
+    requirement_id: WC168-R009
+    source: WC-168 Canonical Requirement Index, R009
+    observable_outcome: The Access screen has no layout gap, no request form for a person who already holds a staff role and no stale hint, and passes the WC-167 R006 layers.
+    test_path_or_plan: web/tests/e2e/wc168-access.spec.ts at 360, 768 and 1440 in light and dark with axe; component tests.
+
+  - <<: *defaults
+    requirement_id: WC168-R010
+    source: WC-168 Canonical Requirement Index, R010
+    observable_outcome: Connections and Settings speak to staff without a customer account in staff terms; buttons carry no back arrow; the floating stop box never overlaps content.
+    test_path_or_plan: web/tests/e2e/wc168-shell.spec.ts and component tests with the WC-167 R006 layers.
+
+  - <<: *defaults
+    requirement_id: WC168-R011
+    source: WC-168 Canonical Requirement Index, R011
+    observable_outcome: Temporal startup qualification waits up to six minutes for the previous copy to drain and still refuses a genuinely busy pool.
+    test_path_or_plan: Workflow contract test and a fault-injection test for both paths.
+
+  - <<: *defaults
+    requirement_id: WC168-R012
+    source: WC-168 Canonical Requirement Index, R012
+    observable_outcome: The blocked WhatsApp message has a recorded cause and is resolved through a governed route; nothing deleted, no alert muted.
+    test_path_or_plan: Founder-approved read; cause recorded; Log Analytics showing the alert stops repeating.
+    initial_state: blocked
+
+  - <<: *defaults
+    requirement_id: WC168-R013
+    source: WC-168 Canonical Requirement Index, R013
+    observable_outcome: The Founder decision on the production Meta secret is recorded; if reset, Facebook sign-in on Demo is read back.
+    test_path_or_plan: Founder decision record and Demo sign-in read-back.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC168-R014
+    source: WC-168 Canonical Requirement Index, R014
+    observable_outcome: WC-167 R001, R004, R008 and R011 are recorded done with evidence and R003, R005, R007 and R009 are moved by identifier.
+    test_path_or_plan: WC-167 progress table and ledger updated and validated.

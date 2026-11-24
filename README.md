@@ -6,6 +6,15 @@
 
 ---
 
+## Roadmap (single source)
+
+```
+Roadmap:           ROADMAP.md is the only roadmap and progress record. Read it before proposing or starting work that is not assigned by a Work Contract.
+Strategy:          Platform-led, DMA-proved
+Current iteration: Iteration 1 (WC-168)
+Deviation rule:    Any change to iterations, order, scope or Work Contract numbers (WC-168 to WC-173 are reserved) needs the Founder's written approval.
+```
+
 ## Platform Status
 
 ```
@@ -21,7 +30,7 @@ Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · S
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 CCT inventory:        82 institutionally declared · 82 centrally catalogued · no unified 72/72 run
-Sprint Registry:      SPRINT-REGISTRY.md — 159 Work Contracts recorded · 106 with merged-PR evidence · 53 without
+Sprint Registry:      SPRINT-REGISTRY.md — 162 Work Contracts recorded · 106 with merged-PR evidence · 56 without
 Agent references:     Current state=PROJECT_STATE.md · WC/PR coverage=SPRINT-REGISTRY.md · services=COMPONENT-QUICK-REF.md · decisions=ADR-INDEX.md
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)

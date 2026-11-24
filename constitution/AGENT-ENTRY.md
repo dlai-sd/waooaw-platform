@@ -10,6 +10,11 @@ On occupying any office, emit one bold `Model recommendation:` line per
 [section 2.1](../standards/AI-RESOURCE-GOVERNANCE.md#21-office-activation-model-notice).
 Do not assume Auto is free or claim an office assignment switches the client's model.
 
+**Roadmap and planning:** [ROADMAP.md](../ROADMAP.md) is the only roadmap and progress record
+(Founder Resolution FR-006). Strategy is platform-led, DMA-proved. Do not propose, plan or start work
+that is not assigned by a Work Contract without reading it. Any change to iterations, order, scope or
+reserved Work Contract numbers (WC-168 to WC-173) needs the Founder's written approval first.
+
 **Feature flags, per-environment values, staff roles/sign-in, WhatsApp visitor flow:** follow
 [Platform Settings And Access Policy](../standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md)
 (WC-137). Config is data per environment, never code; do not invent another mechanism.
@@ -38,7 +43,7 @@ AUTONOMOUS_HALT: false
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
 Last update: 2026-11-24 — WC-167 Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) delivered
 Latest completed sprint: WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) (PR #638 merged as 423c4bc327)
-Latest recorded Work Contract: WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) (merged PR #638, PR #637, PR #636, PR #635)
+Latest recorded Work Contract: WC-170 — Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
@@ -70,6 +75,7 @@ Azure infrastructure:
 **Active Founder Resolutions:**
 - FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)
 - **FR-005 (Skill 14 WAOOAW Self-Marketing — AUTHORIZED: ₹5k/month, 50+ diverse customers)**
+- **FR-006 (Single roadmap, 2026-11-24): `ROADMAP.md` is the only roadmap; platform-led, DMA-proved; deviation needs Founder approval; one sizable PR per iteration**
 
 **CRITICAL before Trading implementation:** `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING — Founder must acknowledge before Trading sprint begins.
 
