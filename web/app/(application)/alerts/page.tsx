@@ -58,6 +58,7 @@ export default async function AlertsPage() {
         <StateView
           actionHref="/home"
           actionLabel={messages.returnHome}
+          back
           kind="empty"
           title="No alerts"
           description="There are no current alerts for your authorized relationships."
@@ -87,6 +88,7 @@ export default async function AlertsPage() {
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        back
         kind="error"
         title="Alerts unavailable"
         description="The current server-owned alert feed could not be retrieved. No browser-generated alerts are shown."

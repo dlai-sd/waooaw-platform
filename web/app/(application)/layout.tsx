@@ -9,7 +9,7 @@ import { StateView } from '@/components/system/StateView';
 import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/WorkspaceLayoutPreferencesV1';
 import { getIdentitySession, getWorkspaceLayoutPreferences } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
-import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
+import { keyVaultTarget } from '@/lib/key-vault-admin';
 import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { logServerFailure } from '@/lib/server-failure';
@@ -75,7 +75,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       messages={messages}
       workspaceLayout={workspaceLayout}
       showAccess={platformAccess.administrator}
-      showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
+      showKeyVaultAdmin={platformAccess.founder && keyVaultTarget() !== undefined}
       showPricingAdmin={platformAccess.administrator}
       showProviderAdmin={platformAccess.founder}
       variant="customer"

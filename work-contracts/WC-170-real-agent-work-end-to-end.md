@@ -38,7 +38,7 @@ The customer pays for agent work: a campaign brief, a proposal and approval, a s
 | WC170-R005 | A customer traces an outcome claim to work and evidence (PG-21) |
 | WC170-R006 | Ad spend is authorized, attributable and reconciles to the provider and the wallet (PG-22, C-088, C-089) |
 | WC170-R007 | Business KPIs lead and technical metrics support (PG-23) |
-| WC170-R008 | The conversation stories run on Demo with `WC120_CONVERSATION_ENABLED` on |
+| WC170-R008 | The conversation stories run on Demo with `WC120_CONVERSATION_ENABLED` on, after the five WC-120 conversation tables the Business Platform uses (`conversation_context_observations`, `conversation_context_summaries`, `conversation_data_right_requests`, `conversation_migration_watermarks`, `whatsapp_media`) are granted to the application role with a per-table privilege analysis and matching row-level-security policies; WC-168 measured these as unreadable on Demo |
 | WC170-R009 | The platform funds platform-owned work and the customer funds hired work; no work runs unfunded |
 | WC170-R010 | Stop halts agent work mid-execution and evidence shows it (C-001) |
 

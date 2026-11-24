@@ -7,6 +7,8 @@ import type { ReactNode } from 'react';
 type StateKind = 'empty' | 'error' | 'forbidden' | 'loading' | 'not-found';
 type StateViewProps = {
   actionHref?: string;
+  // The back arrow belongs to actions that return to an earlier place; "Try again" or "Browse Marketplace" must not show it.
+  back?: boolean;
   correlationId?: string;
   description: ReactNode;
   reasonCode?: string;
@@ -36,7 +38,7 @@ export function StateView(props: StateViewProps) {
       {props.correlationId ? <p>Reference: {props.correlationId}</p> : null}
       {kind === 'loading' ? null : (
         <a href={actionHref}>
-          <ArrowLeft aria-hidden="true" size={18} /> {props.actionLabel}
+          {props.back ? <ArrowLeft aria-hidden="true" size={18} /> : null} {props.actionLabel}
         </a>
       )}
     </section>

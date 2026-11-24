@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-168
 contract_path: work-contracts/WC-168-operator-console-works-on-demo.md
-contract_digest: 2c2102d4d0eb4d89db2f3bd31d0d91eadc29a05984acdc85216f5a04077c68aa
+contract_digest: c7ad054d1227f0a05c47efbb90e20a9b8a6aae566ee78173f4fa707a6c7e8975
 implementation_scope: true
 result: PLANNED
 
@@ -30,14 +30,14 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R003
     source: WC-168 Canonical Requirement Index, R003
-    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; bp_runtime can select from every business table the application queries after the fix, and the fix reached Demo.
-    test_path_or_plan: Governed read record in the contract; a real-database test reusing scripts/wc124_init_chain_local.sh that asserts has_table_privilege for bp_runtime; Demo read-back of /admin/providers.
+    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; the application role has exactly the access the Founder provider screen needs and the fix reached Demo.
+    test_path_or_plan: Governed read record in the contract; tests/business-platform.Tests/ProviderRegistry/ProviderRegistryRuntimeAccessPostgresTests.cs in a real database; Demo read-back of /admin/providers.
 
   - <<: *defaults
     requirement_id: WC168-R004
     source: WC-168 Canonical Requirement Index, R004
-    observable_outcome: Every init-chain table with a wrong owner or missing business_app privilege is listed, fixed at its source and recorded.
-    test_path_or_plan: The same real-database test with the sweep list recorded in the Implementation Record.
+    observable_outcome: The sweep is measured by the read-only catalog job, the six tables the Business Platform uses and the application role cannot read are recorded, provider_configs is fixed, and the five conversation tables are carried as a precondition of WC170-R008.
+    test_path_or_plan: scripts/wc168_demo_db_catalog_read.sh output recorded in the Implementation Record; re-runnable at any time.
 
   - <<: *defaults
     requirement_id: WC168-R005
@@ -48,8 +48,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R006
     source: WC-168 Canonical Requirement Index, R006
-    observable_outcome: One price source. The customer-facing DMA price comes from the pricing engine's authorized package, never from the static descriptor price; Starter, Runner and Winner exist as packages with the Founder's components and recipes; the Marketplace amount equals the authorized price.
-    test_path_or_plan: A test that the Marketplace amount equals the authorized package price and shows no amount before authorization; Pricing admin and Marketplace read-back; Founder authorizes the packages on the Pricing screen.
+    observable_outcome: The Founder sets package names, features and prices at run time on the Pricing screen, nothing is seeded or hard-coded, and the draft, edit and authorize path works end to end. The finding that the customer price still comes from the agent descriptor is recorded and moved to WC-169 R013.
+    test_path_or_plan: Existing web tests for the package editor and authorize dialog plus a path test through the pricing gateway; Demo read-back after R015's preconditions are cleared.
 
   - <<: *defaults
     requirement_id: WC168-R007
@@ -98,12 +98,12 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R014
     source: WC-168 Canonical Requirement Index, R014
-    observable_outcome: WC-167 R001, R004, R008 and R011 are recorded done with evidence and R003, R005, R007 and R009 are moved by identifier.
+    observable_outcome: WC-167 is closed by identifier, with R001 and R008 done on Demo evidence, R004's client read-back moved to WC169-R012, R011's deployed proof moved to the first Founder sign-in after the WC-168 deployment, and the remaining items moved to named requirements.
     test_path_or_plan: WC-167 progress table and ledger updated and validated.
 
   - <<: *defaults
     requirement_id: WC168-R015
     source: WC-168 Canonical Requirement Index, R015
-    observable_outcome: The Founder supplies and the contract records the Starter, Runner and Winner prices including GST, authorizes the pending proactive-message thread, and turns on the Demo setting for the publication components.
-    test_path_or_plan: Founder decision record; Thread Catalog and settings read-back.
+    observable_outcome: The Founder makes his pricing decisions on the Pricing screen and none is recorded as a repository constant; the pending proactive-message thread is authorized in the Thread Catalog and the Demo setting for the publication components is on.
+    test_path_or_plan: Thread Catalog and settings read-back; Founder confirmation that the decisions were made on the screen.
     initial_state: Founder-reserved

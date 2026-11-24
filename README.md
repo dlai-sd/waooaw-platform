@@ -11,7 +11,7 @@
 ```
 Roadmap:           ROADMAP.md is the only roadmap and progress record. Read it before proposing or starting work that is not assigned by a Work Contract.
 Strategy:          Platform-led, DMA-proved
-Current iteration: Iteration 1 (WC-168)
+Current iteration: Iteration 1 (WC-168), implementation in progress
 Deviation rule:    Any change to iterations, order, scope or Work Contract numbers (WC-168 to WC-173 are reserved) needs the Founder's written approval.
 ```
 

@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-169
 contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
-contract_digest: 87772652d9657e14dc2618f458261f647923f7e71527d6145bfc05505145933e
+contract_digest: 71222c560717d2bf92879429b5cc2b60d4dd211fd9e3207435b6c94500ba359f
 implementation_scope: true
 result: PLANNED
 
@@ -91,3 +91,9 @@ requirements:
     source: WC-169 Canonical Requirement Index, R012
     observable_outcome: The Keycloak provisioning client is read back by first real use, where the harness gets a token, registers a synthetic subject, the platform sees it, and the token carries only the intended roles for 60 seconds.
     test_path_or_plan: Harness run step with the Keycloak token claims checked and the registration read from the platform.
+
+  - <<: *defaults
+    requirement_id: WC169-R013
+    source: WC-169 Canonical Requirement Index, R013
+    observable_outcome: The Marketplace card, the employment contract terms and the hire amount come from the Founder's authorized package and never from the static descriptor price; with no authorized package no amount is shown and the hire is not offerable.
+    test_path_or_plan: Business Platform tests for the catalog, contract composition and checkout amount; S5 pay step in the acceptance run proving the amount paid equals the authorized price including GST.

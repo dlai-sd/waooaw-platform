@@ -20,6 +20,12 @@ test('no breaches reads as healthy in words', () => {
   expect(screen.getByRole('status')).toHaveTextContent('Healthy: All 3 checked packages hold their margin.');
 });
 
+test('zero checked packages is not reported as healthy', () => {
+  render(<LiveMarginBanner margin={{ computedAt: 'now', packagesChecked: 0, breaches: [] }} />);
+  expect(screen.getByRole('status')).toHaveTextContent('Nothing to check yet: No package is authorized');
+  expect(screen.queryByText(/Healthy/)).not.toBeInTheDocument();
+});
+
 test('each breach names the package, the reason and the numbers', () => {
   render(
     <LiveMarginBanner

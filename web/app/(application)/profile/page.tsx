@@ -146,6 +146,7 @@ export default async function ProfilePage() {
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        back
         kind="error"
         title="Profile unavailable"
         description={messages.profileUnavailableDescription}

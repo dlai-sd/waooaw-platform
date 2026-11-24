@@ -13,7 +13,7 @@ Counts, versions, dates and the latest delivered Work Contract are not typed her
 `scripts/prepare_pr_body.py` plus the `quality:platform-state` gate fail when they are stale.
 
 ROADMAP: `ROADMAP.md` is the only roadmap and progress record (Founder decision 2026-11-24, FR-006). Strategy:
-platform-led, DMA-proved. Current iteration: Iteration 1 (WC-168). Deviation needs the Founder's written approval.
+platform-led, DMA-proved. Current iteration: Iteration 1 (WC-168), implementation in progress. Deviation needs the Founder's written approval.
 
 RECONCILIATION (state revision 384, 2026-11-23): Revision 383 and its checkpoint narrative (WC-060 through
 WC-136) are retained verbatim at git object `edd9f9e4:constitution/PROJECT_STATE.md` and indexed in

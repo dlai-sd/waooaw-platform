@@ -220,7 +220,7 @@ whole Work Contract is complete).
 |---|---|---|---|
 | WC-170 | Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON | GATED SKELETON | none recorded |
 | WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | CONTRACT WRITTEN | none recorded |
-| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | CONTRACT WRITTEN | none recorded |
+| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | none recorded |
 | WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |

@@ -8,7 +8,7 @@ Any change to the iterations, milestones, order, scope or Work Contract numbers 
 | Authority | Founder (Yogesh Khandge), decisions of 2026-11-24 (section 6) |
 | Document class | Class 3 Governed (GENESIS Decision Classification). Changes need Founder approval on top of normal pull request review. It cannot override a Class 1 or Class 2 decision |
 | Strategy | **Platform-led, DMA-proved** |
-| Current iteration | **Iteration 1 (WC-168)**: contracts written, implementation not yet authorized |
+| Current iteration | **Iteration 1 (WC-168)**: implementation authorized 2026-11-24, in progress |
 | Last updated | 2026-11-24 |
 
 ## 1. The landscape in one page
@@ -41,7 +41,7 @@ Historic planning (the GOAL files, WC-064 to WC-069 "Iteration 1 to 5" for the F
 
 | Iteration | Work Contract | Platform capability | Milestone | Status |
 |---|---|---|---|---|
-| 1 | WC-168 | One roadmap and a working operator console on Demo | **M1** Founder signs in and every operator screen works with DMA data | Contract written, implementation not authorized |
+| 1 | WC-168 | One roadmap and a working operator console on Demo | **M1** Founder signs in and every operator screen works with DMA data | Implementation authorized 2026-11-24, in progress |
 | 2 | WC-169 | Paid hire and connected accounts | **M2** Synthetic customer completes discover to connected accounts; one valid calibration report | Contract written, starts after WC-168 is read back |
 | 3 | WC-170 | Real agent work end to end (AE-02, PG-17 to PG-23) | **M3** DMA does approved, reconciled work for a synthetic customer | Gated skeleton: grooming first, build only after the Founder accepts the stories |
 | 4 | WC-171 | Alerts, monitoring, oversight (PG-24; 30 proactive alerts a month; a governed route to read and resolve blocked WhatsApp messages) | **M4** Founder and administrators see, are alerted to, and resolve problems without database access | Number reserved, contract not written |
@@ -56,8 +56,8 @@ Later, after M6: more agents, multi-agent workplace, mobile, retiring legacy pro
 
 | Milestone | Done when (all of these) |
 |---|---|
-| M1 | WC-168 requirements read back on Demo; Providers lists providers; Pricing shows authorized DMA Starter, Runner and Winner from one price source; Key Vault page follows the platform Founder grant; this file is the only roadmap and is pointed to from README, PROJECT_STATE, AGENT-ENTRY and BOOTSTRAP |
-| M2 | Acceptance slices 1 and 2 run on Demo; vault holds 12 of 12 secrets; one calibration report with every NOT-WITNESSED or FAIL item owned; WhatsApp STOP can resume; Meta App Review and WhatsApp template submissions made |
+| M1 | WC-168 requirements read back on Demo; Providers lists providers; the Founder sets package names, features and prices at run time on the Pricing screen and authorizes them there (nothing seeded or hard-coded); Key Vault page follows the platform Founder grant; this file is the only roadmap and is pointed to from README, PROJECT_STATE, AGENT-ENTRY and BOOTSTRAP |
+| M2 | Acceptance slices 1 and 2 run on Demo; the hire price comes from the Founder's authorized package, not the agent descriptor; vault holds 12 of 12 secrets; one calibration report with every NOT-WITNESSED or FAIL item owned; WhatsApp STOP can resume; Meta App Review and WhatsApp template submissions made |
 | M3 | Founder accepted the groomed stories; a synthetic customer completes brief, approval, execution, spend reconciliation and results trace on Demo |
 | M4 | Alerts, monitoring and exception handling work for Founder and administrators on Demo without database access |
 | M5 | Lifecycle rights, pro-rata billing, payer and funder, tax invoices proven on Demo; UAT promotion done; Founder approves taking real money |
@@ -125,3 +125,4 @@ Emergencies (security, production incidents, Founder-assigned urgent fixes) are 
 |---|---|---|
 | 2026-11-24 | Roadmap created | Founder |
 | 2026-11-24 | Critical review of WC-168 to WC-170 (Founder asked for gaps to be fixed): a governed route for blocked WhatsApp messages placed in Iteration 4 (WC-171); WC-168 gains a Founder-reserved pricing input (R015); WC-169 gains a read-back of the Keycloak provisioning client (R012). Iteration order and numbers unchanged | Founder instruction to fix gaps; confirmation requested |
+| 2026-11-24 | Founder confirmed the review changelog entry above, authorized WC-168 implementation including the temporary read-only Demo database catalog job, and decided that package names, features and prices are run-time Founder choices on the Pricing screen, never seeded or hard-coded ("include this in PR documentation and i approve PR") | Founder |

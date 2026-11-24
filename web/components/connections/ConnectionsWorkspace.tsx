@@ -23,9 +23,9 @@ type LoadState =
   | { kind: 'error'; text: string; action: ProblemAction | null }
   | { kind: 'ready'; connections: ProviderConnection[] };
 
-type Props = { initialNotice?: PricingNotice | null };
+type Props = { initialNotice?: PricingNotice | null; staff?: boolean };
 
-export function ConnectionsWorkspace({ initialNotice = null }: Props) {
+export function ConnectionsWorkspace({ initialNotice = null, staff = false }: Props) {
   const noticeRef = useRef<HTMLDivElement>(null);
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [notice, setNotice] = useState<PricingNotice | null>(initialNotice);
@@ -41,12 +41,12 @@ export function ConnectionsWorkspace({ initialNotice = null }: Props) {
           ? current
           : {
               kind: 'error',
-              text: `Your connections could not be loaded. ${problemText(result.ok ? {} : result.problem)}`,
-              action: result.ok ? null : problemAction(result.problem),
+              text: `Your connections could not be loaded. ${problemText(result.ok ? {} : result.problem, staff)}`,
+              action: result.ok ? null : problemAction(result.problem, staff),
             }
       );
     }
-  }, []);
+  }, [staff]);
 
   useEffect(() => {
     void refresh();

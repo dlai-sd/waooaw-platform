@@ -53,7 +53,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/access');
 
     await expect(page.getByRole('heading', { level: 1, name: 'Staff access' })).toBeVisible();
-    await expect(page.locator('.access-page > .portal-heading').first()).toBeVisible();
+    await expect(page.locator('.staff-access-page > .portal-heading').first()).toBeVisible();
     await expect(page.getByText('Signed in as')).toBeVisible();
     await expect(page.getByText(subject)).toBeVisible();
     await expect(page.getByLabel('Role')).toBeVisible();
@@ -76,11 +76,18 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.getByRole('heading', { name: 'Decide on staff access' })).toBeVisible();
     await expect(page.getByText('ravi@example.com')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
+    // WC168-R009: a Founder has nothing to request, and the page is one column (no stretched landing layout).
+    await expect(page.getByText(/You hold the Founder role, so there is nothing to request/)).toBeVisible();
+    await expect(page.getByLabel('Why do you need it?')).toHaveCount(0);
+    const columns = await page
+      .locator('.staff-access-page')
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length);
+    expect(columns).toBe(1);
     await expectClean(page, `/access (Founder) at ${testInfo.project.name} in ${theme}`);
 
     await page.goto('/founder/access');
     await expect(page.getByRole('heading', { level: 1, name: 'Staff access' })).toBeVisible();
-    await expect(page.locator('.access-page > .portal-heading').first()).toBeVisible();
+    await expect(page.locator('.staff-access-page > .portal-heading').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reject' })).toBeVisible();
     await expectClean(page, `/founder/access at ${testInfo.project.name} in ${theme}`);
     await page.screenshot({ path: testInfo.outputPath(`access-founder-${theme}.png`) });

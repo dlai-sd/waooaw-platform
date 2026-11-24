@@ -54,6 +54,7 @@ Authority limits: the harness runs only with the synthetic customer and sandbox 
 | WC169-R010 | Meta App Review and WhatsApp template submissions are made and tracked with dates |
 | WC169-R011 | Customer-visible polish found by the run (styling, wording, dark mode) is fixed to the WC-167 R006 bar |
 | WC169-R012 | The Keycloak provisioning client deployed in WC-167 is read back by its first real use: the harness obtains a token with it, registers a synthetic subject, and the registration is visible to the platform; the token carries only the intended roles and expires in 60 seconds |
+| WC169-R013 | One customer price source. The Marketplace card, the employment contract terms and the hire amount come from the authorized package the Founder set on the Pricing screen, never from the static `indicativePrice` in the agent descriptor; until a package is authorized no amount is shown and the hire is not offerable; the acceptance pay step (S5) proves the amount paid equals the authorized price including GST; an edited package name, features and price reach the Marketplace after authorization |
 
 ## Founder And Customer Journey Simulation
 

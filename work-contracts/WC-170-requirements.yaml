@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-170
 contract_path: work-contracts/WC-170-real-agent-work-end-to-end.md
-contract_digest: 4471c917ed4b3ac0f67c625daee6df12a068c3e1de9d17eeab16cac3c5377693
+contract_digest: 4a9526652817e42d11b2e4b6a83ab0938cb70298445fc8999a552d8bb38bbcab
 implementation_scope: true
 result: PLANNED
 
@@ -60,8 +60,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC170-R008
     source: WC-170 Candidate Requirement Index, R008
-    observable_outcome: The conversation stories run on Demo with the conversation flag on.
-    test_path_or_plan: Acceptance slice 1c run.
+    observable_outcome: The conversation stories run on Demo with the conversation flag on, after the five conversation tables are granted to the application role with policies.
+    test_path_or_plan: Acceptance slice 1c run; per-table privilege analysis and a real-database test for the five tables.
 
   - <<: *defaults
     requirement_id: WC170-R009
