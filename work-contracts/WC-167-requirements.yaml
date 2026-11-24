@@ -1,0 +1,52 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-167
+contract_path: work-contracts/WC-167-acceptance-demo-readiness.md
+contract_digest: 8cbbd1bb9fd0f24e3a0f0b85c9d3944db73559415ec15ba161464ff7b875ea5d
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Tests in the Python, .NET and TypeScript runners where code changes, plus a read-back from Demo for each Demo outcome; commands and results in the PR body of each authorized slice
+  initial_state: expected-fail
+  dependencies: PR #634 merged; the Founder authorizes each slice in the conversation before any code is written
+  residual_risk: RCA-1 and RCA-2 each have a confirmed part and an unproven part; the slices S1 and S2 start by proving the cause on Demo before changing anything
+  completion_rule: Executable evidence and the Demo read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC167-R001
+    source: WC-167 Canonical Requirement Index, R001
+    observable_outcome: A configured Founder who signs in on Demo gets founder true from /api/v1/platform/me/roles and the menu shows Pricing, Providers and Azure Key Vault; the proven cause of RCA-1 is recorded in the contract.
+    test_path_or_plan: To be written in slice S1 after the /access result; role resolution tests in the Business Platform test project and a menu test in web/components/shell; Demo read-back of /api/v1/platform/me/roles through the signed-in screen.
+
+  - <<: *defaults
+    requirement_id: WC167-R002
+    source: WC-167 Canonical Requirement Index, R002
+    observable_outcome: A signed-in person without a customer membership or with an expired session sees a distinct message on Connections, and a customer with an active membership loads the list.
+    test_path_or_plan: To be written in slice S2; tests in web/lib provider-connections client and server tests and the Business Platform provider connections tests; Demo read-back with a customer that completed a trial.
+
+  - <<: *defaults
+    requirement_id: WC167-R003
+    source: WC-167 Canonical Requirement Index, R003
+    observable_outcome: The Demo pricing owner is configured through the governed workload path with no shared token carrying actor or role, and the Founder creates the partial-discount coupon on the coupons screen.
+    test_path_or_plan: To be written in slice S3; Terraform workload fmt, validate and contract tests; tests that no shared token carries actor or role; Demo read-back of the coupons screen after the Environment Deployment.
+
+  - <<: *defaults
+    requirement_id: WC167-R004
+    source: WC-167 Canonical Requirement Index, R004
+    observable_outcome: The Demo profile carries acceptance_client_id, the Keycloak provisioning client exists with its secret in the vault, and acceptance_synthetic_tenants_enabled is true on Demo, each read back from Demo.
+    test_path_or_plan: To be written in slice S4; tests/pipeline/test_acceptance_infrastructure.py profile and realm checks; az containerapp read-back of AcceptanceSyntheticTenants__Enabled; Keycloak client read-back.
+
+  - <<: *defaults
+    requirement_id: WC167-R005
+    source: WC-167 Canonical Requirement Index, R005
+    observable_outcome: The vault holds 12 of 12 secrets, the Meta app is registered in the product, one Demo calibration run produced a valid report, and every NOT-WITNESSED or FAIL item is triaged with an owner.
+    test_path_or_plan: To be written in slice S5; scripts/acceptance_seed_secrets.sh status; the Customer Journey Acceptance workflow run and its report artifact; triage table in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC167-R006
+    source: WC-167 Canonical Requirement Index, R006
+    observable_outcome: Every UI page or component changed under R001 to R005 is styled to the visual system and passes the component, responsive (360x800, 768x1024, 1440x900), light and dark, loading, error, empty and denied, axe (zero critical), lint, strict TypeScript, production build and 90 percent changed interactive coverage layers; the PR body shows screenshots of each changed page.
+    test_path_or_plan: Carried by slices S1 to S3; Jest and Testing Library tests next to each changed component in web/; Playwright specs under web/tests with the responsive and axe projects from architecture/reference/ux/hybrid-ui-acceptance-contract.md (UX-RESP-01, UX-SHELL-03, UX-VIS); pnpm lint, tsc and next build in the TypeScript runner; screenshots in the PR body.
