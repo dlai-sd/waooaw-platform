@@ -871,3 +871,11 @@ output "acceptance_client_id" {
 output "acceptance_key_vault_name" {
   value = var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].name : null
 }
+
+output "acceptance_key_vault_id" {
+  value = var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].id : null
+}
+
+output "acceptance_key_vault_uri" {
+  value = var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].vault_uri : null
+}
