@@ -507,7 +507,40 @@ def simulation_payload(
         )
         if projection.minimum_compliant_price_paise is not None:
             payload["minimumCompliantPricePaise"] = projection.minimum_compliant_price_paise
+        payload["buildUp"] = _build_up(projection)
     return payload
+
+
+def _build_up(projection: Any) -> dict[str, Any]:
+    """Cost lines, infrastructure share, target margin and suggested price of a package, for the Founder build-up table."""
+    build_up: dict[str, Any] = {
+        "costLines": [
+            {
+                key: value
+                for key, value in (
+                    ("componentId", line.component_id),
+                    ("threadId", line.thread_id),
+                    ("quantity", line.quantity),
+                    ("unitsPerUnit", line.units_per_unit),
+                    ("unitCostPaise", line.unit_cost_paise),
+                    ("lineCostPaise", line.line_cost_paise),
+                    ("authorized", line.authorized),
+                )
+                if value is not None
+            }
+            for line in projection.cost_lines
+        ][:500],
+        "infrastructureSharePaise": projection.infrastructure_share_paise,
+        "costFloorPaise": projection.cost_floor_paise,
+        "unauthorizedThreadIds": list(projection.unauthorized_thread_ids)[:100],
+        "uncostedComponentIds": list(projection.uncosted_component_ids)[:100],
+        "suggestionStatus": projection.suggestion_status,
+    }
+    if projection.target_margin_pct is not None:
+        build_up["targetMarginPercent"] = _percent(projection.target_margin_pct)
+    if projection.suggested_price_incl_gst_paise is not None:
+        build_up["suggestedPriceInclGstPaise"] = projection.suggested_price_incl_gst_paise
+    return build_up
 
 
 def _text(value: Any) -> str | None:

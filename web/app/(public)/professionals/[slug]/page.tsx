@@ -142,14 +142,11 @@ export default async function ProfessionalPage({ params, searchParams }: Profess
             </ul>
           </section>
           <p className="price-disclosure">
-            <strong>
-              {new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: disclosure.indicativePrice.currency,
-              }).format(disclosure.indicativePrice.amountInrPaise / 100)}
-            </strong>{' '}
-            / {disclosure.indicativePrice.cadence.toLowerCase()}
-            <small>{disclosure.indicativePrice.qualification}</small>
+            <strong>Price shown after you sign in</strong>
+            <small>
+              The monthly price, including GST, is shown once you are signed in and your workspace is ready, before you
+              accept anything.
+            </small>
           </p>
         </>
       ) : null}
@@ -164,7 +161,6 @@ export default async function ProfessionalPage({ params, searchParams }: Profess
         professionalVersion={version}
         termsVersion={termsVersion}
         trialAvailable={disclosure?.trial.available ?? true}
-        priceInrPaise={disclosure?.indicativePrice.amountInrPaise}
         trialDurationDays={disclosure?.trial.durationDays}
       />
     </article>

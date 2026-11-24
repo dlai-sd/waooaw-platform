@@ -27,6 +27,18 @@ jest.mock('@/lib/api/generated/apis/ProfessionalsApi', () => ({
 const originalFetch = global.fetch;
 const customerId = '22222222-2222-4222-8222-222222222222';
 const relationshipId = '33333333-3333-4333-8333-333333333333';
+const quote = {
+  packageCode: 'GROWTH',
+  currency: 'INR',
+  grossAmountInrPaise: 354000,
+  gstAmountInrPaise: 54000,
+  basePriceInrPaise: 300000,
+  cadence: 'MONTHLY',
+  billingPeriodDays: 30,
+  quoteVersion: 'd'.repeat(64),
+};
+const intentResponse = (status = 201, body: object = { quote }) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const baseBody = {
   action: 'start',
   professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
@@ -48,12 +60,7 @@ describe('pre-hire checkout boundary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(accessTokenFromRequest).mockResolvedValue('access-token');
-    jest.mocked(persistAcquisitionIntent).mockResolvedValue(
-      new Response('{}', {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+    jest.mocked(persistAcquisitionIntent).mockImplementation(async () => intentResponse());
     jest.mocked(getIdentitySession).mockResolvedValue({
       kind: 'ready',
       session: { accountReference: customerId } as never,
@@ -78,12 +85,6 @@ describe('pre-hire checkout boundary', () => {
         externalActionsAllowed: false,
       },
       evidencePosture: 'Evidence First',
-      indicativePrice: {
-        currency: 'INR',
-        amountInrPaise: 118000,
-        cadence: 'MONTHLY',
-        qualification: 'Indicative',
-      },
     });
     continueAcquisition.mockResolvedValue({
       relationshipId,
@@ -115,8 +116,9 @@ describe('pre-hire checkout boundary', () => {
     expect(continueAcquisition).not.toHaveBeenCalled();
   });
 
-  it('persists the Hire intent before requiring Registration', async () => {
+  it('requires Registration before a Hire is persisted, priced or charged', async () => {
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+    global.fetch = jest.fn();
     const { POST } = await import('./route');
 
     const response = await POST(request(baseBody));
@@ -126,11 +128,8 @@ describe('pre-hire checkout boundary', () => {
       code: 'REGISTRATION_REQUIRED',
       title: 'Complete registration before hiring.',
     });
-    expect(persistAcquisitionIntent).toHaveBeenCalledWith(
-      'access-token',
-      baseBody.idempotencyKey,
-      expect.objectContaining({ intent: 'HIRE', professionalVersion: '1.0.0' })
-    );
+    expect(persistAcquisitionIntent).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
     expect(continueAcquisition).not.toHaveBeenCalled();
   });
 
@@ -161,34 +160,127 @@ describe('pre-hire checkout boundary', () => {
     expect(continueAcquisition).not.toHaveBeenCalled();
   });
 
-  it('creates a Razorpay order from canonical server pricing without creating a relationship', async () => {
+  it('creates a Razorpay order at the server-locked quote and ignores client amounts', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
         checkout_intent_id: baseBody.idempotencyKey,
         provider_order_reference: 'order_test123',
-        amount_inr_paise: 118000,
+        amount_inr_paise: 354000,
         currency: 'INR',
       }),
     });
     const { POST } = await import('./route');
 
-    const response = await POST(request({ ...baseBody, grossAmountInrPaise: 1 }));
+    const response = await POST(
+      request({
+        ...baseBody,
+        packageCode: 'GROWTH',
+        quoteVersion: quote.quoteVersion,
+        grossAmountInrPaise: 1,
+        gstAmountInrPaise: 0,
+        cadence: 'WEEKLY',
+        indicativePrice: { amountInrPaise: 1 },
+      })
+    );
 
     expect(response.status).toBe(200);
     expect(continueAcquisition).not.toHaveBeenCalled();
+    expect(persistAcquisitionIntent).toHaveBeenCalledWith(
+      'access-token',
+      baseBody.idempotencyKey,
+      expect.objectContaining({
+        intent: 'HIRE',
+        packageCode: 'GROWTH',
+        quoteVersion: quote.quoteVersion,
+        validateQuoteBeforeCharge: true,
+      })
+    );
+    expect(JSON.stringify(jest.mocked(persistAcquisitionIntent).mock.calls[0][2])).not.toContain('"grossAmount');
     expect(global.fetch).toHaveBeenCalledWith(
       'http://localhost:8140/payments/hire-checkout',
       expect.objectContaining({ method: 'POST' })
     );
+    // The coupon is forwarded for Billing to validate; the amount sent is the authorized gross, not a payable.
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toEqual(
       expect.objectContaining({
         customer_id: customerId,
-        gross_amount_inr_paise: 118000,
-        gst_amount_inr_paise: 18000,
+        gross_amount_inr_paise: 354000,
+        gst_amount_inr_paise: 54000,
+        cadence: 'MONTHLY',
         coupon_code: 'DEMO100',
       })
+    );
+  });
+
+  it.each([
+    ['no monthly package is on sale', 409, 'Hire is not available for sale right now'],
+    ['the price changed since the customer accepted', 409, 'The Hire price changed'],
+    ['the billing owner is unavailable', 503, 'Hire pricing is unavailable right now'],
+  ])('creates no order and falls back to no price when %s', async (_name, status, title) => {
+    jest.mocked(persistAcquisitionIntent).mockImplementation(async () => intentResponse(status, { title }));
+    global.fetch = jest.fn();
+    const { POST } = await import('./route');
+
+    const response = await POST(request(baseBody));
+
+    expect(response.status).toBe(status);
+    expect((await response.json()).title).toContain(title);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a missing quote', {}],
+    ['a zero amount', { quote: { ...quote, grossAmountInrPaise: 0 } }],
+    ['a non-INR quote', { quote: { ...quote, currency: 'USD' } }],
+  ])('refuses to charge on %s in the intent response, with no descriptor fallback', async (_name, payload) => {
+    jest.mocked(persistAcquisitionIntent).mockImplementation(async () => intentResponse(201, payload));
+    global.fetch = jest.fn();
+    const { POST } = await import('./route');
+
+    const response = await POST(request(baseBody));
+
+    expect(response.status).toBe(409);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed package codes and quote versions before anything is persisted', async () => {
+    global.fetch = jest.fn();
+    const { POST } = await import('./route');
+
+    for (const tampered of [
+      { packageCode: '-bad' },
+      { packageCode: 'a b' },
+      { packageCode: '1;DROP' },
+      { quoteVersion: 'abc' },
+    ]) {
+      expect((await POST(request({ ...baseBody, ...tampered }))).status).toBe(400);
+    }
+    expect(persistAcquisitionIntent).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('accepts a Founder-chosen package code in mixed case with dashes and dots', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: baseBody.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        amount_inr_paise: 354000,
+        currency: 'INR',
+      }),
+    });
+    const { POST } = await import('./route');
+
+    const response = await POST(request({ ...baseBody, packageCode: 'Starter-Monthly.1' }));
+
+    expect(response.status).toBe(200);
+    expect(persistAcquisitionIntent).toHaveBeenCalledWith(
+      'access-token',
+      baseBody.idempotencyKey,
+      expect.objectContaining({ packageCode: 'Starter-Monthly.1' })
     );
   });
 
@@ -242,6 +334,41 @@ describe('pre-hire checkout boundary', () => {
     expect(await response.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
     expect(response.headers.get('set-cookie')).toEqual(
       expect.stringMatching(/Path=\/professionals\/mine;.*Secure;.*HttpOnly;.*SameSite=strict/i)
+    );
+  });
+
+  it('confirms a payment already taken against the locked quote and completes at the same package', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ outcome_kind: 'CAPTURED', checkout_intent_id: baseBody.idempotencyKey }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'CAPTURED' }) });
+    const { POST } = await import('./route');
+
+    const response = await POST(
+      request({
+        ...baseBody,
+        action: 'confirm',
+        packageCode: 'GROWTH',
+        razorpayOrderId: 'order_test123',
+        razorpayPaymentId: 'pay_test123',
+        razorpaySignature: 'a'.repeat(64),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(persistAcquisitionIntent).toHaveBeenCalledWith(
+      'access-token',
+      baseBody.idempotencyKey,
+      expect.not.objectContaining({ validateQuoteBeforeCharge: true })
+    );
+    expect(continueAcquisition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        continueAcquisitionRequest: expect.objectContaining({ packageCode: 'GROWTH', intent: 'HIRE' }),
+      }),
+      expect.anything()
     );
   });
 

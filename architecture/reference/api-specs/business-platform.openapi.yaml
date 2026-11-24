@@ -1081,13 +1081,45 @@ paths:
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "503": { description: Constitutional evidence or relationship owner unavailable }
 
+  /api/v1/acquisition/hire-quote:
+    post:
+      tags: [Professionals]
+      summary: Resolve the customer price of a Hire from the monthly packages on sale
+      description: |
+        Requires a customer workspace membership. Resolves one GST-inclusive quote server-side from the
+        billing owner's for-sale monthly packages for the exact professional release: the package named
+        by packageCode, otherwise the lowest-priced package for sale. Nothing is stored. There is no
+        fallback price: with no package for sale the answer is 409, and with the billing owner
+        unavailable it is 503. The price is never taken from the request or from the agent descriptor.
+      operationId: previewHireQuote
+      parameters:
+        - name: X-Correlation-ID
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HireQuoteRequest" }
+      responses:
+        "200": { description: Server-resolved Hire quote, content: { application/json: { schema: { $ref: "#/components/schemas/HireQuote" } } } }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "503": { description: "The billing owner is unavailable and no amount exists" }
+
   /api/v1/professionals/marketplace:
     get:
       tags: [Professionals]
       summary: Browse the customer portal marketplace
       description: |
         Returns a paginated marketplace projection for published and currently offerable
-        professionals. Suitability, offerability, pricing source, and next action are server-owned.
+        professionals. Suitability, offerability and next action are server-owned. The projection
+        carries no price: an amount appears only after sign-in and membership, from the for-sale
+        packages (previewHireQuote).
         The browser may filter presentation only; it must not invent eligibility or price.
         A validated customer OAuth identity is required, but customer registration, workspace
         membership, and tenant derivation are not. This read creates no customer, membership,
@@ -5342,7 +5374,7 @@ components:
     ProfessionalDisclosure:
       type: object
       additionalProperties: false
-      required: [professionalType, projectionVersion, customerRouteSlug, disclosureRevision, termsVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
+      required: [professionalType, projectionVersion, customerRouteSlug, disclosureRevision, termsVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, eligibility]
       properties:
         professionalType: { type: string, maxLength: 100 }
         projectionVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
@@ -5372,7 +5404,6 @@ components:
           items: { type: string, maxLength: 500 }
         trial: { $ref: "#/components/schemas/ProfessionalTrialDisclosure" }
         evidencePosture: { type: string, maxLength: 1000 }
-        indicativePrice: { $ref: "#/components/schemas/IndicativePriceDisclosure" }
         eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
 
     ProfessionalSkillDisclosure:
@@ -5397,6 +5428,41 @@ components:
         termsVersion: { type: string, format: date }
         acceptance: { type: string, const: ACCEPT_EMPLOYMENT_CONTRACT }
         couponCode: { type: string, pattern: '^[A-Z0-9_-]{1,64}$' }
+        packageCode:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]{0,63}$'
+          description: Monthly package the customer chose; omitted means the lowest-priced package for sale. Never an amount.
+        quoteVersion:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: The quote version the customer saw; a Hire whose server-resolved quote differs is refused.
+        validateQuoteBeforeCharge:
+          type: boolean
+          description: Set by the web server before it creates a payment order; refuses a replay whose locked quote is no longer for sale at that price.
+
+    HireQuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [professionalType, professionalVersion]
+      properties:
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        packageCode: { type: string, pattern: '^[A-Z][A-Z0-9_]{0,63}$' }
+
+    HireQuote:
+      type: object
+      additionalProperties: false
+      description: The one customer price of a Hire, resolved by the Business Platform from the billing owner's for-sale monthly package. GST inclusive.
+      required: [packageCode, currency, grossAmountInrPaise, gstAmountInrPaise, basePriceInrPaise, cadence, billingPeriodDays, quoteVersion]
+      properties:
+        packageCode: { type: string, pattern: '^[A-Z][A-Z0-9_]{0,63}$' }
+        currency: { type: string, const: INR }
+        grossAmountInrPaise: { type: integer, format: int64, minimum: 1 }
+        gstAmountInrPaise: { type: integer, format: int64, minimum: 0 }
+        basePriceInrPaise: { type: integer, format: int64, minimum: 0 }
+        cadence: { type: string, enum: [MONTHLY] }
+        billingPeriodDays: { type: integer, minimum: 28, maximum: 31 }
+        quoteVersion: { type: string, pattern: '^[0-9a-f]{64}$' }
 
     AcquisitionIntent:
       type: object
@@ -5410,6 +5476,8 @@ components:
         contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
         expiresAt: { type: string, format: date-time }
         replayed: { type: boolean }
+        quote:
+          $ref: "#/components/schemas/HireQuote"
 
     AcquisitionContinuation:
       type: object
@@ -5431,16 +5499,6 @@ components:
         durationDays: { type: integer, minimum: 0, maximum: 14 }
         paidApiCallsAllowed: { type: boolean, enum: [false] }
         externalActionsAllowed: { type: boolean, enum: [false] }
-
-    IndicativePriceDisclosure:
-      type: object
-      additionalProperties: false
-      required: [currency, amountInrPaise, cadence, qualification]
-      properties:
-        currency: { type: string, const: INR }
-        amountInrPaise: { type: integer, format: int64, minimum: 0 }
-        cadence: { type: string, enum: [MONTHLY] }
-        qualification: { type: string, maxLength: 500 }
 
     # ── Enumerations ──────────────────────────────────────────────────────
 
@@ -7699,7 +7757,6 @@ components:
           type: array
           items: { type: string, minLength: 1, maxLength: 500 }
         eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
-        indicativePrice: { $ref: "#/components/schemas/IndicativePriceDisclosure" }
         trial: { $ref: "#/components/schemas/ProfessionalTrialDisclosure" }
         evidencePosture: { type: string, minLength: 1, maxLength: 500 }
         offerabilityState:

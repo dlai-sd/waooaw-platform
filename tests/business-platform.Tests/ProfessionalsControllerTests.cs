@@ -1,13 +1,13 @@
 // Implements: work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-01
 // Constitutional basis: C-009, C-048, C-059, C-076
 
+using System.Runtime.CompilerServices;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using System.Runtime.CompilerServices;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -24,8 +24,7 @@ public sealed class ProfessionalsControllerTests
     public ProfessionalsControllerTests()
     {
         var environment = new Mock<IWebHostEnvironment>();
-        environment.SetupGet(value => value.ContentRootPath)
-            .Returns(FindBusinessPlatformRoot());
+        environment.SetupGet(value => value.ContentRootPath).Returns(FindBusinessPlatformRoot());
         _catalog = new ProfessionalCatalog(environment.Object);
         _controller = Controller(_catalog);
     }
@@ -36,8 +35,10 @@ public sealed class ProfessionalsControllerTests
         var result = _controller.Discover("get more patient bookings");
 
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        var professionals = ok.Value.Should()
-            .BeAssignableTo<IReadOnlyList<ProfessionalDiscoveryResult>>().Subject;
+        var professionals = ok
+            .Value.Should()
+            .BeAssignableTo<IReadOnlyList<ProfessionalDiscoveryResult>>()
+            .Subject;
         professionals.Should().ContainSingle();
         professionals[0].ProfessionalType.Should().Be("DIGITAL_MARKETING_LOCAL_SERVICE");
         professionals[0].Eligibility.Eligible.Should().BeTrue();
@@ -50,8 +51,10 @@ public sealed class ProfessionalsControllerTests
         var result = _controller.Discover("help with deceptive impersonation marketing");
 
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeAssignableTo<IReadOnlyList<ProfessionalDiscoveryResult>>()
-            .Which.Should().BeEmpty();
+        ok.Value.Should()
+            .BeAssignableTo<IReadOnlyList<ProfessionalDiscoveryResult>>()
+            .Which.Should()
+            .BeEmpty();
     }
 
     [Fact]
@@ -73,8 +76,14 @@ public sealed class ProfessionalsControllerTests
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         var disclosure = ok.Value.Should().BeOfType<ProfessionalDisclosure>().Subject;
         disclosure.ProjectionVersion.Should().Be("1.0.0");
-        disclosure.Skills.Select(skill => skill.SkillId).Should().BeEquivalentTo(
-            ["CUSTOMER_PROFILING", "MARKET_RESEARCH_AND_MATURITY", "CONTENT_STRATEGY_AND_CALENDAR"]);
+        disclosure
+            .Skills.Select(skill => skill.SkillId)
+            .Should()
+            .BeEquivalentTo([
+                "CUSTOMER_PROFILING",
+                "MARKET_RESEARCH_AND_MATURITY",
+                "CONTENT_STRATEGY_AND_CALENDAR",
+            ]);
         disclosure.Trial.DurationDays.Should().Be(14);
         disclosure.Trial.PaidApiCallsAllowed.Should().BeFalse();
         disclosure.Trial.ExternalActionsAllowed.Should().BeFalse();
@@ -84,14 +93,34 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
+    public void WC169_R021_TheAnonymousDisclosureCarriesNoPriceAtAll()
+    {
+        var ok = _controller
+            .GetDisclosure("DIGITAL_MARKETING_LOCAL_SERVICE")
+            .Result.Should()
+            .BeOfType<OkObjectResult>()
+            .Subject;
+
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            ok.Value,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        );
+
+        json.Should().NotContainEquivalentOf("indicativePrice").And.NotContain("249900");
+    }
+
+    [Fact]
     public void Disclosure_UnknownProfessional_ReturnsPrivacySafeNotFound()
     {
         var result = _controller.GetDisclosure("UNKNOWN");
 
         var problem = result.Result.Should().BeOfType<ObjectResult>().Subject;
         problem.StatusCode.Should().Be(404);
-        problem.Value.Should().BeOfType<ProblemDetails>()
-            .Which.Title.Should().Be("Professional not found");
+        problem
+            .Value.Should()
+            .BeOfType<ProblemDetails>()
+            .Which.Title.Should()
+            .Be("Professional not found");
     }
 
     [Fact]
@@ -102,14 +131,30 @@ public sealed class ProfessionalsControllerTests
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var json = System.Text.Json.JsonSerializer.SerializeToElement(ok.Value);
         var listing = json.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
-        listing.GetProperty("professionalType").GetString().Should().Be("DIGITAL_MARKETING_LOCAL_SERVICE");
-        listing.GetProperty("disclosurePath").GetString().Should().Be("/marketplace/digital-marketing");
-        listing.GetProperty("availableIntents").EnumerateArray()
-            .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
+        listing
+            .GetProperty("professionalType")
+            .GetString()
+            .Should()
+            .Be("DIGITAL_MARKETING_LOCAL_SERVICE");
+        listing
+            .GetProperty("disclosurePath")
+            .GetString()
+            .Should()
+            .Be("/marketplace/digital-marketing");
+        listing
+            .GetProperty("availableIntents")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .Should()
+            .Equal("TRIAL", "HIRE");
         listing.GetProperty("disclosureRevision").GetString().Should().Be("1.0.0");
         listing.GetProperty("termsVersion").GetString().Should().Be("2026-07-18");
-        listing.GetProperty("capabilitySignals").EnumerateArray()
-            .Select(value => value.GetString()).Should().Equal(
+        listing
+            .GetProperty("capabilitySignals")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .Should()
+            .Equal(
                 "Customer Profiling",
                 "Market Research and Maturity Scoring",
                 "Content Strategy and Calendar"
@@ -120,24 +165,36 @@ public sealed class ProfessionalsControllerTests
         listing.GetProperty("evidencePosture").GetString().Should().NotBeNullOrWhiteSpace();
         listing.GetProperty("offerabilityState").GetString().Should().Be("OFFERABLE");
         listing.GetProperty("nextAction").GetString().Should().Be("VIEW_DISCLOSURE");
-        listing.GetProperty("indicativePrice").GetProperty("Currency").GetString().Should().Be("INR");
+        listing
+            .TryGetProperty("indicativePrice", out _)
+            .Should()
+            .BeFalse("the descriptor price is never projected");
     }
 
     [Fact]
     public void Marketplace_KeepsTrialChoiceVisibleWhenOwnerServicesAreUnconfigured()
     {
-        var controller = Controller(
-            _catalog,
-            new UnconfiguredRelationshipTrialOwnerGateway()
-        );
+        var controller = Controller(_catalog, new UnconfiguredRelationshipTrialOwnerGateway());
 
-        var result = controller.BrowseMarketplace(null, 20)
-            .Should().BeOfType<OkObjectResult>().Subject;
-        var listing = System.Text.Json.JsonSerializer.SerializeToElement(result.Value)
-            .GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        var result = controller
+            .BrowseMarketplace(null, 20)
+            .Should()
+            .BeOfType<OkObjectResult>()
+            .Subject;
+        var listing = System
+            .Text.Json.JsonSerializer.SerializeToElement(result.Value)
+            .GetProperty("items")
+            .EnumerateArray()
+            .Should()
+            .ContainSingle()
+            .Subject;
 
-        listing.GetProperty("availableIntents").EnumerateArray()
-            .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
+        listing
+            .GetProperty("availableIntents")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .Should()
+            .Equal("TRIAL", "HIRE");
         listing.GetProperty("trialTerms").GetString().Should().Contain("14-day trial");
     }
 
@@ -145,16 +202,25 @@ public sealed class ProfessionalsControllerTests
     public void Marketplace_FilterBoundCursorRejectsReuseAgainstDifferentQuery()
     {
         var catalog = new Mock<IProfessionalCatalog>();
-        catalog.Setup(value => value.Browse(null, null)).Returns(
-        [
-            Disclosure("A"), Disclosure("B"),
-        ]);
+        catalog
+            .Setup(value => value.Browse(null, null))
+            .Returns([Disclosure("A"), Disclosure("B")]);
         var controller = Controller(catalog.Object);
-        var first = controller.BrowseMarketplace(null, 1).Should().BeOfType<OkObjectResult>().Subject;
-        var cursor = System.Text.Json.JsonSerializer.SerializeToElement(first.Value).GetProperty("nextCursor").GetString();
+        var first = controller
+            .BrowseMarketplace(null, 1)
+            .Should()
+            .BeOfType<OkObjectResult>()
+            .Subject;
+        var cursor = System
+            .Text.Json.JsonSerializer.SerializeToElement(first.Value)
+            .GetProperty("nextCursor")
+            .GetString();
 
-        var invalid = controller.BrowseMarketplace(cursor, 1, query: "different")
-            .Should().BeOfType<ObjectResult>().Subject;
+        var invalid = controller
+            .BrowseMarketplace(cursor, 1, query: "different")
+            .Should()
+            .BeOfType<ObjectResult>()
+            .Subject;
 
         invalid.StatusCode.Should().Be(404);
     }
@@ -164,16 +230,64 @@ public sealed class ProfessionalsControllerTests
     {
         var cases = new[]
         {
-            (Query: "?limit=0", Cursor: (string?)null, Limit: 0, Type: (string?)null, Search: (string?)null),
-            (Query: "?limit=101", Cursor: (string?)null, Limit: 101, Type: (string?)null, Search: (string?)null),
-            (Query: "?unknown=value", Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: (string?)null),
+            (
+                Query: "?limit=0",
+                Cursor: (string?)null,
+                Limit: 0,
+                Type: (string?)null,
+                Search: (string?)null
+            ),
+            (
+                Query: "?limit=101",
+                Cursor: (string?)null,
+                Limit: 101,
+                Type: (string?)null,
+                Search: (string?)null
+            ),
+            (
+                Query: "?unknown=value",
+                Cursor: (string?)null,
+                Limit: 20,
+                Type: (string?)null,
+                Search: (string?)null
+            ),
             (Query: "?cursor=", Cursor: "", Limit: 20, Type: (string?)null, Search: (string?)null),
-            (Query: "?cursor=short", Cursor: "short", Limit: 20, Type: (string?)null, Search: (string?)null),
-            (Query: "?cursor=" + new string('x', 2049), Cursor: new string('x', 2049), Limit: 20, Type: (string?)null, Search: (string?)null),
-            (Query: "?professionalType=", Cursor: (string?)null, Limit: 20, Type: "", Search: (string?)null),
-            (Query: "?professionalType=" + new string('x', 101), Cursor: (string?)null, Limit: 20, Type: new string('x', 101), Search: (string?)null),
+            (
+                Query: "?cursor=short",
+                Cursor: "short",
+                Limit: 20,
+                Type: (string?)null,
+                Search: (string?)null
+            ),
+            (
+                Query: "?cursor=" + new string('x', 2049),
+                Cursor: new string('x', 2049),
+                Limit: 20,
+                Type: (string?)null,
+                Search: (string?)null
+            ),
+            (
+                Query: "?professionalType=",
+                Cursor: (string?)null,
+                Limit: 20,
+                Type: "",
+                Search: (string?)null
+            ),
+            (
+                Query: "?professionalType=" + new string('x', 101),
+                Cursor: (string?)null,
+                Limit: 20,
+                Type: new string('x', 101),
+                Search: (string?)null
+            ),
             (Query: "?q=", Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: ""),
-            (Query: "?q=" + new string('x', 121), Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: new string('x', 121)),
+            (
+                Query: "?q=" + new string('x', 121),
+                Cursor: (string?)null,
+                Limit: 20,
+                Type: (string?)null,
+                Search: new string('x', 121)
+            ),
         };
 
         foreach (var testCase in cases)
@@ -196,24 +310,37 @@ public sealed class ProfessionalsControllerTests
     public void Marketplace_AcceptsMatchingCursorAndRejectsMalformedCursor()
     {
         var catalog = new Mock<IProfessionalCatalog>();
-        catalog.Setup(value => value.Browse(null, null)).Returns(
-            [Disclosure("A"), Disclosure("B")]
-        );
+        catalog
+            .Setup(value => value.Browse(null, null))
+            .Returns([Disclosure("A"), Disclosure("B")]);
         var controller = Controller(catalog.Object);
-        var first = controller.BrowseMarketplace(null, 1).Should().BeOfType<OkObjectResult>().Subject;
-        var cursor = System.Text.Json.JsonSerializer.SerializeToElement(first.Value)
-            .GetProperty("nextCursor").GetString();
+        var first = controller
+            .BrowseMarketplace(null, 1)
+            .Should()
+            .BeOfType<OkObjectResult>()
+            .Subject;
+        var cursor = System
+            .Text.Json.JsonSerializer.SerializeToElement(first.Value)
+            .GetProperty("nextCursor")
+            .GetString();
 
         controller.BrowseMarketplace(cursor, 1).Should().BeOfType<OkObjectResult>();
-        controller.BrowseMarketplace(new string('!', 16), 1)
-            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(404);
+        controller
+            .BrowseMarketplace(new string('!', 16), 1)
+            .Should()
+            .BeOfType<ObjectResult>()
+            .Which.StatusCode.Should()
+            .Be(404);
     }
 
     [Fact]
     public void Marketplace_IsAvailableBeforeCustomerRegistration()
     {
-        var result = _controller.BrowseMarketplace(null, 20)
-            .Should().BeOfType<OkObjectResult>().Subject;
+        var result = _controller
+            .BrowseMarketplace(null, 20)
+            .Should()
+            .BeOfType<OkObjectResult>()
+            .Subject;
         var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
 
         json.GetProperty("items").EnumerateArray().Should().ContainSingle();
@@ -238,12 +365,14 @@ public sealed class ProfessionalsControllerTests
 
     private static string FindBusinessPlatformRoot([CallerFilePath] string sourcePath = "")
     {
-        foreach (var startPath in new[]
-                 {
-                     Path.GetDirectoryName(sourcePath)!,
-                     Directory.GetCurrentDirectory(),
-                     AppContext.BaseDirectory,
-                 })
+        foreach (
+            var startPath in new[]
+            {
+                Path.GetDirectoryName(sourcePath)!,
+                Directory.GetCurrentDirectory(),
+                AppContext.BaseDirectory,
+            }
+        )
         {
             var directory = new DirectoryInfo(startPath);
             while (directory is not null)
@@ -261,15 +390,26 @@ public sealed class ProfessionalsControllerTests
         throw new DirectoryNotFoundException("Could not locate src/business-platform.");
     }
 
-    private static ProfessionalDisclosure Disclosure(string type) => new(
-        type, "1.0.0", type.ToLowerInvariant(), type, ["Suitable"], [], [], [], [],
-        new ProfessionalTrialDisclosure(true, 14, false, false), "RECORDED",
-        new IndicativePriceDisclosure("INR", 100, "MONTHLY", "Indicative"),
-        new ProfessionalEligibility(true, "Eligible"));
+    private static ProfessionalDisclosure Disclosure(string type) =>
+        new(
+            type,
+            "1.0.0",
+            type.ToLowerInvariant(),
+            type,
+            ["Suitable"],
+            [],
+            [],
+            [],
+            [],
+            new ProfessionalTrialDisclosure(true, 14, false, false),
+            "RECORDED",
+            new ProfessionalEligibility(true, "Eligible")
+        );
 
     private static ProfessionalsController Controller(
         IProfessionalCatalog catalog,
-        IRelationshipTrialOwnerGateway? trialOwners = null)
+        IRelationshipTrialOwnerGateway? trialOwners = null
+    )
     {
         var controller = new ProfessionalsController(
             catalog,

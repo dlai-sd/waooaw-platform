@@ -25,7 +25,6 @@ export interface ProfessionalDisclosure extends ProfessionalDiscoveryResult {
   customerRights: string[];
   trial: { available: boolean; durationDays: number; paidApiCallsAllowed: boolean; externalActionsAllowed: boolean };
   evidencePosture: string;
-  indicativePrice: { currency: string; amountInrPaise: number; cadence: string; qualification: string };
 }
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';

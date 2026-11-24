@@ -1,15 +1,17 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-13
+// Implements: work-contracts/WC-169-paid-hire-and-connected-accounts.md WC169-R013
 // Constitutional basis: C-023, C-059, C-063
 
 import { readServerResponse, logServerFailure } from '@/lib/server-failure';
 import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
+import { resolveHireQuote } from '@/lib/api/hire-quote';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 const versionPattern = /^\d+\.\d+\.\d+$/;
-const packageCodePattern = /^[A-Z][A-Z0-9_]{0,63}$/;
+const packageCodePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 
 type PackageComponent = {
@@ -70,28 +72,31 @@ async function POSTHandler(request: NextRequest) {
 
   try {
     const disclosure = await getProfessionalDisclosure(body.professionalType);
-    if (
-      !disclosure.eligibility.eligible ||
-      disclosure.projectionVersion !== body.professionalVersion ||
-      disclosure.indicativePrice.currency !== 'INR'
-    ) {
+    if (!disclosure.eligibility.eligible || disclosure.projectionVersion !== body.professionalVersion) {
       return NextResponse.json({ title: 'Professional commercial terms are unavailable.' }, { status: 409 });
     }
-    const packages = await loadPackages(accessToken, body.professionalType, body.professionalVersion);
-    const selected = body.packageCode ? packages.find((item) => item.packageCode === body.packageCode) : packages[0];
-    if (body.packageCode && !selected) {
-      return NextResponse.json({ title: 'The selected package is unavailable.' }, { status: 409 });
+    const resolved = await resolveHireQuote(
+      accessToken,
+      body.professionalType,
+      body.professionalVersion,
+      body.packageCode
+    );
+    if (resolved.kind === 'not-offered') {
+      return NextResponse.json({ title: 'Hire is not available for sale right now.' }, { status: 409 });
     }
-    const grossPaise = selected?.priceInclGstPaise ?? disclosure.indicativePrice.amountInrPaise;
-    const gstPaise = selected?.gstPaise ?? Math.floor((grossPaise * 18) / 118);
+    if (resolved.kind === 'unavailable') {
+      return NextResponse.json({ title: 'Hire pricing is unavailable right now.' }, { status: 503 });
+    }
+    const { quote } = resolved;
     const response = await fetch(`${process.env.BILLING_ENGINE_URL ?? 'http://localhost:8140'}/payments/hire-preview`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         professional_type: disclosure.professionalType,
-        gross_amount_inr_paise: grossPaise,
-        gst_amount_inr_paise: gstPaise,
-        cadence: disclosure.indicativePrice.cadence,
+        professional_version: disclosure.projectionVersion,
+        gross_amount_inr_paise: quote.grossAmountInrPaise,
+        gst_amount_inr_paise: quote.gstAmountInrPaise,
+        cadence: quote.cadence,
         ...(typeof body.couponCode === 'string' && body.couponCode.trim()
           ? { coupon_code: body.couponCode.trim().toUpperCase() }
           : {}),
@@ -101,22 +106,25 @@ async function POSTHandler(request: NextRequest) {
     const result = await readServerResponse(response, 'web.acquisition.hire.preview.response_invalid', {
       title: 'Hire commercial preview is unavailable.',
     });
-    const includesPackage = selected && result && typeof result === 'object' && !Array.isArray(result);
+    if (!response.ok || !result || typeof result !== 'object' || Array.isArray(result)) {
+      return NextResponse.json(result, { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const details = (await loadPackages(accessToken, body.professionalType, body.professionalVersion)).find(
+      (item) => item.packageCode === quote.packageCode
+    );
     return NextResponse.json(
-      includesPackage
-        ? {
-            ...result,
-            package: {
-              packageCode: selected.packageCode,
-              displayName: selected.displayName,
-              billingPeriodDays: selected.billingPeriodDays,
-              priceInclGstPaise: selected.priceInclGstPaise,
-              basePricePaise: selected.basePricePaise,
-              gstPaise: selected.gstPaise,
-              components: selected.components,
-            },
-          }
-        : result,
+      {
+        ...result,
+        quoteVersion: quote.quoteVersion,
+        package: {
+          packageCode: quote.packageCode,
+          billingPeriodDays: quote.billingPeriodDays,
+          priceInclGstPaise: quote.grossAmountInrPaise,
+          basePricePaise: quote.basePriceInrPaise,
+          gstPaise: quote.gstAmountInrPaise,
+          ...(details ? { displayName: details.displayName, components: details.components } : {}),
+        },
+      },
       {
         status: response.status,
         headers: { 'Cache-Control': 'no-store' },

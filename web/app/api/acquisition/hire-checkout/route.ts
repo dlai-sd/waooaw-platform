@@ -1,8 +1,12 @@
+// Implements: work-contracts/WC-169-paid-hire-and-connected-accounts.md WC169-R013
+// Constitutional basis: C-023, C-059, C-063
+
 import { readServerResponse, logServerFailure } from '@/lib/server-failure';
 import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { persistAcquisitionIntent } from '@/lib/api/acquisition-intent';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
+import { isHireQuote } from '@/lib/api/hire-quote';
 import { getIdentitySession } from '@/lib/api/identity';
 import { createMyAgentsSelection, myAgentsSelectionCookie } from '@/lib/api/my-agents-selection';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
@@ -12,6 +16,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 const billingEngineUrl = process.env.BILLING_ENGINE_URL ?? 'http://localhost:8140';
 const versionPattern = /^\d+\.\d+\.\d+$/;
+const packageCodePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const quoteVersionPattern = /^[0-9a-f]{64}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderPattern = /^order_[A-Za-z0-9_-]{1,120}$/;
 const paymentPattern = /^pay_[A-Za-z0-9_-]{1,122}$/;
@@ -25,6 +31,8 @@ interface HireCheckoutCommand {
   idempotencyKey?: string;
   contractAcceptance?: string;
   couponCode?: string;
+  packageCode?: string;
+  quoteVersion?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
@@ -62,30 +70,14 @@ async function hireCheckout(request: NextRequest) {
     !/^\d{4}-\d{2}-\d{2}$/.test(body.termsVersion) ||
     !body.idempotencyKey ||
     !uuidPattern.test(body.idempotencyKey) ||
-    body.contractAcceptance !== 'ACCEPT_EMPLOYMENT_CONTRACT'
+    body.contractAcceptance !== 'ACCEPT_EMPLOYMENT_CONTRACT' ||
+    (body.packageCode !== undefined && !packageCodePattern.test(body.packageCode)) ||
+    (body.quoteVersion !== undefined && !quoteVersionPattern.test(body.quoteVersion))
   ) {
     return NextResponse.json({ title: 'Hire checkout request is invalid.' }, { status: 400 });
   }
 
-  const persisted = await persistAcquisitionIntent(accessToken, body.idempotencyKey, {
-    professionalType: body.professionalType,
-    professionalVersion: body.professionalVersion,
-    intent: 'HIRE',
-    disclosureRevision: body.disclosureRevision,
-    termsVersion: body.termsVersion,
-    acceptance: body.contractAcceptance,
-    ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
-  });
-  if (!persisted.ok) {
-    const payload = await readServerResponse(persisted, 'web.acquisition.hire.checkout.response_invalid', {
-      title: 'Acquisition intent could not be saved.',
-    });
-    return NextResponse.json(payload, {
-      status: persisted.status,
-      headers: { 'Cache-Control': 'no-store' },
-    });
-  }
-
+  // A Hire is priced for a workspace, so the customer must be registered before anything is persisted or charged.
   const identity = await getIdentitySession(accessToken);
   if (identity.kind !== 'ready') {
     return NextResponse.json(
@@ -103,6 +95,35 @@ async function hireCheckout(request: NextRequest) {
     return NextResponse.json({ title: 'Hire checkout request is invalid.' }, { status: 400 });
   }
 
+  const persisted = await persistAcquisitionIntent(accessToken, body.idempotencyKey, {
+    professionalType: body.professionalType,
+    professionalVersion: body.professionalVersion,
+    intent: 'HIRE',
+    disclosureRevision: body.disclosureRevision,
+    termsVersion: body.termsVersion,
+    acceptance: body.contractAcceptance,
+    ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
+    ...(body.packageCode ? { packageCode: body.packageCode } : {}),
+    ...(body.quoteVersion ? { quoteVersion: body.quoteVersion } : {}),
+    // Only creating the order charges at today's price; confirming a payment already taken keeps the locked quote.
+    ...(body.action === 'start' ? { validateQuoteBeforeCharge: true } : {}),
+  });
+  if (!persisted.ok) {
+    const payload = await readServerResponse(persisted, 'web.acquisition.hire.checkout.response_invalid', {
+      title: 'Acquisition intent could not be saved.',
+    });
+    return NextResponse.json(payload, {
+      status: persisted.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+  const lockedQuote =
+    body.action === 'start'
+      ? ((await readServerResponse(persisted, 'web.acquisition.hire.checkout.response_invalid', null)) as {
+          quote?: unknown;
+        } | null)
+      : null;
+
   try {
     const correlationId = body.idempotencyKey;
     const disclosure = await getProfessionalDisclosure(body.professionalType);
@@ -110,8 +131,7 @@ async function hireCheckout(request: NextRequest) {
       !disclosure.eligibility.eligible ||
       disclosure.projectionVersion !== body.professionalVersion ||
       disclosure.disclosureRevision !== body.disclosureRevision ||
-      disclosure.termsVersion !== body.termsVersion ||
-      disclosure.indicativePrice.currency !== 'INR'
+      disclosure.termsVersion !== body.termsVersion
     ) {
       return NextResponse.json(
         {
@@ -123,6 +143,13 @@ async function hireCheckout(request: NextRequest) {
 
     let outcome: BillingCheckoutOutcome;
     if (body.action === 'start') {
+      const quote = lockedQuote?.quote;
+      if (!isHireQuote(quote)) {
+        return NextResponse.json(
+          { title: 'Hire pricing is unavailable. Review the offer again.' },
+          { status: 409, headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
       const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout`, {
         method: 'POST',
         headers: {
@@ -137,9 +164,9 @@ async function hireCheckout(request: NextRequest) {
           professional_version: disclosure.projectionVersion,
           disclosure_revision: disclosure.disclosureRevision,
           terms_version: disclosure.termsVersion,
-          gross_amount_inr_paise: disclosure.indicativePrice.amountInrPaise,
-          gst_amount_inr_paise: Math.floor((disclosure.indicativePrice.amountInrPaise * 18) / 118),
-          cadence: disclosure.indicativePrice.cadence,
+          gross_amount_inr_paise: quote.grossAmountInrPaise,
+          gst_amount_inr_paise: quote.gstAmountInrPaise,
+          cadence: quote.cadence,
           ...(typeof body.couponCode === 'string' && body.couponCode.trim()
             ? { coupon_code: body.couponCode.trim().toUpperCase() }
             : {}),
@@ -232,6 +259,7 @@ async function hireCheckout(request: NextRequest) {
           termsVersion: new Date(`${body.termsVersion}T00:00:00.000Z`),
           acceptance: body.contractAcceptance,
           ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
+          ...(body.packageCode ? { packageCode: body.packageCode } : {}),
         },
       },
       { cache: 'no-store' }

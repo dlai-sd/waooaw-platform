@@ -27,6 +27,8 @@ EngagementNextActionV1
 EngagementProgressItemV1
 EngagementSourceProvenanceV1
 EngagementTruthDimensionsV1
+HireQuote
+HireQuoteRequest
 IdentityMembershipCollectionV1
 IdentityAccountLink
 StartIdentityAccountLinkRequest

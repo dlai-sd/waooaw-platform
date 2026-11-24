@@ -553,24 +553,54 @@ public sealed class PortalInteractionServiceTests
         var tenant = Guid.NewGuid();
         var web = Guid.NewGuid();
         var guest = Guid.NewGuid();
-        foreach (var text in new[] { "marketing growth", "What skills?", "What limitations?", "What trial?" })
+        foreach (
+            var text in new[]
+            {
+                "marketing growth",
+                "What skills?",
+                "What limitations?",
+                "What trial?",
+            }
+        )
         {
             var portalResult = await service.SendAsync(
-                tenant, web, Guid.NewGuid(), GuestRequest(text), CancellationToken.None);
+                tenant,
+                web,
+                Guid.NewGuid(),
+                GuestRequest(text),
+                CancellationToken.None
+            );
             var guestResult = await service.SendGuestDiscoveryAsync(
-                tenant, guest, Guid.NewGuid(), GuestRequest(text), CancellationToken.None);
+                tenant,
+                guest,
+                Guid.NewGuid(),
+                GuestRequest(text),
+                CancellationToken.None
+            );
             Assert.Equal("PORTAL", portalResult.Value.Scope);
             Assert.Equal("GUEST_DISCOVERY", guestResult.Value.Scope);
-            Assert.Equal(portalResult.Value.GuideMessage.Content.Single().Text,
-                guestResult.Value.GuideMessage.Content.Single().Text);
-            Assert.Equal(portalResult.Value.GuideMessage.Capabilities,
-                guestResult.Value.GuideMessage.Capabilities);
-            Assert.NotEqual(portalResult.Value.CustomerMessage.MessageId,
-                guestResult.Value.CustomerMessage.MessageId);
+            Assert.Equal(
+                portalResult.Value.GuideMessage.Content.Single().Text,
+                guestResult.Value.GuideMessage.Content.Single().Text
+            );
+            Assert.Equal(
+                portalResult.Value.GuideMessage.Capabilities,
+                guestResult.Value.GuideMessage.Capabilities
+            );
+            Assert.NotEqual(
+                portalResult.Value.CustomerMessage.MessageId,
+                guestResult.Value.CustomerMessage.MessageId
+            );
         }
         await using var db = factory.CreateDbContext();
-        Assert.Equal(8, await db.PortalInteractionMessages.CountAsync(value => value.ParticipantId == web));
-        Assert.Equal(8, await db.PortalInteractionMessages.CountAsync(value => value.ParticipantId == guest));
+        Assert.Equal(
+            8,
+            await db.PortalInteractionMessages.CountAsync(value => value.ParticipantId == web)
+        );
+        Assert.Equal(
+            8,
+            await db.PortalInteractionMessages.CountAsync(value => value.ParticipantId == guest)
+        );
         Assert.Empty(await db.ConversationOutbox.ToListAsync());
         Assert.Empty(await db.Executions.ToListAsync());
     }
@@ -581,15 +611,38 @@ public sealed class PortalInteractionServiceTests
         var service = CreateService(out _);
         var tenant = Guid.NewGuid();
         var participant = Guid.NewGuid();
-        await service.SendAsync(tenant, participant, Guid.NewGuid(),
-            GuestRequest("marketing growth"), CancellationToken.None);
-        await service.SendAsync(tenant, participant, Guid.NewGuid(),
-            GuestRequest("private marketing account settings") with { CurrentSurface = "SETTINGS" },
-            CancellationToken.None);
-        var result = await service.SendAsync(tenant, participant, Guid.NewGuid(),
-            GuestRequest("What skills?"), CancellationToken.None);
-        Assert.DoesNotContain("Fixture campaign planning", result.Value.GuideMessage.Content.Single().Text);
-        Assert.Contains("identify one professional", result.Value.GuideMessage.Content.Single().Text);
+        await service.SendAsync(
+            tenant,
+            participant,
+            Guid.NewGuid(),
+            GuestRequest("marketing growth"),
+            CancellationToken.None
+        );
+        await service.SendAsync(
+            tenant,
+            participant,
+            Guid.NewGuid(),
+            GuestRequest("private marketing account settings") with
+            {
+                CurrentSurface = "SETTINGS",
+            },
+            CancellationToken.None
+        );
+        var result = await service.SendAsync(
+            tenant,
+            participant,
+            Guid.NewGuid(),
+            GuestRequest("What skills?"),
+            CancellationToken.None
+        );
+        Assert.DoesNotContain(
+            "Fixture campaign planning",
+            result.Value.GuideMessage.Content.Single().Text
+        );
+        Assert.Contains(
+            "identify one professional",
+            result.Value.GuideMessage.Content.Single().Text
+        );
     }
 
     [Fact]
@@ -600,8 +653,20 @@ public sealed class PortalInteractionServiceTests
         var participant = Guid.NewGuid();
         var key = Guid.NewGuid();
         var request = GuestRequest("marketing skills");
-        var first = await service.SendAsync(tenant, participant, key, request, CancellationToken.None);
-        var replay = await service.SendAsync(tenant, participant, key, request, CancellationToken.None);
+        var first = await service.SendAsync(
+            tenant,
+            participant,
+            key,
+            request,
+            CancellationToken.None
+        );
+        var replay = await service.SendAsync(
+            tenant,
+            participant,
+            key,
+            request,
+            CancellationToken.None
+        );
         Assert.True(replay.Replayed);
         Assert.Equal("PORTAL", replay.Value.Scope);
         Assert.Equal(first.Value.GuideMessage.MessageId, replay.Value.GuideMessage.MessageId);
@@ -1134,7 +1199,6 @@ public sealed class PortalInteractionServiceTests
                     [],
                     new(true, 7, false, false),
                     "Fixture catalogue disclosure",
-                    new("INR", 0, "MONTHLY", "Fixture"),
                     new(true, "Fixture catalogue match")
                 ),
             ];

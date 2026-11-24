@@ -1053,6 +1053,13 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 )
             )
                 return Conflict(new { error = "PROFESSIONAL_DISCLOSURE_STALE" });
+            var quotedTerms = await _contracts.GetQuotedTermsAsync(
+                tenantId,
+                relationshipId,
+                cancellationToken
+            );
+            if (quotedTerms is null)
+                return Conflict(new { error = "HIRE_QUOTE_UNAVAILABLE" });
             var selectedSkillIds = request
                 .SelectedSkillIds.Select(value => value.Trim().ToUpperInvariant())
                 .Where(value => value.Length > 0)
@@ -1127,24 +1134,11 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 correlationId,
                 cancellationToken
             );
-            var price = disclosure.IndicativePrice;
             var composition = await _contracts.ComposeAsync(
                 tenantId,
                 relationshipId,
                 participantId,
-                new EmploymentContractCommercialTerms(
-                    price.Currency,
-                    price.AmountInrPaise,
-                    price.AmountInrPaise * 18 / 118,
-                    price.Cadence,
-                    "Renews at the disclosed cadence until cancelled.",
-                    "Advertising spend requires separate explicit approval and is not included.",
-                    "Cancellation and refund rights follow the accepted WAOOAW terms.",
-                    relationship.ProfessionalType,
-                    "STANDARD",
-                    disclosure.ProjectionVersion,
-                    "The disclosed recurring price applies at renewal unless a replacement contract is accepted."
-                ),
+                quotedTerms,
                 cancellationToken
             );
             await _service.TransitionAsync(
@@ -1195,11 +1189,49 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 
         try
         {
+            // The price of a Hire is the locked quote; the client may restate it but never change it.
+            var quotedTerms = await _contracts.GetQuotedTermsAsync(
+                tenantId,
+                relationshipId,
+                cancellationToken
+            );
+            if (quotedTerms is null)
+                return Conflict(new { error = "HIRE_QUOTE_UNAVAILABLE" });
+            var offered = request.CommercialTerms;
+            if (
+                !string.Equals(
+                    offered.Currency,
+                    quotedTerms.Currency,
+                    StringComparison.OrdinalIgnoreCase
+                )
+                || offered.GrossAmountInrPaise != quotedTerms.GrossAmountInrPaise
+                || offered.GstAmountInrPaise != quotedTerms.GstAmountInrPaise
+                || !string.Equals(
+                    offered.Cadence,
+                    quotedTerms.Cadence,
+                    StringComparison.OrdinalIgnoreCase
+                )
+                || !string.Equals(
+                    offered.BundleTier,
+                    quotedTerms.BundleTier,
+                    StringComparison.Ordinal
+                )
+                || !string.Equals(
+                    offered.QuoteVersion,
+                    quotedTerms.QuoteVersion,
+                    StringComparison.Ordinal
+                )
+            )
+                return Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Contract terms conflict",
+                    detail: "Commercial terms must match the quote accepted for this Hire."
+                );
             var composition = await _contracts.ComposeAsync(
                 tenantId,
                 relationshipId,
                 participantId,
-                request.CommercialTerms,
+                quotedTerms,
                 cancellationToken
             );
             var relationship = await _service.GetAsync(tenantId, relationshipId, cancellationToken);

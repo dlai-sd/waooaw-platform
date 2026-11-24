@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +22,27 @@ public sealed record ContinueAcquisitionRequest(
     string DisclosureRevision,
     string TermsVersion,
     string Acceptance,
-    string? CouponCode = null
+    string? CouponCode = null,
+    string? PackageCode = null,
+    string? QuoteVersion = null,
+    bool ValidateQuoteBeforeCharge = false
+);
+
+public sealed record HireQuoteRequest(
+    string ProfessionalType,
+    string ProfessionalVersion,
+    string? PackageCode = null
+);
+
+public sealed record HireQuoteResponse(
+    string PackageCode,
+    string Currency,
+    long GrossAmountInrPaise,
+    long GstAmountInrPaise,
+    long BasePriceInrPaise,
+    string Cadence,
+    int BillingPeriodDays,
+    string QuoteVersion
 );
 
 public sealed record AcquisitionContinuationResponse(
@@ -39,20 +60,53 @@ public sealed record AcquisitionIntentResponse(
     string ContractDocumentUri,
     string ContractHash,
     DateTimeOffset ExpiresAt,
-    bool Replayed
+    bool Replayed,
+    HireQuoteResponse? Quote = null
 );
 
 [ApiController]
 [Authorize]
 [Route("api/v1/acquisition")]
-public sealed class AcquisitionController(
+public sealed partial class AcquisitionController(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     IProfessionalCatalog catalog,
     EmploymentRelationshipService relationships,
     ILogger<AcquisitionController> logger,
-    RelationshipTrialService? trials = null
+    RelationshipTrialService? trials = null,
+    HireQuoteService? quotes = null
 ) : ControllerBase
 {
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")]
+    private static partial Regex PackageCodePattern();
+
+    [HttpPost("hire-quote")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> PreviewHireQuoteAsync(
+        [FromBody] HireQuoteRequest request,
+        [FromHeader(Name = "X-Correlation-ID")] Guid? correlationId,
+        CancellationToken cancellationToken
+    )
+    {
+        var disclosure = catalog.GetDisclosure(request.ProfessionalType);
+        if (
+            disclosure is null
+            || !disclosure.Eligibility.Eligible
+            || disclosure.ProjectionVersion != request.ProfessionalVersion
+            || !IsValidPackageCode(request.PackageCode)
+        )
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Hire pricing is unavailable for this offer"
+            );
+        var (quote, failure) = await ResolveQuoteAsync(
+            disclosure,
+            request.PackageCode,
+            correlationId ?? Guid.NewGuid(),
+            cancellationToken
+        );
+        return failure ?? Ok(QuoteResponse(quote!));
+    }
+
     [HttpPost("intents")]
     [CustomerIdentityRoute]
     public async Task<IActionResult> CreateIntentAsync(
@@ -90,7 +144,39 @@ public sealed class AcquisitionController(
                     statusCode: StatusCodes.Status409Conflict,
                     title: "Acquisition idempotency conflict"
                 );
+            if (intent == "HIRE")
+            {
+                var stale = await ValidateStoredQuoteAsync(
+                    existing,
+                    request,
+                    disclosure!,
+                    idempotencyKey.Value,
+                    cancellationToken
+                );
+                if (stale is not null)
+                    return stale;
+            }
             return Ok(IntentResponse(existing, true));
+        }
+
+        var (quote, quoteFailure) = await LockQuoteAsync(
+            request,
+            intent,
+            disclosure!,
+            idempotencyKey.Value,
+            cancellationToken
+        );
+        if (quoteFailure is not null)
+            return quoteFailure;
+        Guid? hireTenantId = null;
+        Guid? hireParticipantId = null;
+        if (
+            quote is not null
+            && TryGetMembership(out var quotedTenantId, out var quotedParticipantId)
+        )
+        {
+            hireTenantId = quotedTenantId;
+            hireParticipantId = quotedParticipantId;
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -105,15 +191,24 @@ public sealed class AcquisitionController(
             AcquisitionIntentId = idempotencyKey.Value,
             ActorIdentityHash = actorIdentityHash,
             IdempotencyKey = idempotencyKey.Value,
+            TenantId = hireTenantId,
+            ParticipantId = hireParticipantId,
             ProfessionalType = disclosure.ProfessionalType,
             ProfessionalVersion = disclosure.ProjectionVersion,
             Mode = intent,
             DisclosureRevision = disclosure.DisclosureRevision,
             ContractVersion = disclosure.TermsVersion,
             ContractDocumentUri = documentUri,
-            ContractHash = ContractHash(disclosure, intent),
+            ContractHash = ContractHash(disclosure, intent, quote),
             MaterialRequestHash = materialHash,
             CouponCode = NormalizeCoupon(request.CouponCode),
+            QuotePackageId = quote?.PackageId,
+            QuotePackageCode = quote?.PackageCode,
+            QuotePeriodDays = quote?.BillingPeriodDays,
+            QuoteGrossInrPaise = quote?.GrossAmountInrPaise,
+            QuoteGstInrPaise = quote?.GstAmountInrPaise,
+            QuoteBaseInrPaise = quote?.BasePriceInrPaise,
+            QuoteVersion = quote?.QuoteVersion,
             ContractAcceptedAt = now,
             ExpiresAt = now.AddHours(24),
         };
@@ -164,6 +259,15 @@ public sealed class AcquisitionController(
         );
         if (acquisitionIntent is null)
         {
+            var (quote, quoteFailure) = await LockQuoteAsync(
+                request,
+                intent,
+                activeDisclosure,
+                idempotencyKey.Value,
+                cancellationToken
+            );
+            if (quoteFailure is not null)
+                return quoteFailure;
             var now = DateTimeOffset.UtcNow;
             acquisitionIntent = new AcquisitionIntent
             {
@@ -183,9 +287,16 @@ public sealed class AcquisitionController(
                     + $"&disclosureRevision={Uri.EscapeDataString(activeDisclosure.DisclosureRevision)}"
                     + $"&termsVersion={Uri.EscapeDataString(activeDisclosure.TermsVersion)}"
                     + $"&mode={intent.ToLowerInvariant()}",
-                ContractHash = ContractHash(activeDisclosure, intent),
+                ContractHash = ContractHash(activeDisclosure, intent, quote),
                 MaterialRequestHash = materialHash,
                 CouponCode = NormalizeCoupon(request.CouponCode),
+                QuotePackageId = quote?.PackageId,
+                QuotePackageCode = quote?.PackageCode,
+                QuotePeriodDays = quote?.BillingPeriodDays,
+                QuoteGrossInrPaise = quote?.GrossAmountInrPaise,
+                QuoteGstInrPaise = quote?.GstAmountInrPaise,
+                QuoteBaseInrPaise = quote?.BasePriceInrPaise,
+                QuoteVersion = quote?.QuoteVersion,
                 Status = "READY_TO_COMPLETE",
                 ContractAcceptedAt = now,
                 ExpiresAt = now.AddHours(24),
@@ -211,6 +322,13 @@ public sealed class AcquisitionController(
                 return Problem(
                     statusCode: StatusCodes.Status409Conflict,
                     title: "Acquisition intent belongs to another customer workspace"
+                );
+            // A paid Hire completes at the price the customer accepted, so a stored quote is never re-priced here.
+            if (intent == "HIRE" && acquisitionIntent.ToQuote() is null)
+                return Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Hire price was not locked for this request. Review the offer again.",
+                    type: HireQuoteChangedType
                 );
             if (
                 acquisitionIntent.Status == "COMPLETED"
@@ -399,6 +517,7 @@ public sealed class AcquisitionController(
         disclosure = catalog.GetDisclosure(request.ProfessionalType);
         return request.Acceptance == "ACCEPT_EMPLOYMENT_CONTRACT"
             && IsValidCoupon(request.CouponCode)
+            && IsValidPackageCode(request.PackageCode)
             && intent is "TRIAL" or "HIRE"
             && disclosure is not null
             && disclosure.Eligibility.Eligible
@@ -407,6 +526,162 @@ public sealed class AcquisitionController(
             && disclosure.TermsVersion == request.TermsVersion
             && (intent != "TRIAL" || disclosure.Trial.Available);
     }
+
+    private const string HireQuoteChangedType = "https://waooaw.com/problems/hire-quote-changed";
+    private const string HireQuoteUnavailableType =
+        "https://waooaw.com/problems/hire-quote-unavailable";
+
+    private static bool IsValidPackageCode(string? packageCode) =>
+        string.IsNullOrWhiteSpace(packageCode) || PackageCodePattern().IsMatch(packageCode.Trim());
+
+    private static HireQuoteResponse QuoteResponse(HireQuote quote) =>
+        new(
+            quote.PackageCode,
+            HireQuote.Currency,
+            quote.GrossAmountInrPaise,
+            quote.GstAmountInrPaise,
+            quote.BasePriceInrPaise,
+            quote.Cadence,
+            quote.BillingPeriodDays,
+            quote.QuoteVersion
+        );
+
+    private async Task<(HireQuote? Quote, IActionResult? Failure)> ResolveQuoteAsync(
+        ProfessionalDisclosure disclosure,
+        string? packageCode,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
+    {
+        if (quotes is null)
+            return (
+                null,
+                Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Hire pricing is unavailable right now",
+                    type: HireQuoteUnavailableType
+                )
+            );
+        if (!TryGetMembership(out var tenantId, out var participantId))
+            return (
+                null,
+                Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Hire pricing needs a customer workspace",
+                    type: HireQuoteUnavailableType
+                )
+            );
+        try
+        {
+            var quote = await quotes.ResolveAsync(
+                tenantId,
+                participantId.ToString("D"),
+                disclosure.ProfessionalType,
+                disclosure.ProjectionVersion,
+                packageCode,
+                correlationId.ToString("D"),
+                cancellationToken
+            );
+            return (quote, null);
+        }
+        catch (HireQuoteNotOfferedException exception)
+        {
+            return (
+                null,
+                Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Hire is not available for sale right now",
+                    detail: exception.Message,
+                    type: HireQuoteUnavailableType
+                )
+            );
+        }
+        catch (HireQuoteUnavailableException exception)
+        {
+            logger.LogWarning(
+                exception,
+                "hire_quote decision=unavailable correlation={Correlation}",
+                correlationId
+            );
+            return (
+                null,
+                Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Hire pricing is unavailable right now",
+                    type: HireQuoteUnavailableType
+                )
+            );
+        }
+    }
+
+    // A Hire is only ever priced here; Trial has no amount.
+    private async Task<(HireQuote? Quote, IActionResult? Failure)> LockQuoteAsync(
+        ContinueAcquisitionRequest request,
+        string intent,
+        ProfessionalDisclosure disclosure,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
+    {
+        if (intent != "HIRE")
+            return (null, null);
+        var (quote, failure) = await ResolveQuoteAsync(
+            disclosure,
+            request.PackageCode,
+            correlationId,
+            cancellationToken
+        );
+        if (failure is not null)
+            return (null, failure);
+        return (quote, QuoteVersionMismatch(request, quote!));
+    }
+
+    private async Task<IActionResult?> ValidateStoredQuoteAsync(
+        AcquisitionIntent stored,
+        ContinueAcquisitionRequest request,
+        ProfessionalDisclosure disclosure,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
+    {
+        var locked = stored.ToQuote();
+        if (locked is null)
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Hire price was not locked for this request. Review the offer again.",
+                type: HireQuoteChangedType
+            );
+        if (!request.ValidateQuoteBeforeCharge)
+            return QuoteVersionMismatch(request, locked);
+        var (current, failure) = await ResolveQuoteAsync(
+            disclosure,
+            request.PackageCode,
+            correlationId,
+            cancellationToken
+        );
+        if (failure is not null)
+            return failure;
+        return string.Equals(current!.QuoteVersion, locked.QuoteVersion, StringComparison.Ordinal)
+            ? QuoteVersionMismatch(request, locked)
+            : Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "The Hire price changed. Review the offer and accept it again.",
+                type: HireQuoteChangedType
+            );
+    }
+
+    private IActionResult? QuoteVersionMismatch(
+        ContinueAcquisitionRequest request,
+        HireQuote quote
+    ) =>
+        string.IsNullOrWhiteSpace(request.QuoteVersion)
+        || string.Equals(request.QuoteVersion, quote.QuoteVersion, StringComparison.Ordinal)
+            ? null
+            : Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "The Hire price changed. Review the offer and accept it again.",
+                type: HireQuoteChangedType
+            );
 
     private string ActorIdentityHash(Guid? tenantId = null, Guid? participantId = null)
     {
@@ -431,6 +706,9 @@ public sealed class AcquisitionController(
                     request.TermsVersion,
                     request.Acceptance,
                     CouponCode = NormalizeCoupon(request.CouponCode),
+                    PackageCode = string.IsNullOrWhiteSpace(request.PackageCode)
+                        ? null
+                        : request.PackageCode.Trim(),
                 }
             )
         );
@@ -438,7 +716,11 @@ public sealed class AcquisitionController(
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
-    private static string ContractHash(ProfessionalDisclosure disclosure, string intent) =>
+    private static string ContractHash(
+        ProfessionalDisclosure disclosure,
+        string intent,
+        HireQuote? quote
+    ) =>
         Hash(
             JsonSerializer.Serialize(
                 new
@@ -454,7 +736,7 @@ public sealed class AcquisitionController(
                     disclosure.AuthorityNeeds,
                     disclosure.EvidencePosture,
                     disclosure.Trial,
-                    disclosure.IndicativePrice,
+                    Quote = quote,
                 }
             )
         );
@@ -483,7 +765,8 @@ public sealed class AcquisitionController(
             intent.ContractDocumentUri,
             intent.ContractHash,
             intent.ExpiresAt,
-            replayed
+            replayed,
+            intent.ToQuote() is { } quote ? QuoteResponse(quote) : null
         );
 
     private bool TryGetMembership(out Guid tenantId, out Guid participantId)

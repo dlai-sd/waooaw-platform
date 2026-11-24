@@ -1,12 +1,15 @@
 import { logServerFailure } from '@/lib/server-failure';
 // Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A04-A06
+// Implements: work-contracts/WC-169-paid-hire-and-connected-accounts.md WC169-R021
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { ArrowLeft, BadgeCheck, BarChart3, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DisclosureContinuation } from '@/components/acquisition/DisclosureContinuation';
+import { resolveHireQuote } from '@/lib/api/hire-quote';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
+import { getServerAccessToken } from '@/lib/server-auth';
 
 type AcquisitionIntent = 'trial' | 'hire';
 
@@ -44,10 +47,17 @@ export default async function MarketplaceOfferPage({
   )
     notFound();
 
-  const price = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: disclosure.indicativePrice.currency,
-  }).format(disclosure.indicativePrice.amountInrPaise / 100);
+  const accessToken = intent === 'hire' ? await getServerAccessToken() : undefined;
+  const quoted = accessToken
+    ? await resolveHireQuote(accessToken, disclosure.professionalType, disclosure.projectionVersion)
+    : undefined;
+  const quote = quoted?.kind === 'quote' ? quoted.quote : undefined;
+  const price = quote
+    ? new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: quote.currency,
+      }).format(quote.grossAmountInrPaise / 100)
+    : undefined;
 
   return (
     <section className="portal-page marketplace-detail" aria-labelledby="offer-title">
@@ -118,9 +128,11 @@ export default async function MarketplaceOfferPage({
             {intent === 'trial' ? `${disclosure.trial.durationDays}-day trial` : 'Professional plan'}
           </p>
           <p className="offer-decision-price">
-            <strong>{intent === 'trial' ? 'No paid tools' : price}</strong>
+            <strong>{intent === 'trial' ? 'No paid tools' : (price ?? 'Price not available right now')}</strong>
             {intent === 'hire' ? (
-              <span>/ {disclosure.indicativePrice.cadence.toLowerCase()}</span>
+              quote ? (
+                <span>/ {quote.cadence.toLowerCase()} including GST</span>
+              ) : null
             ) : (
               <span>during your trial</span>
             )}
@@ -132,10 +144,13 @@ export default async function MarketplaceOfferPage({
           </p>
           <DisclosureContinuation
             disclosureRevision={disclosure.disclosureRevision}
+            hireUnavailable={intent === 'hire' && !quote}
             initialIntent={intent}
-            priceInrPaise={disclosure.indicativePrice.amountInrPaise}
+            packageCode={quote?.packageCode}
+            priceInrPaise={quote?.grossAmountInrPaise}
             professionalType={disclosure.professionalType}
             professionalVersion={disclosure.projectionVersion}
+            quoteVersion={quote?.quoteVersion}
             termsVersion={disclosure.termsVersion}
             trialAvailable={disclosure.trial.available}
             trialDurationDays={disclosure.trial.durationDays}

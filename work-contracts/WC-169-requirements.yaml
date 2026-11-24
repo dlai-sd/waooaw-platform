@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-169
 contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
-contract_digest: 7643386ea0b079216e07c7463b0f18ff9c958d41079778f62a4cc380d88c31f1
+contract_digest: ce48f1695fbefd93c3d6de38f45902e7567f1da760ea40536421fc64de4b6686
 implementation_scope: true
 result: PLANNED
 
@@ -31,8 +31,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC169-R003
     source: WC-169 Canonical Requirement Index, R003
-    observable_outcome: Conversation stories stay BLOCKED-BY-FLAG with recorded reasons until the Founder enables the flag.
-    test_path_or_plan: Report entries and Founder decision record.
+    observable_outcome: The application role can use the four conversation tables its code touches with row level security kept, never with DELETE; the unused watermark table stays closed; conversation stories stay BLOCKED-BY-FLAG until the Founder enables the flag.
+    test_path_or_plan: Real-database test ConversationContextMediaRuntimeAccessPostgresTests; read-only catalog read of Demo after deployment; report entries and Founder decision record.
 
   - <<: *defaults
     requirement_id: WC169-R004
@@ -49,8 +49,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC169-R006
     source: WC-169 Canonical Requirement Index, R006
-    observable_outcome: A guest who sent STOP can resume on Demo, so STOP then START then YES resumes with evidence and no duplicate message; the Demo visitor mode is read first and set to V2 only on the Founder's decision.
-    test_path_or_plan: Business Platform tests for STOP, START and YES in V2; settings read-back and Demo read-back.
+    observable_outcome: Demo already runs the visitor conversation in V2 (read back 2026-11-24) and tests prove STOP then START then YES; the live acceptance run shows one real STOP, START and YES with evidence and no duplicate message.
+    test_path_or_plan: Existing visitor state machine, service and Postgres tests; one live run in the acceptance report.
     initial_state: expected-fail
 
   - <<: *defaults
@@ -95,8 +95,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC169-R013
     source: WC-169 Canonical Requirement Index, R013
-    observable_outcome: The Marketplace card, the employment contract terms and the hire amount come from the Founder's authorized package and never from the static descriptor price; with no authorized package no amount is shown and the hire is not offerable.
-    test_path_or_plan: Business Platform tests for the catalog, contract composition and checkout amount; S5 pay step in the acceptance run proving the amount paid equals the authorized price including GST.
+    observable_outcome: A signed-in customer's hire amount, GST and period come from the Founder-authorized package, resolved by the Business Platform into one immutable quote shared by preview, contract terms and payment; a coupon payable is the gross less the validated discount; with no package for sale or the owner unavailable there is no amount and no hire, with no descriptor fallback.
+    test_path_or_plan: Business Platform tests for selection, absence, outage, price change, tampering, partial coupon and payment-to-contract binding; web route tests for preview and checkout; S5 pay step proving the amount paid equals the authorized price including GST. The src work follows the Solution Architect decision memo in the contract.
 
   - <<: *defaults
     requirement_id: WC169-R014
@@ -104,3 +104,49 @@ requirements:
     observable_outcome: The Founder's chosen DEFAULT_OFF DMA components are applied to the DMA experience declaration and its admission as a new agent version, so a package containing them can be authorized and the publish slice can run; nothing is switched on that the Founder did not name.
     test_path_or_plan: DMA contract and admission tests; Pricing screen shows the component as available; acceptance slice 2 run.
     initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R015
+    source: WC-169 Canonical Requirement Index, R015
+    observable_outcome: The cause of the one blocked WhatsApp message on Demo is recorded (Meta error 131026 twice for the same real number) and handed to WC-171; WC-169 re-sends one test message to that number only if the Founder confirms it is a test user, and records the result.
+    test_path_or_plan: Recorded evidence in the contract; acceptance report entry for the re-send if confirmed.
+
+  - <<: *defaults
+    requirement_id: WC169-R016
+    source: WC-169 Canonical Requirement Index, R016
+    observable_outcome: A Founder step-up sign-in starts from every Founder console page and returns to it, so provider keys, pricing authorization and access approval can be saved after a multi-factor sign-in.
+    test_path_or_plan: Unit test in web/lib/oidc-transaction.test.ts for the closed Founder console return list; Demo read-back is a saved Meta provider value after a multi-factor sign-in.
+
+  - <<: *defaults
+    requirement_id: WC169-R017
+    source: WC-169 Canonical Requirement Index, R017
+    observable_outcome: A package carries an optional description of the customer maturity it suits, up to 500 characters, edited in the Pricing package editor and shown in the package list; existing packages stay valid.
+    test_path_or_plan: Billing Engine package model tests for round trip with and without a description and refusal of an over-long one; web package editor test. Implemented on the branch; Demo read-back after the WC-169 deployment.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R018
+    source: WC-169 Canonical Requirement Index, R018
+    observable_outcome: The package editor shows one build-up table of cost lines, markups, infrastructure share, cost floor, target margin and a suggested GST-inclusive price; the Founder sets the final price; the suggestion never saves itself; threads without an authorized rate are listed and the suggestion is marked incomplete; the cost-floor refusal and policy minimum margin are unchanged.
+    test_path_or_plan: Billing Engine projection tests for the suggested price and the incomplete marker; web editor tests for the table. Implemented on the branch; Demo read-back after the WC-169 deployment.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R019
+    source: WC-169 Canonical Requirement Index, R019
+    observable_outcome: The target margin is set per package (0 up to but not including 100 percent) with no platform restriction beyond the unchanged refusals; a package without one falls back to the policy minimum margin; the worked example of a 825 rupee cost floor at 40 percent margin suggests 1,623 rupees including 18 percent GST.
+    test_path_or_plan: Billing Engine unit test with the worked example and the fallback. Implemented on the branch; Demo read-back after the WC-169 deployment.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R020
+    source: WC-169 Canonical Requirement Index, R020
+    observable_outcome: The Founder creates and authorizes three monthly packages on Demo through the screen, and the hire amount shown and charged in S5 equals the authorized price including GST; no component activation wiring is built; no package value is seeded or hard-coded.
+    test_path_or_plan: Founder run-time entry on Demo; S5 pay step in the acceptance run. Implemented on the branch; Demo read-back after the WC-169 deployment.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R021
+    source: WC-169 Canonical Requirement Index, R021
+    observable_outcome: The public Marketplace card and the anonymous disclosure no longer show the descriptor price; the amount appears after sign-in and membership from the for-sale packages.
+    test_path_or_plan: Business Platform and web tests that anonymous responses carry no amount and the signed-in view shows the package price. Deferred item - a public price projection needs its own approved workload policy.

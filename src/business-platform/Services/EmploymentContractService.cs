@@ -74,6 +74,52 @@ public sealed class EmploymentContractService(
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    /// <summary>
+    /// The only source of price for a Hire contract: the quote locked on the acquisition intent that created the
+    /// relationship. Returns null when no quote was locked, so no amount is ever invented.
+    /// </summary>
+    public async Task<EmploymentContractCommercialTerms?> GetQuotedTermsAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await db
+            .EmploymentRelationships.AsNoTracking()
+            .SingleOrDefaultAsync(
+                item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
+                cancellationToken
+            );
+        if (relationship?.AcquisitionIntentId is not { } intentId)
+            return null;
+        var intent = await db
+            .AcquisitionIntents.AsNoTracking()
+            .SingleOrDefaultAsync(
+                item =>
+                    item.AcquisitionIntentId == intentId
+                    && item.TenantId == tenantId
+                    && item.Mode == "HIRE"
+                    && item.ProfessionalType == relationship.ProfessionalType,
+                cancellationToken
+            );
+        return intent?.ToQuote() is { } quote
+            ? new EmploymentContractCommercialTerms(
+                HireQuote.Currency,
+                quote.GrossAmountInrPaise,
+                quote.GstAmountInrPaise,
+                quote.Cadence,
+                "Renews at the disclosed cadence until cancelled.",
+                "Advertising spend requires separate explicit approval and is not included.",
+                "Cancellation and refund rights follow the accepted WAOOAW terms.",
+                relationship.ProfessionalType,
+                quote.PackageCode,
+                quote.QuoteVersion,
+                "The disclosed recurring price applies at renewal unless a replacement contract is accepted."
+            )
+            : null;
+    }
+
     public async Task<EmploymentContractComposition> ComposeAsync(
         Guid tenantId,
         Guid relationshipId,

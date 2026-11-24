@@ -17,15 +17,25 @@ public sealed class EmploymentContractServiceTests
         "MONTHLY",
         "Subscription renews monthly until cancelled.",
         "Advertising spend is separate, customer-funded, and never incurred without approved budget authority.",
-        "Cancel before the next renewal; refunds follow the disclosed billing and dispute policy.");
+        "Cancel before the next renewal; refunds follow the disclosed billing and dispute policy."
+    );
 
     [Fact]
     public async Task ComposeRequiresAcceptedDecisionSpaceSnapshot()
     {
-        var (service, _, tenantId, relationshipId, actorId) = await CreateContextAsync(includeSnapshot: false);
+        var (service, _, tenantId, relationshipId, actorId) = await CreateContextAsync(
+            includeSnapshot: false
+        );
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ComposeAsync(
+                tenantId,
+                relationshipId,
+                actorId,
+                CommercialTerms,
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
@@ -34,9 +44,19 @@ public sealed class EmploymentContractServiceTests
         var (service, factory, tenantId, relationshipId, actorId) = await CreateContextAsync();
 
         var first = await service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None);
+            tenantId,
+            relationshipId,
+            actorId,
+            CommercialTerms,
+            CancellationToken.None
+        );
         var replay = await service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None);
+            tenantId,
+            relationshipId,
+            actorId,
+            CommercialTerms,
+            CancellationToken.None
+        );
 
         Assert.True(first.Created);
         Assert.False(replay.Created);
@@ -66,29 +86,41 @@ public sealed class EmploymentContractServiceTests
     {
         var (service, factory, tenantId, relationshipId, actorId) = await CreateContextAsync();
         var first = await service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None);
+            tenantId,
+            relationshipId,
+            actorId,
+            CommercialTerms,
+            CancellationToken.None
+        );
 
         await using (var db = factory.CreateDbContext())
         {
-            db.DecisionSpaceSnapshots.Add(new DecisionSpaceSnapshot
-            {
-                TenantId = tenantId,
-                RelationshipId = relationshipId,
-                Version = 2,
-                BudgetCeilingInrPaise = 500000,
-                AuthorityBoundariesJson = "[\"Approval required before publishing\"]",
-                StopConditionsJson = "[\"Stop at the approved budget ceiling\"]",
-                ReviewCadenceMonths = 2,
-                AcceptedEvidenceJson = "[]",
-                CreatedByParticipantId = actorId,
-                EvidenceId = Guid.NewGuid(),
-                CreatedAt = first.Contract.CreatedAt.AddSeconds(1),
-            });
+            db.DecisionSpaceSnapshots.Add(
+                new DecisionSpaceSnapshot
+                {
+                    TenantId = tenantId,
+                    RelationshipId = relationshipId,
+                    Version = 2,
+                    BudgetCeilingInrPaise = 500000,
+                    AuthorityBoundariesJson = "[\"Approval required before publishing\"]",
+                    StopConditionsJson = "[\"Stop at the approved budget ceiling\"]",
+                    ReviewCadenceMonths = 2,
+                    AcceptedEvidenceJson = "[]",
+                    CreatedByParticipantId = actorId,
+                    EvidenceId = Guid.NewGuid(),
+                    CreatedAt = first.Contract.CreatedAt.AddSeconds(1),
+                }
+            );
             await db.SaveChangesAsync();
         }
 
         var amendment = await service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None);
+            tenantId,
+            relationshipId,
+            actorId,
+            CommercialTerms,
+            CancellationToken.None
+        );
 
         Assert.True(amendment.Created);
         Assert.Equal(2, amendment.Contract.Version);
@@ -97,8 +129,8 @@ public sealed class EmploymentContractServiceTests
         Assert.Equal(500000, amendment.Document.BudgetCeilingInrPaise);
 
         await using var verificationDb = factory.CreateDbContext();
-        var versions = await verificationDb.EmploymentContractVersions
-            .OrderBy(item => item.Version)
+        var versions = await verificationDb
+            .EmploymentContractVersions.OrderBy(item => item.Version)
             .ToListAsync();
         Assert.Equal(2, versions.Count);
         Assert.Equal(first.Contract.ContractHash, versions[0].ContractHash);
@@ -111,93 +143,121 @@ public sealed class EmploymentContractServiceTests
         var (service, factory, tenantId, relationshipId, actorId) = await CreateContextAsync();
         await using (var db = factory.CreateDbContext())
         {
-            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.StoppedEmergency;
+            (await db.EmploymentRelationships.SingleAsync()).State =
+                EmploymentRelationshipState.StoppedEmergency;
             await db.SaveChangesAsync();
         }
 
-        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.ComposeAsync(
-            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None));
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
+            service.ComposeAsync(
+                tenantId,
+                relationshipId,
+                actorId,
+                CommercialTerms,
+                CancellationToken.None
+            )
+        );
 
         await using var verificationDb = factory.CreateDbContext();
         Assert.Empty(await verificationDb.EmploymentContractVersions.ToListAsync());
     }
 
-    private static async Task<(EmploymentContractService Service, InMemoryEmploymentRelationshipFactory Factory, Guid TenantId, Guid RelationshipId, Guid ActorId)> CreateContextAsync(
-        bool includeSnapshot = true)
+    private static async Task<(
+        EmploymentContractService Service,
+        InMemoryEmploymentRelationshipFactory Factory,
+        Guid TenantId,
+        Guid RelationshipId,
+        Guid ActorId
+    )> CreateContextAsync(bool includeSnapshot = true)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid();
         var relationshipId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         await using var db = factory.CreateDbContext();
-        db.EmploymentRelationships.Add(new EmploymentRelationship
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            ProfessionalType = "DMA",
-            EvaluationIntentId = Guid.NewGuid(),
-            InitiatingParticipantId = actorId,
-            State = EmploymentRelationshipState.Configuring,
-        });
-        db.RelationshipGoals.Add(new RelationshipGoal
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            Goal = "Increase confirmed bookings",
-            Baseline = "10 monthly",
-            Measure = "Confirmed bookings",
-            DecisionThreshold = "15 monthly",
-            EvidenceSource = "Customer booking records",
-            Status = "ACCEPTED",
-        });
-        db.RelationshipSkillConfigurations.Add(new RelationshipSkillConfiguration
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            SkillId = "LOCAL_SEO",
-            SkillVersion = "1.0.0",
-            AuthorityState = "NOT_GRANTED",
-            Applicability = "APPLICABLE",
-            Status = "ACCEPTED",
-        });
-        if (includeSnapshot)
-        {
-            db.DecisionSpaceSnapshots.Add(new DecisionSpaceSnapshot
+        db.EmploymentRelationships.Add(
+            new EmploymentRelationship
             {
                 TenantId = tenantId,
                 RelationshipId = relationshipId,
-                Version = 1,
-                BudgetCeilingInrPaise = 250000,
-                AuthorityBoundariesJson = "[\"No publishing without approval\"]",
-                StopConditionsJson = "[\"Stop on customer request\"]",
-                ReviewCadenceMonths = 2,
-                AcceptedEvidenceJson = "[]",
-                CreatedByParticipantId = actorId,
-                EvidenceId = Guid.NewGuid(),
-            });
+                ProfessionalType = "DMA",
+                EvaluationIntentId = Guid.NewGuid(),
+                InitiatingParticipantId = actorId,
+                State = EmploymentRelationshipState.Configuring,
+            }
+        );
+        db.RelationshipGoals.Add(
+            new RelationshipGoal
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                Goal = "Increase confirmed bookings",
+                Baseline = "10 monthly",
+                Measure = "Confirmed bookings",
+                DecisionThreshold = "15 monthly",
+                EvidenceSource = "Customer booking records",
+                Status = "ACCEPTED",
+            }
+        );
+        db.RelationshipSkillConfigurations.Add(
+            new RelationshipSkillConfiguration
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                SkillId = "LOCAL_SEO",
+                SkillVersion = "1.0.0",
+                AuthorityState = "NOT_GRANTED",
+                Applicability = "APPLICABLE",
+                Status = "ACCEPTED",
+            }
+        );
+        if (includeSnapshot)
+        {
+            db.DecisionSpaceSnapshots.Add(
+                new DecisionSpaceSnapshot
+                {
+                    TenantId = tenantId,
+                    RelationshipId = relationshipId,
+                    Version = 1,
+                    BudgetCeilingInrPaise = 250000,
+                    AuthorityBoundariesJson = "[\"No publishing without approval\"]",
+                    StopConditionsJson = "[\"Stop on customer request\"]",
+                    ReviewCadenceMonths = 2,
+                    AcceptedEvidenceJson = "[]",
+                    CreatedByParticipantId = actorId,
+                    EvidenceId = Guid.NewGuid(),
+                }
+            );
         }
         await db.SaveChangesAsync();
 
-        return (new EmploymentContractService(factory, new ContractProfessionalCatalogStub()), factory, tenantId, relationshipId, actorId);
+        return (
+            new EmploymentContractService(factory, new ContractProfessionalCatalogStub()),
+            factory,
+            tenantId,
+            relationshipId,
+            actorId
+        );
     }
 
     private sealed class ContractProfessionalCatalogStub : IProfessionalCatalog
     {
         public IReadOnlyList<ProfessionalDiscoveryResult> Discover(string outcome) => [];
 
-        public ProfessionalDisclosure? GetDisclosure(string professionalType) => new(
-            professionalType,
-            "1.0.0",
-            "digital-marketing",
-            "Digital Marketing Professional",
-            ["Local service growth"],
-            [new ProfessionalSkillDisclosure("LOCAL_SEO", "Local SEO", true, null)],
-            ["Results are not guaranteed."],
-            ["Publishing and spend require explicit authority."],
-            ["Inspect evidence and exit at any time."],
-            new ProfessionalTrialDisclosure(true, 14, false, false),
-            "Facts and recommendations remain distinguishable.",
-            new IndicativePriceDisclosure("INR", 249900, "MONTHLY", "Indicative only."),
-            new ProfessionalEligibility(true, "Eligible"));
+        public ProfessionalDisclosure? GetDisclosure(string professionalType) =>
+            new(
+                professionalType,
+                "1.0.0",
+                "digital-marketing",
+                "Digital Marketing Professional",
+                ["Local service growth"],
+                [new ProfessionalSkillDisclosure("LOCAL_SEO", "Local SEO", true, null)],
+                ["Results are not guaranteed."],
+                ["Publishing and spend require explicit authority."],
+                ["Inspect evidence and exit at any time."],
+                new ProfessionalTrialDisclosure(true, 14, false, false),
+                "Facts and recommendations remain distinguishable.",
+                new ProfessionalEligibility(true, "Eligible")
+            );
     }
 }

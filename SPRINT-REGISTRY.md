@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 162 Work Contracts recorded · 106 with merged-PR evidence · 56 without
+**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 162 Work Contracts recorded · 109 with merged-PR evidence · 53 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,10 +218,10 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-170 | Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON | GATED SKELETON | none recorded |
-| WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | CONTRACT WRITTEN | none recorded |
-| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | none recorded |
-| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #638, #637, #636, #635 |
+| WC-170 | Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON | GATED SKELETON | #640 |
+| WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #640 |
+| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #640 |
+| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #640, #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |
 | WC-164 | Dedicated Acceptance Key Vault | IMPLEMENTATION_AUTHORIZED | #630 |
@@ -263,7 +263,7 @@ whole Work Contract is complete).
 | WC-127 | ACR Image Mirror And Image Home Choice | LOCALLY QUALIFIED AND LIVE-PROBED - exact-head PR preparation and Founder review/merge pending. | #566 |
 | WC-126 | Safe Web Server Failure Logging | LOCALLY QUALIFIED - exact-head PR preparation and Founder review/merge pending. | #604, #565 |
 | WC-125 | AI Office Cost And Effectiveness Analysis | GOVERNANCE IMPLEMENTATION IN PROGRESS — NOT UNIVERSAL RUNTIME ENFORCEMENT | #548 |
-| WC-124 | Demo Deployment Remediation Plan | LOCAL QUALIFICATION COMPLETE - PR PREPARATION IN PROGRESS | #612, #595, #570, #564, #563, #562, #561, #560, #559, #558, #557, #556, #555, #554, #553, #552, #551, #550, #549, #547, #546, #545, #544, #541, #536, #535, #534, #533, #531, #528, #526, #524, #523, #522 |
+| WC-124 | Demo Deployment Remediation Plan | LOCAL QUALIFICATION COMPLETE - PR PREPARATION IN PROGRESS | #640, #612, #595, #570, #564, #563, #562, #561, #560, #559, #558, #557, #556, #555, #554, #553, #552, #551, #550, #549, #547, #546, #545, #544, #541, #536, #535, #534, #533, #531, #528, #526, #524, #523, #522 |
 | WC-123 | Authentication and Authorization Simplification Implementation | AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED | #564, #518, #516, #512, #511, #510, #509, #508, #507, #506 |
 | WC-122 | Authentication and Authorization Simplification | AUTHOR CANDIDATE - IMPLEMENTATION BLOCKED | #506 |
 | WC-121 | Customer Engagement Workspace Implementation | AUTHOR REVIEW PASS - SPECIALIST-INTEGRATED CANDIDATE FOR FOUNDER REVIEW - IMPLEMENTATION BLOCKED | #516, #515, #514, #513, #512, #503, #502 |

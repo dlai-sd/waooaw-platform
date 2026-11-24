@@ -1,26 +1,24 @@
-# IndicativePriceDisclosure
+# HireQuoteRequest
 
 ## Properties
 
-| Name             | Type   |
-| ---------------- | ------ |
-| `currency`       | string |
-| `amountInrPaise` | number |
-| `cadence`        | string |
-| `qualification`  | string |
+| Name                  | Type   |
+| --------------------- | ------ |
+| `professionalType`    | string |
+| `professionalVersion` | string |
+| `packageCode`         | string |
 
 ## Example
 
 ```typescript
-import type { IndicativePriceDisclosure } from "";
+import type { HireQuoteRequest } from "";
 
 // TODO: Update the object below with actual values
 const example = {
-  currency: null,
-  amountInrPaise: null,
-  cadence: null,
-  qualification: null,
-} satisfies IndicativePriceDisclosure;
+  professionalType: null,
+  professionalVersion: null,
+  packageCode: null,
+} satisfies HireQuoteRequest;
 
 console.log(example);
 
@@ -29,7 +27,7 @@ const exampleJSON: string = JSON.stringify(example);
 console.log(exampleJSON);
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as IndicativePriceDisclosure;
+const exampleParsed = JSON.parse(exampleJSON) as HireQuoteRequest;
 console.log(exampleParsed);
 ```
 

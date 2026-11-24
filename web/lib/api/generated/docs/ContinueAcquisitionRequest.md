@@ -2,14 +2,18 @@
 
 ## Properties
 
-| Name                  | Type   |
-| --------------------- | ------ |
-| `professionalType`    | string |
-| `professionalVersion` | string |
-| `intent`              | string |
-| `disclosureRevision`  | string |
-| `termsVersion`        | Date   |
-| `acceptance`          | string |
+| Name                        | Type    |
+| --------------------------- | ------- |
+| `professionalType`          | string  |
+| `professionalVersion`       | string  |
+| `intent`                    | string  |
+| `disclosureRevision`        | string  |
+| `termsVersion`              | Date    |
+| `acceptance`                | string  |
+| `couponCode`                | string  |
+| `packageCode`               | string  |
+| `quoteVersion`              | string  |
+| `validateQuoteBeforeCharge` | boolean |
 
 ## Example
 
@@ -24,6 +28,10 @@ const example = {
   disclosureRevision: null,
   termsVersion: null,
   acceptance: null,
+  couponCode: null,
+  packageCode: null,
+  quoteVersion: null,
+  validateQuoteBeforeCharge: null,
 } satisfies ContinueAcquisitionRequest;
 
 console.log(example);

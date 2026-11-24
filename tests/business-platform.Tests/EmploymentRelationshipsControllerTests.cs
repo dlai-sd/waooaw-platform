@@ -3,8 +3,8 @@
 
 using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,28 +22,56 @@ public sealed class EmploymentRelationshipsControllerTests
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
-            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var authorized = await service.AdmitAsync(
-            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await service.AdmitAsync(
-            tenantId, Guid.NewGuid(), Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "SALES",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await service.AdmitAsync(
-            Guid.NewGuid(), participantId, Guid.NewGuid(), "HRA", Guid.NewGuid(), CancellationToken.None);
+            Guid.NewGuid(),
+            participantId,
+            Guid.NewGuid(),
+            "HRA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await using (var seed = factory.CreateDbContext())
         {
             seed.RelationshipSkillConfigurations.AddRange(
                 new RelationshipSkillConfiguration
                 {
-                    TenantId = tenantId, RelationshipId = authorized.Relationship.RelationshipId,
-                    SkillId = "local-seo", SkillVersion = "1.0.0", Status = "ACTIVE",
+                    TenantId = tenantId,
+                    RelationshipId = authorized.Relationship.RelationshipId,
+                    SkillId = "local-seo",
+                    SkillVersion = "1.0.0",
+                    Status = "ACTIVE",
                 },
                 new RelationshipSkillConfiguration
                 {
-                    TenantId = tenantId, RelationshipId = authorized.Relationship.RelationshipId,
-                    SkillId = "campaign-planning", SkillVersion = "1.0.0", Status = "PROPOSED",
-                });
+                    TenantId = tenantId,
+                    RelationshipId = authorized.Relationship.RelationshipId,
+                    SkillId = "campaign-planning",
+                    SkillVersion = "1.0.0",
+                    Status = "PROPOSED",
+                }
+            );
             await seed.SaveChangesAsync();
         }
         var controller = new EmploymentRelationshipsController(service)
@@ -52,12 +80,19 @@ public sealed class EmploymentRelationshipsControllerTests
         };
 
         var result = Assert.IsType<OkObjectResult>(
-            await controller.ListAsync(null, 20, CancellationToken.None));
+            await controller.ListAsync(null, 20, CancellationToken.None)
+        );
         var json = JsonSerializer.SerializeToElement(result.Value);
         var item = Assert.Single(json.GetProperty("Items").EnumerateArray());
 
-        Assert.Equal(authorized.Relationship.RelationshipId, item.GetProperty("RelationshipId").GetGuid());
-        Assert.Equal("CONVERSATION", item.GetProperty("ResumeTarget").GetProperty("Surface").GetString());
+        Assert.Equal(
+            authorized.Relationship.RelationshipId,
+            item.GetProperty("RelationshipId").GetGuid()
+        );
+        Assert.Equal(
+            "CONVERSATION",
+            item.GetProperty("ResumeTarget").GetProperty("Surface").GetString()
+        );
         Assert.Equal("UNKNOWN", item.GetProperty("CurrencyState").GetString());
         Assert.Equal("NOT_STARTED", item.GetProperty("ConfigurationState").GetString());
         Assert.Equal(1, item.GetProperty("EnabledSkillCount").GetInt32());
@@ -70,25 +105,48 @@ public sealed class EmploymentRelationshipsControllerTests
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
-            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var accountId = Guid.NewGuid();
         var otherAccountId = Guid.NewGuid();
         var authorized = await service.AdmitAsync(
-            tenantId, accountId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            accountId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await service.AdmitAsync(
-            tenantId, otherAccountId, Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            otherAccountId,
+            Guid.NewGuid(),
+            "SALES",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var context = CreateControllerContext(tenantId, otherAccountId);
         context.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
             new CustomerWorkspaceMembership(accountId, tenantId, Guid.NewGuid(), ["OWNER"]);
-        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = context,
+        };
 
         var result = Assert.IsType<OkObjectResult>(
-            await controller.ListAsync(null, 20, CancellationToken.None));
-        var item = Assert.Single(JsonSerializer.SerializeToElement(result.Value)
-            .GetProperty("Items").EnumerateArray());
+            await controller.ListAsync(null, 20, CancellationToken.None)
+        );
+        var item = Assert.Single(
+            JsonSerializer.SerializeToElement(result.Value).GetProperty("Items").EnumerateArray()
+        );
 
-        Assert.Equal(authorized.Relationship.RelationshipId, item.GetProperty("RelationshipId").GetGuid());
+        Assert.Equal(
+            authorized.Relationship.RelationshipId,
+            item.GetProperty("RelationshipId").GetGuid()
+        );
     }
 
     [Fact]
@@ -96,7 +154,10 @@ public sealed class EmploymentRelationshipsControllerTests
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
-            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var admission = new AgentAdmission
@@ -113,24 +174,51 @@ public sealed class EmploymentRelationshipsControllerTests
             await seed.SaveChangesAsync();
         }
         await service.AdmitAsync(
-            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
-            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            admission.AdmissionId,
+            admission.ProfessionalVersion,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await service.AdmitAsync(
-            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
-            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            admission.AdmissionId,
+            admission.ProfessionalVersion,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var context = CreateControllerContext(tenantId, participantId);
         context.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
             new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
-        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = context,
+        };
 
         var result = Assert.IsType<OkObjectResult>(
-            await controller.ListAsync(null, 20, CancellationToken.None));
-        var items = JsonSerializer.SerializeToElement(result.Value)
-            .GetProperty("Items").EnumerateArray().ToArray();
+            await controller.ListAsync(null, 20, CancellationToken.None)
+        );
+        var items = JsonSerializer
+            .SerializeToElement(result.Value)
+            .GetProperty("Items")
+            .EnumerateArray()
+            .ToArray();
 
         Assert.Equal(2, items.Length);
-        Assert.All(items, item => Assert.Equal("DMA", item.GetProperty("ProfessionalType").GetString()));
-        Assert.Equal(2, items.Select(item => item.GetProperty("AgentInstanceId").GetGuid()).Distinct().Count());
+        Assert.All(
+            items,
+            item => Assert.Equal("DMA", item.GetProperty("ProfessionalType").GetString())
+        );
+        Assert.Equal(
+            2,
+            items.Select(item => item.GetProperty("AgentInstanceId").GetGuid()).Distinct().Count()
+        );
     }
 
     [Fact]
@@ -172,21 +260,61 @@ public sealed class EmploymentRelationshipsControllerTests
         var result = Assert.IsType<OkObjectResult>(
             await controller.ListAsync(null, 100, CancellationToken.None)
         );
-        var items = JsonSerializer.SerializeToElement(result.Value)
-            .GetProperty("Items").EnumerateArray().ToArray();
+        var items = JsonSerializer
+            .SerializeToElement(result.Value)
+            .GetProperty("Items")
+            .EnumerateArray()
+            .ToArray();
 
         Assert.Equal(states.Length, items.Length);
-        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "PAUSED");
-        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "STOPPED");
-        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "UNAVAILABLE");
-        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "CONVERSATION");
-        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "CONFIGURATION");
-        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "WORK");
-        Assert.Contains(items, item => item.GetProperty("UnreadState").GetString() == "ACTION_REQUIRED");
-        Assert.Contains(items, item => item.GetProperty("ConfigurationState").GetString() == "BLOCKED");
-        Assert.Contains(items, item => item.GetProperty("NextActionLabel").GetString() == "Review contract");
-        Assert.Contains(items, item => item.GetProperty("NextActionLabel").GetString() == "Review stopped agent");
-        Assert.Contains(items, item => item.GetProperty("CurrentWorkSummary").ValueKind == JsonValueKind.String);
+        Assert.Contains(
+            items,
+            item => item.GetProperty("AvailabilityState").GetString() == "PAUSED"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("AvailabilityState").GetString() == "STOPPED"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("AvailabilityState").GetString() == "UNAVAILABLE"
+        );
+        Assert.Contains(
+            items,
+            item =>
+                item.GetProperty("ResumeTarget").GetProperty("Surface").GetString()
+                == "CONVERSATION"
+        );
+        Assert.Contains(
+            items,
+            item =>
+                item.GetProperty("ResumeTarget").GetProperty("Surface").GetString()
+                == "CONFIGURATION"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "WORK"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("UnreadState").GetString() == "ACTION_REQUIRED"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("ConfigurationState").GetString() == "BLOCKED"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("NextActionLabel").GetString() == "Review contract"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("NextActionLabel").GetString() == "Review stopped agent"
+        );
+        Assert.Contains(
+            items,
+            item => item.GetProperty("CurrentWorkSummary").ValueKind == JsonValueKind.String
+        );
     }
 
     [Fact]
@@ -258,8 +386,11 @@ public sealed class EmploymentRelationshipsControllerTests
     [Fact]
     public void RelationshipCollectionAndAdmissionRequireCustomerMembership()
     {
-        var adapted = typeof(EmploymentRelationshipsController).GetMethods()
-            .Where(method => method.GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true).Length != 0)
+        var adapted = typeof(EmploymentRelationshipsController)
+            .GetMethods()
+            .Where(method =>
+                method.GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true).Length != 0
+            )
             .Select(method => method.Name)
             .ToArray();
 
@@ -270,7 +401,8 @@ public sealed class EmploymentRelationshipsControllerTests
                 nameof(EmploymentRelationshipsController.ConsumeSelectionFlashAsync),
                 nameof(EmploymentRelationshipsController.AdmitAsync),
             ],
-            adapted);
+            adapted
+        );
     }
 
     [Fact]
@@ -278,25 +410,53 @@ public sealed class EmploymentRelationshipsControllerTests
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
-            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
-        await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
-        await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        await service.AdmitAsync(
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "SALES",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var controller = new EmploymentRelationshipsController(service)
         {
             ControllerContext = CreateControllerContext(tenantId, participantId),
         };
 
-        var first = Assert.IsType<OkObjectResult>(await controller.ListAsync(null, 1, CancellationToken.None));
+        var first = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(null, 1, CancellationToken.None)
+        );
         var firstJson = JsonSerializer.SerializeToElement(first.Value);
         var cursor = firstJson.GetProperty("NextCursor").GetString();
         Assert.NotNull(cursor);
-        var second = Assert.IsType<OkObjectResult>(await controller.ListAsync(cursor, 1, CancellationToken.None));
-        Assert.Single(JsonSerializer.SerializeToElement(second.Value).GetProperty("Items").EnumerateArray());
+        var second = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(cursor, 1, CancellationToken.None)
+        );
+        Assert.Single(
+            JsonSerializer.SerializeToElement(second.Value).GetProperty("Items").EnumerateArray()
+        );
 
         var invalid = Assert.IsType<ObjectResult>(
-            await controller.ListAsync(Convert.ToBase64String(Guid.NewGuid().ToByteArray()), 1, CancellationToken.None));
+            await controller.ListAsync(
+                Convert.ToBase64String(Guid.NewGuid().ToByteArray()),
+                1,
+                CancellationToken.None
+            )
+        );
         Assert.Equal(404, invalid.StatusCode);
     }
 
@@ -331,11 +491,7 @@ public sealed class EmploymentRelationshipsControllerTests
             controller.Request.QueryString = new QueryString(testCase.Query);
 
             var result = Assert.IsType<ObjectResult>(
-                await controller.ListAsync(
-                    testCase.Cursor,
-                    testCase.Limit,
-                    CancellationToken.None
-                )
+                await controller.ListAsync(testCase.Cursor, testCase.Limit, CancellationToken.None)
             );
 
             Assert.Equal(StatusCodes.Status400BadRequest, result.StatusCode);
@@ -350,7 +506,8 @@ public sealed class EmploymentRelationshipsControllerTests
         var service = new EmploymentRelationshipService(
             factory,
             gateway,
-            NullLogger<EmploymentRelationshipService>.Instance);
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var contractId = Guid.NewGuid();
@@ -359,12 +516,20 @@ public sealed class EmploymentRelationshipsControllerTests
             ControllerContext = CreateControllerContext(tenantId, participantId),
         };
         var request = new HireAgentRequest(
-            contractId.ToString(), "DMA", "content-publish", "1", 100_000, "1");
+            contractId.ToString(),
+            "DMA",
+            "content-publish",
+            "1",
+            100_000,
+            "1"
+        );
 
         var first = Assert.IsType<OkObjectResult>(
-            await controller.HireAgentAsync(request, CancellationToken.None));
+            await controller.HireAgentAsync(request, CancellationToken.None)
+        );
         var replay = Assert.IsType<OkObjectResult>(
-            await controller.HireAgentAsync(request, CancellationToken.None));
+            await controller.HireAgentAsync(request, CancellationToken.None)
+        );
         var firstJson = JsonSerializer.SerializeToElement(first.Value);
         var replayJson = JsonSerializer.SerializeToElement(replay.Value);
         var relationshipId = firstJson.GetProperty("relationship_id").GetGuid();
@@ -373,7 +538,10 @@ public sealed class EmploymentRelationshipsControllerTests
         Assert.NotEqual(contractId, relationshipId);
         Assert.Equal(1, gateway.CallCount);
         Assert.Equal("true", controller.Response.Headers["Deprecation"]);
-        Assert.Contains($"/api/v1/employment/relationships/{relationshipId}", controller.Response.Headers.Link.ToString());
+        Assert.Contains(
+            $"/api/v1/employment/relationships/{relationshipId}",
+            controller.Response.Headers.Link.ToString()
+        );
     }
 
     [Fact]
@@ -383,7 +551,8 @@ public sealed class EmploymentRelationshipsControllerTests
         var service = new EmploymentRelationshipService(
             factory,
             new RecordingRelationshipConstitutionalGateway(),
-            NullLogger<EmploymentRelationshipService>.Instance);
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var controller = new EmploymentRelationshipsController(service)
@@ -392,13 +561,17 @@ public sealed class EmploymentRelationshipsControllerTests
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim("sub", "google-oauth2|customer-subject")],
-                        "Test")),
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity(
+                            [new Claim("sub", "google-oauth2|customer-subject")],
+                            "Test"
+                        )
+                    ),
                 },
             },
         };
-        controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] =
+            tenantId.ToString();
         controller.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
             new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
         var admission = new AgentAdmission
@@ -417,8 +590,13 @@ public sealed class EmploymentRelationshipsControllerTests
 
         var result = await controller.AdmitAsync(
             new AdmitEmploymentRelationshipRequest(
-                Guid.NewGuid(), "DMA", admission.AdmissionId, admission.ProfessionalVersion),
-            CancellationToken.None);
+                Guid.NewGuid(),
+                "DMA",
+                admission.AdmissionId,
+                admission.ProfessionalVersion
+            ),
+            CancellationToken.None
+        );
 
         var created = Assert.IsType<CreatedAtActionResult>(result);
         var response = Assert.IsType<EmploymentRelationshipResponse>(created.Value);
@@ -445,7 +623,8 @@ public sealed class EmploymentRelationshipsControllerTests
 
         var request = JsonSerializer.Deserialize<TransitionEmploymentRelationshipRequest>(
             json,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        );
 
         Assert.NotNull(request);
         Assert.Equal(EmploymentRelationshipState.TrialActive, request.TargetState);
@@ -456,12 +635,13 @@ public sealed class EmploymentRelationshipsControllerTests
     public void TransitionEndpointRequiresInternalServicePolicy()
     {
         var method = typeof(EmploymentRelationshipsController).GetMethod(
-            nameof(EmploymentRelationshipsController.TransitionAsync));
+            nameof(EmploymentRelationshipsController.TransitionAsync)
+        );
         Assert.NotNull(method);
 
         var authorization = Assert.Single(
-            method.GetCustomAttributes(typeof(AuthorizeAttribute), true)
-                .Cast<AuthorizeAttribute>());
+            method.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
+        );
         Assert.Equal("InternalService", authorization.Policy);
     }
 
@@ -472,7 +652,8 @@ public sealed class EmploymentRelationshipsControllerTests
         var relationships = new EmploymentRelationshipService(
             factory,
             new RecordingRelationshipConstitutionalGateway(),
-            NullLogger<EmploymentRelationshipService>.Instance);
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var admission = new AgentAdmission
@@ -489,11 +670,25 @@ public sealed class EmploymentRelationshipsControllerTests
             await seed.SaveChangesAsync();
         }
         var admitted = await relationships.AdmitAsync(
-            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
-            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            admission.AdmissionId,
+            admission.ProfessionalVersion,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await relationships.TransitionAsync(
-            tenantId, admitted.Relationship.RelationshipId, participantId, RelationshipParticipantRole.Evaluator,
-            EmploymentRelationshipState.Interviewing, Guid.NewGuid(), false, CancellationToken.None);
+            tenantId,
+            admitted.Relationship.RelationshipId,
+            participantId,
+            RelationshipParticipantRole.Evaluator,
+            EmploymentRelationshipState.Interviewing,
+            Guid.NewGuid(),
+            false,
+            CancellationToken.None
+        );
         var startsAt = DateTimeOffset.UtcNow;
         var trialId = Guid.NewGuid();
         var gateway = new TrialOwnerGatewayStub
@@ -502,13 +697,20 @@ public sealed class EmploymentRelationshipsControllerTests
             Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14)),
         };
         var controller = new EmploymentRelationshipsController(
-            relationships, new RelationshipTrialService(factory, relationships, gateway))
+            relationships,
+            new RelationshipTrialService(factory, relationships, gateway)
+        )
         {
             ControllerContext = CreateControllerContext(tenantId, participantId),
         };
 
-        var response = Assert.IsType<OkObjectResult>(await controller.StartTrialAsync(
-            admitted.Relationship.RelationshipId, new StartRelationshipTrialRequest(), CancellationToken.None));
+        var response = Assert.IsType<OkObjectResult>(
+            await controller.StartTrialAsync(
+                admitted.Relationship.RelationshipId,
+                new StartRelationshipTrialRequest(),
+                CancellationToken.None
+            )
+        );
         var trial = Assert.IsType<RelationshipTrialResult>(response.Value);
 
         Assert.Equal(trialId, trial.TrialId);
@@ -521,38 +723,82 @@ public sealed class EmploymentRelationshipsControllerTests
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var catalog = new HireTestCatalog();
         var controller = new EmploymentRelationshipsController(
             relationships,
             contracts: new EmploymentContractService(factory, catalog),
             configuration: new RelationshipConfigurationService(factory, gateway),
-            professionalCatalog: catalog)
+            professionalCatalog: catalog
+        )
         {
             ControllerContext = CreateControllerContext(Guid.NewGuid(), Guid.NewGuid()),
         };
         var valid = ValidHireSetupRequest();
         PrepareRelationshipHireRequest[] invalidRequests =
         [
-            valid with { AuthorityScopeConfirmation = "" },
-            valid with { BusinessName = "" },
-            valid with { BusinessName = new string('a', 161) },
-            valid with { Location = "" },
-            valid with { Location = new string('a', 201) },
-            valid with { BusinessNature = "" },
-            valid with { BusinessNature = new string('a', 1001) },
-            valid with { Goal = "" },
-            valid with { Goal = new string('a', 1001) },
-            valid with { SuccessMeasure = "" },
-            valid with { SuccessMeasure = new string('a', 501) },
-            valid with { BudgetCeilingInrPaise = -1 },
-            valid with { SelectedSkillIds = null! },
+            valid with
+            {
+                AuthorityScopeConfirmation = "",
+            },
+            valid with
+            {
+                BusinessName = "",
+            },
+            valid with
+            {
+                BusinessName = new string('a', 161),
+            },
+            valid with
+            {
+                Location = "",
+            },
+            valid with
+            {
+                Location = new string('a', 201),
+            },
+            valid with
+            {
+                BusinessNature = "",
+            },
+            valid with
+            {
+                BusinessNature = new string('a', 1001),
+            },
+            valid with
+            {
+                Goal = "",
+            },
+            valid with
+            {
+                Goal = new string('a', 1001),
+            },
+            valid with
+            {
+                SuccessMeasure = "",
+            },
+            valid with
+            {
+                SuccessMeasure = new string('a', 501),
+            },
+            valid with
+            {
+                BudgetCeilingInrPaise = -1,
+            },
+            valid with
+            {
+                SelectedSkillIds = null!,
+            },
         ];
 
         foreach (var request in invalidRequests)
         {
-            var response = Assert.IsType<ObjectResult>(await controller.PrepareHireAsync(
-                Guid.NewGuid(), request, CancellationToken.None));
+            var response = Assert.IsType<ObjectResult>(
+                await controller.PrepareHireAsync(Guid.NewGuid(), request, CancellationToken.None)
+            );
             Assert.IsType<ValidationProblemDetails>(response.Value);
         }
         await using var db = factory.CreateDbContext();
@@ -565,7 +811,10 @@ public sealed class EmploymentRelationshipsControllerTests
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var catalog = new HireTestCatalog();
         var contracts = new EmploymentContractService(factory, catalog);
         var configuration = new RelationshipConfigurationService(factory, gateway);
@@ -579,8 +828,13 @@ public sealed class EmploymentRelationshipsControllerTests
         foreach (var controller in controllers)
         {
             controller.ControllerContext = CreateControllerContext(Guid.NewGuid(), Guid.NewGuid());
-            var response = Assert.IsType<ObjectResult>(await controller.PrepareHireAsync(
-                Guid.NewGuid(), ValidHireSetupRequest(), CancellationToken.None));
+            var response = Assert.IsType<ObjectResult>(
+                await controller.PrepareHireAsync(
+                    Guid.NewGuid(),
+                    ValidHireSetupRequest(),
+                    CancellationToken.None
+                )
+            );
             Assert.Equal(StatusCodes.Status503ServiceUnavailable, response.StatusCode);
         }
     }
@@ -591,13 +845,234 @@ public sealed class EmploymentRelationshipsControllerTests
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var relationshipId = Guid.NewGuid();
-        await using (var seed = factory.CreateDbContext())
+        await SeedHireRelationshipAsync(
+            factory,
+            tenantId,
+            participantId,
+            relationshipId,
+            withQuote: true
+        );
+        var catalog = new HireTestCatalog();
+        var controller = new EmploymentRelationshipsController(
+            relationships,
+            contracts: new EmploymentContractService(factory, catalog),
+            configuration: new RelationshipConfigurationService(factory, gateway),
+            professionalCatalog: catalog
+        )
         {
-            seed.EmploymentRelationships.Add(new EmploymentRelationship
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var response = Assert.IsType<OkObjectResult>(
+            await controller.PrepareHireAsync(
+                relationshipId,
+                ValidHireSetupRequest(),
+                CancellationToken.None
+            )
+        );
+
+        var contract = Assert.IsType<EmploymentContractResponse>(response.Value);
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(3, await db.RelationshipContextPayloads.CountAsync());
+        Assert.Single(
+            await db.RelationshipGoals.Where(value => value.Status == "ACCEPTED").ToListAsync()
+        );
+        Assert.Single(
+            await db
+                .RelationshipSkillConfigurations.Where(value => value.Status == "ACCEPTED")
+                .ToListAsync()
+        );
+        Assert.Single(await db.DecisionSpaceSnapshots.ToListAsync());
+        Assert.Single(await db.EmploymentContractVersions.ToListAsync());
+        Assert.Equal(
+            EmploymentRelationshipState.ContractPendingAcceptance,
+            (await db.EmploymentRelationships.SingleAsync()).State
+        );
+
+        // WC169-R013: the amount in the contract terms is the amount the customer's quote locked, not a descriptor price.
+        var intent = await db.AcquisitionIntents.SingleAsync();
+        Assert.Equal(intent.QuoteGrossInrPaise, contract.Document.PriceTax.GrossAmountInrPaise);
+        Assert.Equal(intent.QuoteGstInrPaise, contract.Document.PriceTax.GstAmountInrPaise);
+        Assert.Equal(intent.QuotePackageCode, contract.Document.PriceTax.BundleTier);
+        Assert.Equal(intent.QuoteVersion, contract.Document.PriceTax.QuoteVersion);
+        Assert.Equal("MONTHLY", contract.Document.PriceTax.Cadence);
+        var stored = JsonSerializer.Deserialize<EmploymentContractCommercialTerms>(
+            (await db.EmploymentContractVersions.SingleAsync()).PriceTaxSummaryJson,
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+        );
+        Assert.Equal(intent.QuoteGrossInrPaise, stored!.GrossAmountInrPaise);
+    }
+
+    [Fact]
+    public async Task WC169_R013_HireSetupWithoutALockedQuoteHasNoAmountAndChangesNothing()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        await SeedHireRelationshipAsync(
+            factory,
+            tenantId,
+            participantId,
+            relationshipId,
+            withQuote: false
+        );
+        var catalog = new HireTestCatalog();
+        var controller = new EmploymentRelationshipsController(
+            relationships,
+            contracts: new EmploymentContractService(factory, catalog),
+            configuration: new RelationshipConfigurationService(factory, gateway),
+            professionalCatalog: catalog
+        )
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var response = Assert.IsType<ConflictObjectResult>(
+            await controller.PrepareHireAsync(
+                relationshipId,
+                ValidHireSetupRequest(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Contains("HIRE_QUOTE_UNAVAILABLE", JsonSerializer.Serialize(response.Value));
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.EmploymentContractVersions.ToListAsync());
+        Assert.Empty(await db.RelationshipContextPayloads.ToListAsync());
+        Assert.Equal(
+            EmploymentRelationshipState.Configuring,
+            (await db.EmploymentRelationships.SingleAsync()).State
+        );
+    }
+
+    [Fact]
+    public async Task WC169_R013_AClientCannotProposeAContractAtAnyAmountButTheLockedQuote()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        await SeedHireRelationshipAsync(
+            factory,
+            tenantId,
+            participantId,
+            relationshipId,
+            withQuote: true
+        );
+        var catalog = new HireTestCatalog();
+        var contracts = new EmploymentContractService(factory, catalog);
+        await new RelationshipConfigurationService(factory, gateway).CreateDecisionSpaceAsync(
+            tenantId,
+            relationshipId,
+            participantId,
+            250000,
+            ["Customer-approved budget ceiling"],
+            ["Customer Emergency Stop"],
+            2,
+            [],
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        var controller = new EmploymentRelationshipsController(relationships, contracts: contracts)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+        var quoted = (
+            await contracts.GetQuotedTermsAsync(tenantId, relationshipId, CancellationToken.None)
+        )!;
+
+        foreach (
+            var forged in new[]
+            {
+                quoted with
+                {
+                    GrossAmountInrPaise = 100,
+                    GstAmountInrPaise = 15,
+                },
+                quoted with
+                {
+                    GrossAmountInrPaise = 100,
+                },
+                quoted with
+                {
+                    GstAmountInrPaise = 1,
+                },
+                quoted with
+                {
+                    QuoteVersion = "STANDARD",
+                },
+                quoted with
+                {
+                    BundleTier = "CHEAPEST",
+                },
+                quoted with
+                {
+                    Cadence = "WEEKLY",
+                },
+            }
+        )
+        {
+            var refused = Assert.IsType<ObjectResult>(
+                await controller.ProposeContractAsync(
+                    relationshipId,
+                    new ProposeEmploymentContractRequest(forged),
+                    CancellationToken.None
+                )
+            );
+            Assert.Equal(StatusCodes.Status409Conflict, refused.StatusCode);
+        }
+        await using (var db = factory.CreateDbContext())
+            Assert.Empty(await db.EmploymentContractVersions.ToListAsync());
+
+        // Restating the quote is accepted, and the contract is composed from the server's terms, not the client's text.
+        var accepted = await controller.ProposeContractAsync(
+            relationshipId,
+            new ProposeEmploymentContractRequest(
+                quoted with
+                {
+                    SubscriptionTerms = "Free forever.",
+                }
+            ),
+            CancellationToken.None
+        );
+        var created = Assert.IsType<CreatedAtActionResult>(accepted);
+        var document = Assert.IsType<EmploymentContractResponse>(created.Value).Document;
+        Assert.Equal(quoted.GrossAmountInrPaise, document.PriceTax.GrossAmountInrPaise);
+        Assert.Equal(quoted.SubscriptionTerms, document.PriceTax.SubscriptionTerms);
+    }
+
+    private static async Task SeedHireRelationshipAsync(
+        InMemoryEmploymentRelationshipFactory factory,
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        bool withQuote
+    )
+    {
+        var intentId = Guid.NewGuid();
+        await using var seed = factory.CreateDbContext();
+        seed.EmploymentRelationships.Add(
+            new EmploymentRelationship
             {
                 TenantId = tenantId,
                 RelationshipId = relationshipId,
@@ -605,83 +1080,148 @@ public sealed class EmploymentRelationshipsControllerTests
                 ProfessionalType = "DMA",
                 ProfessionalVersion = "1.0.0",
                 AcquisitionMode = "HIRE",
+                AcquisitionIntentId = intentId,
                 EvaluationIntentId = Guid.NewGuid(),
                 InitiatingParticipantId = participantId,
                 State = EmploymentRelationshipState.Configuring,
-            });
-            seed.RelationshipParticipants.Add(new RelationshipParticipant
+            }
+        );
+        seed.RelationshipParticipants.Add(
+            new RelationshipParticipant
             {
                 TenantId = tenantId,
                 RelationshipId = relationshipId,
                 ParticipantId = participantId,
                 Role = RelationshipParticipantRole.Employer,
                 BoundEvidenceId = Guid.NewGuid(),
-            });
-            await seed.SaveChangesAsync();
-        }
-        var catalog = new HireTestCatalog();
-        var controller = new EmploymentRelationshipsController(
-            relationships,
-            contracts: new EmploymentContractService(factory, catalog),
-            configuration: new RelationshipConfigurationService(factory, gateway),
-            professionalCatalog: catalog)
-        {
-            ControllerContext = CreateControllerContext(tenantId, participantId),
-        };
-
-        var response = Assert.IsType<OkObjectResult>(await controller.PrepareHireAsync(
-            relationshipId, ValidHireSetupRequest(), CancellationToken.None));
-
-        Assert.IsType<EmploymentContractResponse>(response.Value);
-        await using var db = factory.CreateDbContext();
-        Assert.Equal(3, await db.RelationshipContextPayloads.CountAsync());
-        Assert.Single(await db.RelationshipGoals.Where(value => value.Status == "ACCEPTED").ToListAsync());
-        Assert.Single(await db.RelationshipSkillConfigurations.Where(value => value.Status == "ACCEPTED").ToListAsync());
-        Assert.Single(await db.DecisionSpaceSnapshots.ToListAsync());
-        Assert.Single(await db.EmploymentContractVersions.ToListAsync());
-        Assert.Equal(
-            EmploymentRelationshipState.ContractPendingAcceptance,
-            (await db.EmploymentRelationships.SingleAsync()).State);
+            }
+        );
+        seed.AcquisitionIntents.Add(
+            new AcquisitionIntent
+            {
+                AcquisitionIntentId = intentId,
+                ActorIdentityHash = new string('a', 64),
+                IdempotencyKey = intentId,
+                TenantId = tenantId,
+                ParticipantId = participantId,
+                ProfessionalType = "DMA",
+                ProfessionalVersion = "1.0.0",
+                Mode = "HIRE",
+                DisclosureRevision = "1.0.0",
+                ContractVersion = "2026-07-18",
+                ContractHash = new string('b', 64),
+                MaterialRequestHash = new string('c', 64),
+                QuotePackageId = withQuote ? Guid.NewGuid() : null,
+                QuotePackageCode = withQuote ? "STARTER" : null,
+                QuotePeriodDays = withQuote ? 30 : null,
+                QuoteGrossInrPaise = withQuote ? 118000 : null,
+                QuoteGstInrPaise = withQuote ? 18000 : null,
+                QuoteBaseInrPaise = withQuote ? 100000 : null,
+                QuoteVersion = withQuote ? new string('d', 64) : null,
+                Status = "COMPLETED",
+                RelationshipId = relationshipId,
+                ContractAcceptedAt = DateTimeOffset.UtcNow,
+                CompletedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+            }
+        );
+        await seed.SaveChangesAsync();
     }
 
     [Fact]
     public async Task CctAe01Stop01_AuthenticatedParticipantStopsPreActiveRelationship()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
-        var relationships = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
-        var admitted = await relationships.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var admitted = await relationships.AdmitAsync(
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await using (var db = factory.CreateDbContext())
         {
-            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.Configuring;
+            (await db.EmploymentRelationships.SingleAsync()).State =
+                EmploymentRelationshipState.Configuring;
             await db.SaveChangesAsync();
         }
         var emergencyStops = new RelationshipEmergencyStopService(
-            new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N")), relationships, new RecordingEmergencyStopGateway());
-        var controller = new EmploymentRelationshipsController(relationships, emergencyStops: emergencyStops) { ControllerContext = CreateControllerContext(tenantId, participantId) };
+            new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N")),
+            relationships,
+            new RecordingEmergencyStopGateway()
+        );
+        var controller = new EmploymentRelationshipsController(
+            relationships,
+            emergencyStops: emergencyStops
+        )
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
 
-        var result = await controller.StopAsync(admitted.Relationship.RelationshipId, new StopEmploymentRelationshipRequest(), CancellationToken.None);
+        var result = await controller.StopAsync(
+            admitted.Relationship.RelationshipId,
+            new StopEmploymentRelationshipRequest(),
+            CancellationToken.None
+        );
 
         Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
-            (await relationships.GetAsync(tenantId, admitted.Relationship.RelationshipId, CancellationToken.None))!.State);
+        Assert.Equal(
+            EmploymentRelationshipState.StoppedEmergency,
+            (
+                await relationships.GetAsync(
+                    tenantId,
+                    admitted.Relationship.RelationshipId,
+                    CancellationToken.None
+                )
+            )!.State
+        );
     }
 
     [Fact]
     public async Task StopGatewayOutageReturns503WhileLocalLatchRemainsActive()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
-        var relationships = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
-        var admitted = await relationships.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var admitted = await relationships.AdmitAsync(
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var conversations = new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N"));
-        var stops = new RelationshipEmergencyStopService(conversations, relationships, new TimeoutStopGateway());
-        var controller = new EmploymentRelationshipsController(relationships, emergencyStops: stops) { ControllerContext = CreateControllerContext(tenantId, participantId) };
+        var stops = new RelationshipEmergencyStopService(
+            conversations,
+            relationships,
+            new TimeoutStopGateway()
+        );
+        var controller = new EmploymentRelationshipsController(relationships, emergencyStops: stops)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
 
         var response = Assert.IsType<ObjectResult>(
-            await controller.StopAsync(admitted.Relationship.RelationshipId, new StopEmploymentRelationshipRequest(), CancellationToken.None));
+            await controller.StopAsync(
+                admitted.Relationship.RelationshipId,
+                new StopEmploymentRelationshipRequest(),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(503, response.StatusCode);
         await using var db = conversations.CreateDbContext();
@@ -691,9 +1231,15 @@ public sealed class EmploymentRelationshipsControllerTests
     private sealed class TimeoutStopGateway : IRelationshipEmergencyStopGateway
     {
         public Task<RelationshipEmergencyStopDispatch> StopAsync(
-            Guid tenantId, Guid relationshipId, Guid participantId,
-            IReadOnlyCollection<Guid> executionIds, CancellationToken cancellationToken) =>
-            Task.FromException<RelationshipEmergencyStopDispatch>(new TimeoutException("synthetic timeout"));
+            Guid tenantId,
+            Guid relationshipId,
+            Guid participantId,
+            IReadOnlyCollection<Guid> executionIds,
+            CancellationToken cancellationToken
+        ) =>
+            Task.FromException<RelationshipEmergencyStopDispatch>(
+                new TimeoutException("synthetic timeout")
+            );
     }
 
     [Fact]
@@ -704,13 +1250,27 @@ public sealed class EmploymentRelationshipsControllerTests
         var result = await fixture.Controller.ReleaseStopAsync(
             fixture.RelationshipId,
             new ReleaseEmploymentRelationshipStopRequest(
-                fixture.Stop.EvidenceId, fixture.Stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery.", EmploymentRelationshipState.Active),
-            CancellationToken.None);
+                fixture.Stop.EvidenceId,
+                fixture.Stop.CorrelationId,
+                "RELEASE_EMERGENCY_STOP",
+                "Customer confirmed recovery.",
+                EmploymentRelationshipState.Active
+            ),
+            CancellationToken.None
+        );
 
         Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, ((ObjectResult)result).StatusCode);
-        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
-            (await fixture.Service.GetAsync(fixture.TenantId, fixture.RelationshipId, CancellationToken.None))!.State);
+        Assert.Equal(
+            EmploymentRelationshipState.StoppedEmergency,
+            (
+                await fixture.Service.GetAsync(
+                    fixture.TenantId,
+                    fixture.RelationshipId,
+                    CancellationToken.None
+                )
+            )!.State
+        );
     }
 
     [Fact]
@@ -721,35 +1281,51 @@ public sealed class EmploymentRelationshipsControllerTests
         var result = await fixture.Controller.ReleaseStopAsync(
             fixture.RelationshipId,
             new ReleaseEmploymentRelationshipStopRequest(
-                fixture.Stop.EvidenceId, fixture.Stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery.", EmploymentRelationshipState.Active),
-            CancellationToken.None);
+                fixture.Stop.EvidenceId,
+                fixture.Stop.CorrelationId,
+                "RELEASE_EMERGENCY_STOP",
+                "Customer confirmed recovery.",
+                EmploymentRelationshipState.Active
+            ),
+            CancellationToken.None
+        );
 
         Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(EmploymentRelationshipState.Active,
-            (await fixture.Service.GetAsync(fixture.TenantId, fixture.RelationshipId, CancellationToken.None))!.State);
+        Assert.Equal(
+            EmploymentRelationshipState.Active,
+            (
+                await fixture.Service.GetAsync(
+                    fixture.TenantId,
+                    fixture.RelationshipId,
+                    CancellationToken.None
+                )
+            )!.State
+        );
     }
 
     private static ControllerContext CreateControllerContext(Guid tenantId, Guid participantId)
     {
         var context = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim("participant_id", participantId.ToString())],
-                "Test")),
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity([new Claim("participant_id", participantId.ToString())], "Test")
+            ),
         };
         context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
         return new ControllerContext { HttpContext = context };
     }
 
-    private static PrepareRelationshipHireRequest ValidHireSetupRequest() => new(
-        "North Star Dental",
-        "Pune",
-        "Dental clinic",
-        "Increase qualified appointments",
-        "Monthly qualified bookings",
-        250000,
-        ["MARKET_RESEARCH_AND_MATURITY"],
-        "CONFIRM_AUTHORITY_SCOPE");
+    private static PrepareRelationshipHireRequest ValidHireSetupRequest() =>
+        new(
+            "North Star Dental",
+            "Pune",
+            "Dental clinic",
+            "Increase qualified appointments",
+            "Monthly qualified bookings",
+            250000,
+            ["MARKET_RESEARCH_AND_MATURITY"],
+            "CONFIRM_AUTHORITY_SCOPE"
+        );
 
     private sealed class HireTestCatalog : IProfessionalCatalog
     {
@@ -763,50 +1339,88 @@ public sealed class EmploymentRelationshipsControllerTests
                     "digital-marketing",
                     "Digital Marketing Professional",
                     ["Local service marketing"],
-                    [new ProfessionalSkillDisclosure("MARKET_RESEARCH_AND_MATURITY", "Market Research", true, null)],
+                    [
+                        new ProfessionalSkillDisclosure(
+                            "MARKET_RESEARCH_AND_MATURITY",
+                            "Market Research",
+                            true,
+                            null
+                        ),
+                    ],
                     ["No guaranteed outcomes"],
                     ["Customer-approved budget ceiling"],
                     ["Emergency Stop"],
                     new ProfessionalTrialDisclosure(true, 14, false, false),
                     "Evidence-backed",
-                    new IndicativePriceDisclosure("INR", 249900, "MONTHLY", "Includes GST"),
-                    new ProfessionalEligibility(true, "Eligible"))
+                    new ProfessionalEligibility(true, "Eligible")
+                )
                 : null;
     }
 
-    private static async Task<(EmploymentRelationshipService Service, EmploymentRelationshipsController Controller,
-        Guid TenantId, Guid RelationshipId, RelationshipStateHistory Stop)> CreateStoppedEmployerAsync(DateTimeOffset authenticatedAt)
+    private static async Task<(
+        EmploymentRelationshipService Service,
+        EmploymentRelationshipsController Controller,
+        Guid TenantId,
+        Guid RelationshipId,
+        RelationshipStateHistory Stop
+    )> CreateStoppedEmployerAsync(DateTimeOffset authenticatedAt)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
-        var service = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var service = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
-        var admitted = await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var admitted = await service.AdmitAsync(
+            tenantId,
+            participantId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         await using (var db = factory.CreateDbContext())
         {
-            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.Active;
-            db.RelationshipParticipants.Add(new RelationshipParticipant
-            {
-                TenantId = tenantId,
-                RelationshipId = admitted.Relationship.RelationshipId,
-                ParticipantId = participantId,
-                Role = RelationshipParticipantRole.Employer,
-                BoundEvidenceId = Guid.NewGuid(),
-            });
+            (await db.EmploymentRelationships.SingleAsync()).State =
+                EmploymentRelationshipState.Active;
+            db.RelationshipParticipants.Add(
+                new RelationshipParticipant
+                {
+                    TenantId = tenantId,
+                    RelationshipId = admitted.Relationship.RelationshipId,
+                    ParticipantId = participantId,
+                    Role = RelationshipParticipantRole.Employer,
+                    BoundEvidenceId = Guid.NewGuid(),
+                }
+            );
             await db.SaveChangesAsync();
         }
         await service.TransitionAsync(
-            tenantId, admitted.Relationship.RelationshipId, participantId, RelationshipParticipantRole.Employer,
-            EmploymentRelationshipState.StoppedEmergency, Guid.NewGuid(), false, CancellationToken.None);
+            tenantId,
+            admitted.Relationship.RelationshipId,
+            participantId,
+            RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.StoppedEmergency,
+            Guid.NewGuid(),
+            false,
+            CancellationToken.None
+        );
         RelationshipStateHistory stop;
         await using (var db = factory.CreateDbContext())
-            stop = await db.RelationshipStateHistory.SingleAsync(value => value.ToState == EmploymentRelationshipState.StoppedEmergency);
+            stop = await db.RelationshipStateHistory.SingleAsync(value =>
+                value.ToState == EmploymentRelationshipState.StoppedEmergency
+            );
         var context = CreateControllerContext(tenantId, participantId);
         var identity = (ClaimsIdentity)context.HttpContext.User.Identity!;
         identity.AddClaim(new Claim("authentication_assurance", "TIER_4_PORTAL_FRESH"));
         identity.AddClaim(new Claim("auth_time", authenticatedAt.ToUnixTimeSeconds().ToString()));
         identity.AddClaim(new Claim("identity_provider", "keycloak"));
-        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = context,
+        };
         return (service, controller, tenantId, admitted.Relationship.RelationshipId, stop);
     }
 }

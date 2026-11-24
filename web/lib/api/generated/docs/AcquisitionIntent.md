@@ -2,15 +2,16 @@
 
 ## Properties
 
-| Name                  | Type    |
-| --------------------- | ------- |
-| `acquisitionIntentId` | string  |
-| `intent`              | string  |
-| `status`              | string  |
-| `contractDocumentUri` | string  |
-| `contractHash`        | string  |
-| `expiresAt`           | Date    |
-| `replayed`            | boolean |
+| Name                  | Type                      |
+| --------------------- | ------------------------- |
+| `acquisitionIntentId` | string                    |
+| `intent`              | string                    |
+| `status`              | string                    |
+| `contractDocumentUri` | string                    |
+| `contractHash`        | string                    |
+| `expiresAt`           | Date                      |
+| `replayed`            | boolean                   |
+| `quote`               | [HireQuote](HireQuote.md) |
 
 ## Example
 
@@ -26,6 +27,7 @@ const example = {
   contractHash: null,
   expiresAt: null,
   replayed: null,
+  quote: null,
 } satisfies AcquisitionIntent;
 
 console.log(example);
