@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-169
 contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
-contract_digest: 71222c560717d2bf92879429b5cc2b60d4dd211fd9e3207435b6c94500ba359f
+contract_digest: 7643386ea0b079216e07c7463b0f18ff9c958d41079778f62a4cc380d88c31f1
 implementation_scope: true
 result: PLANNED
 
@@ -97,3 +97,10 @@ requirements:
     source: WC-169 Canonical Requirement Index, R013
     observable_outcome: The Marketplace card, the employment contract terms and the hire amount come from the Founder's authorized package and never from the static descriptor price; with no authorized package no amount is shown and the hire is not offerable.
     test_path_or_plan: Business Platform tests for the catalog, contract composition and checkout amount; S5 pay step in the acceptance run proving the amount paid equals the authorized price including GST.
+
+  - <<: *defaults
+    requirement_id: WC169-R014
+    source: WC-169 Canonical Requirement Index, R014
+    observable_outcome: The Founder's chosen DEFAULT_OFF DMA components are applied to the DMA experience declaration and its admission as a new agent version, so a package containing them can be authorized and the publish slice can run; nothing is switched on that the Founder did not name.
+    test_path_or_plan: DMA contract and admission tests; Pricing screen shows the component as available; acceptance slice 2 run.
+    initial_state: Founder-reserved

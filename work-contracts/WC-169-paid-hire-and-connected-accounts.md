@@ -55,6 +55,7 @@ Authority limits: the harness runs only with the synthetic customer and sandbox 
 | WC169-R011 | Customer-visible polish found by the run (styling, wording, dark mode) is fixed to the WC-167 R006 bar |
 | WC169-R012 | The Keycloak provisioning client deployed in WC-167 is read back by its first real use: the harness obtains a token with it, registers a synthetic subject, and the registration is visible to the platform; the token carries only the intended roles and expires in 60 seconds |
 | WC169-R013 | One customer price source. The Marketplace card, the employment contract terms and the hire amount come from the authorized package the Founder set on the Pricing screen, never from the static `indicativePrice` in the agent descriptor; until a package is authorized no amount is shown and the hire is not offerable; the acceptance pay step (S5) proves the amount paid equals the authorized price including GST; an edited package name, features and price reach the Marketplace after authorization |
+| WC169-R014 | The Founder's decision on which `DEFAULT_OFF` DMA components are sold (for example `SOCIAL_PUBLICATION` and `SOCIAL_OBSERVATION`) is applied to the DMA experience declaration and its admission as a new agent version, so a package that contains them can be authorized and the publish slice can run; nothing is switched on that the Founder did not name |
 
 ## Founder And Customer Journey Simulation
 

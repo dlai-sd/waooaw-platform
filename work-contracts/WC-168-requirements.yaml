@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-168
 contract_path: work-contracts/WC-168-operator-console-works-on-demo.md
-contract_digest: c7ad054d1227f0a05c47efbb90e20a9b8a6aae566ee78173f4fa707a6c7e8975
+contract_digest: 2ec90608abf05281f44f0e3b9079cd9f8c1b296ced5b1168cd8141c0d8d98872
 implementation_scope: true
 result: PLANNED
 
@@ -104,6 +104,6 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R015
     source: WC-168 Canonical Requirement Index, R015
-    observable_outcome: The Founder makes his pricing decisions on the Pricing screen and none is recorded as a repository constant; the pending proactive-message thread is authorized in the Thread Catalog and the Demo setting for the publication components is on.
-    test_path_or_plan: Thread Catalog and settings read-back; Founder confirmation that the decisions were made on the screen.
+    observable_outcome: The Founder makes his pricing decisions on the Pricing screen and none is recorded as a repository constant; the pending proactive-message thread rate is authorized on the Pricing screen; the Founder's decision on which DEFAULT_OFF DMA components to sell is recorded.
+    test_path_or_plan: Pricing Rates read-back; Founder decision record; the application of the component decision is WC169-R014.
     initial_state: Founder-reserved
