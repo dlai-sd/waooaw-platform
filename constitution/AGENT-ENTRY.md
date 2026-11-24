@@ -36,9 +36,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-166 Foundation Plan Identity On A Cache Miss delivered
-Latest completed sprint: WC-166 — Foundation Plan Identity On A Cache Miss (PR #634 merged as dc6bf8368a)
-Latest recorded Work Contract: WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) (no merged PR recorded)
+Last update: 2026-11-24 — WC-167 Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) delivered
+Latest completed sprint: WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) (PR #635 merged as 8c9f4ec131)
+Latest recorded Work Contract: WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) (merged PR #635)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)

@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 159 Work Contracts recorded · 104 with merged-PR evidence · 55 without
+**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 159 Work Contracts recorded · 105 with merged-PR evidence · 54 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,7 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | CONTRACT_AUTHORED | none recorded |
+| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |
 | WC-164 | Dedicated Acceptance Key Vault | IMPLEMENTATION_AUTHORIZED | #630 |
@@ -235,7 +235,7 @@ whole Work Contract is complete).
 | WC-152 | Platform State And Process-Control Currency | IMPLEMENTED - FOUNDER REVIEW PENDING | #621 |
 | WC-151 | WID Leaf Issuer Root-Key Read Defect | IN PROGRESS | #620 |
 | WC-150 | Private Listener Start-Up Defect And Start-Up Guard | IN PROGRESS | #619 |
-| WC-149 | Paid Provider Consumption And Customer Account Connection | IN PROGRESS | #618 |
+| WC-149 | Paid Provider Consumption And Customer Account Connection | IN PROGRESS | #635, #618 |
 | WC-148 | Founder Provider And Credential Registry Screen | IN PROGRESS | #617 |
 | WC-147 | Cloud Workload Credential Issuance For Demo, UAT And Production | IMPLEMENTED - FOUNDER REVIEW PENDING | #616 |
 | WC-146 | Demo Deployment Time Reduction, Phase 3 | IMPLEMENTED - FOUNDER REVIEW PENDING | #613 |

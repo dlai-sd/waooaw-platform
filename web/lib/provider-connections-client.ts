@@ -1,4 +1,4 @@
-// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R008, WC149-R009, WC149-R010
+// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R008, WC149-R009, WC149-R010; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R002
 // Constitutional basis: C-026, C-059, C-063, C-083
 
 export type ConnectionStatus = 'CONNECTED' | 'NEEDS_REPAIR' | 'REVOKED';
@@ -42,6 +42,9 @@ const problemMessages: Record<string, string> = {
   CONNECTION_NOT_FOUND: 'That connection no longer exists. The list has been refreshed.',
   CONNECTION_REVOKED: 'That connection was revoked. Connect Facebook again to publish.',
   CONNECTION_FORBIDDEN: 'You are not permitted to manage this connection.',
+  CONNECTION_SIGN_IN_REQUIRED: 'Your sign-in has expired. Sign in again to see and manage your connections.',
+  CONNECTION_ACCOUNT_REQUIRED:
+    'We could not confirm a customer account for this action. Start a trial or hire an agent first, then come back here. If you already have, sign in again.',
   CONNECTION_INVALID: 'The request was not valid. Check the post text and try again. Nothing was published.',
   CONNECTION_RATE_LIMITED: 'Too many requests in a minute. Wait and try again.',
   CONNECTION_UNAVAILABLE: 'Connections are temporarily unavailable. Nothing was changed. Try again shortly.',
@@ -49,6 +52,17 @@ const problemMessages: Record<string, string> = {
 
 export function problemText(problem: ConnectionProblem): string {
   return problemMessages[problem.code ?? ''] ?? problemMessages.CONNECTION_UNAVAILABLE;
+}
+
+export type ProblemAction = { href: string; label: string };
+
+// A refusal that the person can fix gets the one next step that fixes it; anything else offers none.
+export function problemAction(problem: ConnectionProblem): ProblemAction | null {
+  if (problem.code === 'CONNECTION_SIGN_IN_REQUIRED') {
+    return { href: `/login?returnTo=${encodeURIComponent('/connections')}`, label: 'Sign in again' };
+  }
+  if (problem.code === 'CONNECTION_ACCOUNT_REQUIRED') return { href: '/marketplace', label: 'Browse the marketplace' };
+  return null;
 }
 
 export const connectedNotice = {

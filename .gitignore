@@ -36,6 +36,7 @@ web/test-results/
 test-results/wc079/
 test-results/wc083/
 test-results/wc083-current/
+test-results/pr-body*
 
 # ─── OS / editor ─────────────────────────────────────────────────────────────
 .DS_Store

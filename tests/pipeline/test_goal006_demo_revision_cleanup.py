@@ -239,6 +239,7 @@ def test_probe_log_suppression_is_demo_only_and_not_global():
     assert '["business-platform", "constitutional-engine"]' in block
     assert '"Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"' in block
     assert '"Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware"' in block
+    assert '"Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"  = "Warning"' in block
     assert "Logging__LogLevel__Default" not in block
 
 

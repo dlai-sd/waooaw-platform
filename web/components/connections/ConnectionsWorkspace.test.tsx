@@ -57,9 +57,37 @@ test('shows an error with a retry when the list cannot be loaded', async () => {
   render(<ConnectionsWorkspace />);
 
   expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded/);
+  expect(screen.queryByRole('link', { name: /Sign in again|Browse the marketplace/ })).not.toBeInTheDocument();
   serve({ 'GET ': fakeResponse(200, [connected]) });
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByRole('heading', { name: /Acme Bakery/ })).toBeInTheDocument();
+});
+
+test('an expired sign-in says so and offers to sign in again, returning to Connections', async () => {
+  serve({ 'GET ': fakeResponse(401, { code: 'CONNECTION_SIGN_IN_REQUIRED' }) });
+  render(<ConnectionsWorkspace />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Your sign-in has expired/);
+  expect(screen.getByRole('alert')).not.toHaveTextContent(/not permitted/);
+  expect(screen.getByRole('link', { name: 'Sign in again' })).toHaveAttribute('href', '/login?returnTo=%2Fconnections');
+  expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+});
+
+test('a person without a customer account is told what to do first, not that they lack permission', async () => {
+  serve({ 'GET ': fakeResponse(403, { code: 'CONNECTION_ACCOUNT_REQUIRED' }) });
+  render(<ConnectionsWorkspace />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Start a trial or hire an agent first/);
+  expect(screen.getByRole('alert')).not.toHaveTextContent(/not permitted/);
+  expect(screen.getByRole('link', { name: 'Browse the marketplace' })).toHaveAttribute('href', '/marketplace');
+  expect(screen.queryByRole('button', { name: /Connect Facebook/ })).not.toBeInTheDocument();
+});
+
+test('a real permission refusal on a connection keeps the permission wording', async () => {
+  serve({ 'GET ': fakeResponse(403, { code: 'CONNECTION_FORBIDDEN' }) });
+  render(<ConnectionsWorkspace />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/not permitted to manage this connection/);
 });
 
 test('Connect Facebook starts the connection and sends the browser to the authorization address', async () => {

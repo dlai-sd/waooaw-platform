@@ -1442,9 +1442,11 @@ resource "azurerm_container_app" "member" {
 
       dynamic "env" {
         # Successful probe requests dominated Demo ingestion; application/audit categories remain unchanged.
+        # WC-167 R008: database command text (every outbox poll) was about 281 thousand lines in 6 hours, so it is lowered to Warning too.
         for_each = var.environment == "demo" && contains(["business-platform", "constitutional-engine"], each.key) ? {
           "Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"        = "Warning"
           "Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware" = "Warning"
+          "Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"  = "Warning"
         } : {}
         content {
           name  = env.key
