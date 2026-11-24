@@ -3,6 +3,8 @@
 # `wc` lists Work Contract references found in the PR's commits and branch name.
 
 merged_pull_requests:
+  - {pr: 638, merge: 423c4bc327, date: "2026-11-24", wc: [WC-167]}
+  - {pr: 637, merge: b3461f54a9, date: "2026-11-24", wc: [WC-159, WC-167]}
   - {pr: 636, merge: 2d5daca61e, date: "2026-11-24", wc: [WC-167]}
   - {pr: 635, merge: 8c9f4ec131, date: "2026-11-24", wc: [WC-149, WC-167]}
   - {pr: 634, merge: dc6bf8368a, date: "2026-11-23", wc: [WC-166]}

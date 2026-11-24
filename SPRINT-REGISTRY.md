@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 159 Work Contracts recorded · 105 with merged-PR evidence · 54 without
+**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 159 Work Contracts recorded · 106 with merged-PR evidence · 53 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,14 +218,14 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #636, #635 |
+| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |
 | WC-164 | Dedicated Acceptance Key Vault | IMPLEMENTATION_AUTHORIZED | #630 |
 | WC-163 | Acceptance Coverage, Telemetry Witness And Closed Boundaries | IMPLEMENTATION_AUTHORIZED | #629 |
 | WC-162 | Customer Journey Acceptance Slice 2: Publish | IMPLEMENTATION_AUTHORIZED | #628 |
 | WC-160 | Customer Journey Acceptance Slice 1 Content | IMPLEMENTATION_AUTHORIZED | #627 |
-| WC-159 | Synthetic Acceptance Tenant Support | IMPLEMENTATION_AUTHORIZED | none recorded |
+| WC-159 | Synthetic Acceptance Tenant Support | IMPLEMENTATION_AUTHORIZED | #637 |
 | WC-158 | Customer Journey Acceptance Harness Core | IMPLEMENTATION_AUTHORIZED | #627 |
 | WC-157 | Customer Journey Acceptance Architecture | DRAFT FOR FOUNDER REVIEW - ARCHITECTURE ONLY - IMPLEMENTATION NOT AUTHORIZED | #626 |
 | WC-156 | Validation Runner Image Pull Retry | IN PROGRESS | #625 |
