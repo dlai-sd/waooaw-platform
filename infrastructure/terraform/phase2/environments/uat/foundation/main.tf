@@ -194,3 +194,11 @@ output "acceptance_client_id" {
 output "acceptance_key_vault_name" {
   value = module.foundation.acceptance_key_vault_name
 }
+
+output "acceptance_key_vault_id" {
+  value = module.foundation.acceptance_key_vault_id
+}
+
+output "acceptance_key_vault_uri" {
+  value = module.foundation.acceptance_key_vault_uri
+}

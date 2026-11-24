@@ -1,4 +1,4 @@
-// Implements: work-contracts/WC-137-platform-access-and-environment-feature-settings.md WC137-R003, WC137-R004
+// Implements: work-contracts/WC-137-platform-access-and-environment-feature-settings.md WC137-R003, WC137-R004; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R011
 // Constitutional basis: C-009, C-023, C-026, C-059, C-063
 
 using System.Net.Mail;
@@ -11,6 +11,9 @@ public sealed class ConfiguredFounder
 {
     public string Email { get; set; } = string.Empty;
     public string? Subject { get; set; }
+
+    // WC-167 R011: release the stored sign-in identity at every start when no Subject is configured. Default off.
+    public bool RebindOnStart { get; set; }
 
     public string NormalizedEmail => PlatformRoles.NormalizeEmail(Email);
 }
@@ -67,6 +70,10 @@ public sealed class PlatformAccessOptionsValidator : IValidateOptions<PlatformAc
             if (!seen.Add(founder.NormalizedEmail))
                 return ValidateOptionsResult.Fail(
                     "PlatformAccess:Founders must not repeat an email address."
+                );
+            if (founder.RebindOnStart && founder.Subject is not null)
+                return ValidateOptionsResult.Fail(
+                    "PlatformAccess:Founders RebindOnStart cannot be combined with a configured Subject."
                 );
         }
         return ValidateOptionsResult.Success;

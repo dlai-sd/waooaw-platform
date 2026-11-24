@@ -210,3 +210,56 @@ def test_the_seed_script_refuses_unknown_keys_and_a_world_readable_file(tmp_path
     env = {**os.environ, "ACCEPTANCE_SECRETS_FILE": str(secrets)}
     done = subprocess.run(["bash", str(SEED), "seed"], env=env, capture_output=True, text=True, check=False)
     assert done.returncode == 2 and "readable by others" in done.stderr
+
+
+def test_the_keycloak_secret_is_generated_unseen_through_stdin_and_kept_when_present(tmp_path: Path) -> None:
+    import os
+    import subprocess
+
+    def run(base: Path, existing: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+        base.mkdir()
+        bin_dir = base / "bin"
+        bin_dir.mkdir()
+        docker = bin_dir / "docker"
+        docker.write_text(STUB_DOCKER, encoding="utf-8")
+        docker.chmod(0o755)
+        env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "STUB_DIR": str(base), "STUB_EXISTING": existing}
+        return subprocess.run(["bash", str(SEED), "keycloak-secret"], env=env, capture_output=True, text=True, check=False), base
+
+    done, base = run(tmp_path / "new", "none-such")
+    assert done.returncode == 0 and "stored acceptance-keycloak-provisioner-client-secret" in done.stdout
+    value = (base / "stdin.log").read_text(encoding="utf-8").strip()
+    assert re.fullmatch(r"[A-Za-z0-9]{48}", value)
+    assert value not in done.stdout + done.stderr and value not in (base / "calls.log").read_text(encoding="utf-8")
+
+    done, base = run(tmp_path / "kept", "acceptance-keycloak-provisioner-client-secret")
+    assert done.returncode == 0 and "exists acceptance-keycloak-provisioner-client-secret" in done.stdout
+    assert not (base / "stdin.log").exists()
+
+
+WORKLOAD = ROOT / "infrastructure/terraform/phase2/modules/workload"
+
+
+def test_the_realm_gains_the_provisioning_client_only_when_the_demo_only_flag_is_on() -> None:
+    variables = (WORKLOAD / "acceptance-provisioner.tf").read_text(encoding="utf-8")
+    assert 'condition     = !var.acceptance_provisioner_enabled || var.environment == "demo"' in variables
+    assert "default     = false" in variables.split('variable "acceptance_key_vault_id"', 1)[0]
+    assert "acceptance-provisioner.realm-fragment.json" in variables
+    main = (WORKLOAD / "main.tf").read_text(encoding="utf-8")
+    assert "keycloak_realm = merge({" in main and "}, local.acceptance_provisioner_realm_settings)" in main
+    assert "local.acceptance_provisioner_clients)" in main and "local.acceptance_provisioner_users)" in main
+    assert "], local.acceptance_provisioner_realm_roles)" in main
+    assert "    local.acceptance_provisioner_secret,\n  )" in main
+    assert 'replace_secret ACCEPTANCE_PROVISIONER_CLIENT_SECRET \\"$ACCEPTANCE_PROVISIONER_CLIENT_SECRET\\"' in main
+    assert 'local.acceptance_provisioner_secret_name = "acceptance-keycloak-provisioner-client-secret"'.replace("local.", "") in variables
+
+
+def test_the_provisioning_client_secret_is_read_from_the_acceptance_vault_by_the_migration_job_only() -> None:
+    variables = (WORKLOAD / "acceptance-provisioner.tf").read_text(encoding="utf-8")
+    assert '"${var.acceptance_key_vault_id}/secrets/${local.acceptance_provisioner_secret_name}"' in variables
+    for environment in ("uat", "prod"):
+        root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/workload/main.tf").read_text(encoding="utf-8")
+        assert "acceptance_provisioner_enabled" not in root
+    demo = (ROOT / "infrastructure/terraform/phase2/environments/demo/workload/main.tf").read_text(encoding="utf-8")
+    assert "outputs.acceptance_key_vault_id" in demo and "outputs.acceptance_key_vault_uri" in demo
+    assert "  acceptance_provisioner_enabled           = true\n" in demo

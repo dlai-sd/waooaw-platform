@@ -14,7 +14,11 @@ namespace Waooaw.BusinessPlatform.Tests.PlatformAccess;
 
 public sealed class PlatformAccessStorePostgresTests : IAsyncLifetime
 {
-    private const string Migration = "infrastructure/postgres/init/99zzzzzzzz-wc137-01-platform-access.sql";
+    private static readonly string[] Migrations =
+    [
+        "infrastructure/postgres/init/99zzzzzzzz-wc137-01-platform-access.sql",
+        "infrastructure/postgres/init/99zzzzzzzz-wc167-01-founder-subject-release-event.sql",
+    ];
     private static readonly DateTimeOffset Now = new(2026, 11, 22, 9, 0, 0, TimeSpan.Zero);
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
@@ -45,11 +49,14 @@ public sealed class PlatformAccessStorePostgresTests : IAsyncLifetime
             Options.Create(options)
         );
 
-    private static ConfiguredFounder Founder(string email, string? subject = null) =>
-        new() { Email = email, Subject = subject };
+    private static ConfiguredFounder Founder(string email, string? subject = null, bool rebindOnStart = false) =>
+        new() { Email = email, Subject = subject, RebindOnStart = rebindOnStart };
 
-    private async Task ApplyMigrationAsync() =>
-        await ExecuteAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve(Migration)));
+    private async Task ApplyMigrationAsync()
+    {
+        foreach (var migration in Migrations)
+            await ExecuteAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve(migration)));
+    }
 
     private async Task ExecuteAsync(string sql)
     {
@@ -98,6 +105,35 @@ public sealed class PlatformAccessStorePostgresTests : IAsyncLifetime
         Assert.Empty(await _store.ResolveRolesAsync("owner@example.org", "subject-intruder", Now, default));
         Assert.Equal(["founder"], await _store.ResolveRolesAsync("owner@example.org", "subject-owner-1", Now, default));
         Assert.Equal(1, await CountAsync("SELECT count(*) FROM business.platform_access_events WHERE event_type='FOUNDER_SUBJECT_BOUND'"));
+    }
+
+    [Fact]
+    public async Task OptInFounderSubjectIsReleasedAtEveryStartAndTheNextVerifiedSignInTiesItAgain()
+    {
+        var founders = new[] { Founder("owner@example.org", rebindOnStart: true) };
+        await _store.ReconcileFoundersAsync(founders, Now, default);
+        Assert.Equal(["founder"], await _store.ResolveRolesAsync("owner@example.org", "old-subject-1", Now, default));
+
+        // A redeploy gives the person a new sign-in identity; the old tie must not lock the Founder out.
+        await _store.ReconcileFoundersAsync(founders, Now.AddHours(1), default);
+        Assert.Equal(1, await CountAsync("SELECT count(*) FROM business.platform_access_events WHERE event_type='FOUNDER_SUBJECT_RELEASED'"));
+        Assert.Equal(["founder"], await _store.ResolveRolesAsync("owner@example.org", "new-subject-1", Now.AddHours(1), default));
+        Assert.Empty(await _store.ResolveRolesAsync("owner@example.org", "intruder-subject", Now.AddHours(1), default));
+        Assert.Empty(await _store.ResolveRolesAsync("owner@example.org", "old-subject-1", Now.AddHours(1), default));
+    }
+
+    [Fact]
+    public async Task ReleaseOnlyHappensWhenOptedInAndNeverForAConfiguredSubjectOrAnotherPersonsGrant()
+    {
+        var founders = new[] { Founder("strict@example.org"), Founder("other@example.org", rebindOnStart: true) };
+        await _store.ReconcileFoundersAsync(founders, Now, default);
+        Assert.Equal(["founder"], await _store.ResolveRolesAsync("strict@example.org", "strict-subject", Now, default));
+        Assert.Equal(["founder"], await _store.ResolveRolesAsync("other@example.org", "other-subject", Now, default));
+
+        await _store.ReconcileFoundersAsync(founders, Now.AddHours(1), default);
+        Assert.Equal(["founder"], await _store.ResolveRolesAsync("strict@example.org", "strict-subject", Now, default));
+        Assert.Empty(await _store.ResolveRolesAsync("strict@example.org", "someone-else-1", Now, default));
+        Assert.Equal(1, await CountAsync("SELECT count(*) FROM business.platform_access_events WHERE event_type='FOUNDER_SUBJECT_RELEASED'"));
     }
 
     [Fact]

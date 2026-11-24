@@ -2,7 +2,7 @@
   "schema": "waooaw.keycloak-realm-fragment/v1",
   "decision": "ADR-055 decision 2",
   "environments": ["demo", "uat"],
-  "applyPath": "Merged into the environment's realm definition by the Founder-authorized Keycloak realm change; this file only authors the objects and is not applied by any workflow.",
+  "applyPath": "Read by infrastructure/terraform/phase2/modules/workload/acceptance-provisioner.tf and merged into the realm import only when acceptance_provisioner_enabled is true (Demo only, WC-167). The client secret placeholder is filled from the acceptance vault by the Keycloak migration job.",
   "realm": {
     "adminEventsEnabled": true,
     "adminEventsDetailsEnabled": false,

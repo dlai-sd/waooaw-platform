@@ -8,6 +8,7 @@
 #   scripts/acceptance_seed_secrets.sh init     create the empty template (mode 600) outside every repository
 #   scripts/acceptance_seed_secrets.sh login    sign in to Azure with a device code (once)
 #   scripts/acceptance_seed_secrets.sh seed     store every filled value, then shred the file
+#   scripts/acceptance_seed_secrets.sh keycloak-secret   generate the Keycloak provisioning client secret (WC-167), unseen
 #   scripts/acceptance_seed_secrets.sh status   list which secret names are present (names only)
 set -euo pipefail
 
@@ -19,7 +20,7 @@ KEEP_FILE=0
 OVERWRITE=0
 
 # Template key -> Key Vault secret name. Must equal the secrets in validation/acceptance/environments/demo.yaml
-# (a test enforces this) minus the Keycloak provisioner secret, which the Keycloak step generates.
+# (a test enforces this) minus the Keycloak provisioner secret, which the keycloak-secret command generates.
 ENTRIES="
 ACCEPTANCE_META_APP_ID=acceptance-meta-app-id
 ACCEPTANCE_META_APP_SECRET=acceptance-meta-app-secret
@@ -65,6 +66,23 @@ cmd_login() {
 
 cmd_status() {
   az_run keyvault secret list --vault-name "$VAULT" --query "[].name" -o tsv | sort
+}
+
+cmd_keycloak_secret() {
+  name="acceptance-keycloak-provisioner-client-secret"
+  az_run account show --query id -o tsv > /dev/null || { echo "Not signed in; run login first." >&2; exit 2; }
+  if [ "$OVERWRITE" -eq 0 ] && az_run keyvault secret show --vault-name "$VAULT" --name "$name" --query id -o tsv < /dev/null > /dev/null 2>&1; then
+    echo "exists $name (kept; use --overwrite to rotate it)"
+    return 0
+  fi
+  # Generated here and sent through stdin only; nobody, including the Founder, ever sees the value.
+  value="$(head -c 96 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48)"
+  if printf '%s' "$value" | az_run keyvault secret set --vault-name "$VAULT" --name "$name" --file /dev/stdin --encoding utf-8 --output none; then
+    echo "stored $name"
+  else
+    echo "FAILED $name" >&2
+    exit 1
+  fi
 }
 
 cmd_seed() {
@@ -144,6 +162,7 @@ case "$action" in
   init) cmd_init ;;
   login) cmd_login ;;
   seed) cmd_seed ;;
+  keycloak-secret) cmd_keycloak_secret ;;
   status) cmd_status ;;
-  *) echo "Usage: $0 init | login | seed [--keep-file] [--overwrite] | status" >&2; exit 2 ;;
+  *) echo "Usage: $0 init | login | seed [--keep-file] [--overwrite] | keycloak-secret [--overwrite] | status" >&2; exit 2 ;;
 esac

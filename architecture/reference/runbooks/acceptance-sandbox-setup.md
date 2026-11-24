@@ -39,7 +39,7 @@ never receives, prints or stores a value.
 | `acceptance-demo-coupon-code` | A test coupon code in the environment that gives a partial discount on the Digital Marketing hire, used only to validate the payable amount (never to pay) | Created by the Founder on the pricing admin screen |
 | `acceptance-whatsapp-sandbox-recipient` | Verified test recipient number (E.164) | Founder-controlled test handset |
 | `acceptance-whatsapp-webhook-secret` | App secret used to sign inbound webhook deliveries to this environment | Same Meta app that owns the environment's WhatsApp number (ADR-053) |
-| `acceptance-keycloak-provisioner-client-secret` | Client secret for the `waooaw-acceptance-provisioner` client | Generated and stored by the provisioning deployment (WC-159); the Founder enters nothing |
+| `acceptance-keycloak-provisioner-client-secret` | Client secret for the `waooaw-acceptance-provisioner` client | Generated unseen by `scripts/acceptance_seed_secrets.sh keycloak-secret` (WC-167); the Founder enters no value. The Keycloak migration job reads it from this vault when the Demo realm is imported, so run the command before the Demo deployment that enables the provisioning client |
 
 The three existing Razorpay test secrets are reused by exact name and need no entry.
 
@@ -114,9 +114,10 @@ These are Founder-authorized applies; nothing in the repository applies them.
    listed in that file, Reader on the resource group and Monitoring Reader on the workspace. Copy the
    `acceptance_client_id` output into `validation/acceptance/environments/<env>.yaml` (`azure.acceptance_client_id`);
    the workflow refuses to run while it is null.
-2. Keycloak: merge `infrastructure/keycloak/acceptance-provisioner.realm-fragment.json` into the environment's realm
-   definition (client, service account, realm role `acceptance-provisioner`, group `synthetic`, admin events on) and
-   store the client secret as `acceptance-keycloak-provisioner-client-secret`.
+2. Keycloak (Demo): run `scripts/acceptance_seed_secrets.sh keycloak-secret`, then run the Demo deployment. With
+   `acceptance_provisioner_enabled` true in the Demo workload root, the realm import adds the client, service account,
+   realm role `acceptance-provisioner`, group `synthetic` and admin events from
+   `infrastructure/keycloak/acceptance-provisioner.realm-fragment.json`, with the secret read from the acceptance vault.
 3. Business Platform: set the feature setting `acceptance_synthetic_tenants_enabled` to true for that environment
    through the settings path. Production refuses it.
 

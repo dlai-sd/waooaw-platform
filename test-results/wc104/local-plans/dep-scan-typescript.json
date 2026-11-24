@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-f2732ce28e1f8962",
-  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+  "execution_namespace": "wc109-d7f1a692b89e3a8f",
+  "head_sha": "a27d2da9017becec8ceba64a9e39711f7a4c454f",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -20,7 +20,7 @@
       "components": [
         "web"
       ],
-      "compose_project": "wc109-f2732ce28e1f8962",
+      "compose_project": "wc109-d7f1a692b89e3a8f",
       "compose_service": "test-runner-ts",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -34,7 +34,7 @@
             "test-results/**/*.json"
           ]
         },
-        "directory": "test-results/wc109/runs/wc109-f2732ce28e1f8962/dep-scan-typescript"
+        "directory": "test-results/wc109/runs/wc109-d7f1a692b89e3a8f/dep-scan-typescript"
       },
       "gate_id": "dep-scan:typescript",
       "inputs": {
@@ -42,7 +42,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "dependency-scan-typescript",
         "environment": [],
-        "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+        "head_sha": "a27d2da9017becec8ceba64a9e39711f7a4c454f",
         "required_services": [],
         "runner_id": "typescript"
       },
@@ -78,7 +78,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-f2732ce28e1f8962/dep-scan-typescript",
+      "output_directory": "test-results/wc109/runs/wc109-d7f1a692b89e3a8f/dep-scan-typescript",
       "owner": "web",
       "phase": "A_DESIGN",
       "product_image_builds": [],

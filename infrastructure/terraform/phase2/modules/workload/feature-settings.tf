@@ -34,8 +34,9 @@ variable "platform_access" {
   description = "Founder identities for this environment. The Business Platform re-asserts them at every start, so they survive redeploys, database resets and fresh databases."
   type = object({
     founders = optional(list(object({
-      email   = string
-      subject = optional(string)
+      email           = string
+      subject         = optional(string)
+      rebind_on_start = optional(bool, false)
     })), [])
   })
   default = {}
@@ -44,9 +45,10 @@ variable "platform_access" {
     condition = alltrue([
       for founder in var.platform_access.founders :
       can(regex("^[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}$", founder.email)) &&
-      (founder.subject == null ? true : can(regex("^[A-Za-z0-9._:@-]{8,128}$", founder.subject)))
+      (founder.subject == null ? true : can(regex("^[A-Za-z0-9._:@-]{8,128}$", founder.subject))) &&
+      !(founder.rebind_on_start && founder.subject != null)
     ])
-    error_message = "Every Founder needs a lower-case email address; an optional identity-provider subject must be 8 to 128 safe characters."
+    error_message = "Every Founder needs a lower-case email address; an optional identity-provider subject must be 8 to 128 safe characters, and rebind_on_start cannot be combined with a subject."
   }
 }
 
@@ -61,7 +63,8 @@ locals {
       merge([
         for index, founder in var.platform_access.founders : merge(
           { "PlatformAccess__Founders__${index}__Email" = founder.email },
-          founder.subject == null ? {} : { "PlatformAccess__Founders__${index}__Subject" = founder.subject }
+          founder.subject == null ? {} : { "PlatformAccess__Founders__${index}__Subject" = founder.subject },
+          founder.rebind_on_start ? { "PlatformAccess__Founders__${index}__RebindOnStart" = "true" } : {}
         )
       ]...)
     )

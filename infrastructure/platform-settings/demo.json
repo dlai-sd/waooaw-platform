@@ -9,7 +9,8 @@
   "platform_access": {
     "founders": [
       {
-        "email": "yogesh.khandge@dlaisd.com"
+        "email": "yogesh.khandge@dlaisd.com",
+        "rebind_on_start": true
       }
     ]
   }

@@ -115,7 +115,7 @@ locals {
     billing-engine                          = "/health"
     agent-runtime-adapter-digital-marketing = "/health/live"
   }
-  keycloak_realm = {
+  keycloak_realm = merge({
     realm                  = "waooaw"
     displayName            = "WAOOAW Platform"
     enabled                = true
@@ -432,12 +432,12 @@ locals {
           }
         }]
       },
-    ] : [])
+    ] : [], local.acceptance_provisioner_clients)
     roles = {
-      realm = [
+      realm = concat([
         { name = "customer" },
         { name = "founder" },
-      ]
+      ], local.acceptance_provisioner_realm_roles)
     }
     defaultRoles = ["customer"]
     users = concat(var.environment == "demo" ? [
@@ -473,8 +473,8 @@ locals {
           realm-management = ["manage-users"]
         }
       }
-    ] : [])
-  }
+    ] : [], local.acceptance_provisioner_users)
+  }, local.acceptance_provisioner_realm_settings)
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
   keycloak_migration_optional_secrets = merge(
     var.google_login_enabled ? {
@@ -513,6 +513,7 @@ locals {
         uri         = local.identity_lifecycle_writer_secret_uris["keycloak-lifecycle-writer-client-secret"]
       }
     } : {},
+    local.acceptance_provisioner_secret,
   )
   identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
     environment    = var.environment
@@ -2154,6 +2155,7 @@ resource "azurerm_container_app_job" "keycloak_migration" {
         ${var.google_login_enabled ? "replace_secret GOOGLE_CLIENT_ID \"$GOOGLE_CLIENT_ID\"\n        replace_secret GOOGLE_CLIENT_SECRET \"$GOOGLE_CLIENT_SECRET\"" : ""}
         ${var.facebook_login_enabled ? "replace_secret META_LOGIN_CLIENT_ID \"$META_LOGIN_CLIENT_ID\"\n        replace_secret META_LOGIN_CLIENT_SECRET \"$META_LOGIN_CLIENT_SECRET\"" : ""}
         ${var.google_login_enabled || var.facebook_login_enabled ? "replace_secret BP_IDENTITY_READER_CLIENT_SECRET \"$BP_IDENTITY_READER_CLIENT_SECRET\"\n        replace_secret BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET \"$BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET\"" : ""}
+        ${var.acceptance_provisioner_enabled ? "replace_secret ACCEPTANCE_PROVISIONER_CLIENT_SECRET \"$ACCEPTANCE_PROVISIONER_CLIENT_SECRET\"" : ""}
         if printf '%s' "$realm" | grep -Eq '\$\{[A-Z0-9_]+\}'; then
           echo "Keycloak realm contains unresolved secret placeholders" >&2
           exit 1
