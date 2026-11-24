@@ -9,11 +9,11 @@ azure:
   subscription_id: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
   resource_group: waooaw-demo-rg
   key_vault: kv-waooaw-demo-acc
-  # Set by the Founder after WC-159's Terraform is applied (ADR-054 item 9); the workflow refuses to run while null.
-  acceptance_client_id: null
-  # Customer id (GUID) of the Log Analytics workspace that holds the environment console logs; null until the Founder sets it.
+  # Set from the applied foundation output (read from id-waooaw-demo-acceptance on 2026-11-24, WC-167 R004); the workflow refuses to run while null.
+  acceptance_client_id: 7de8ce13-4b69-40e0-b0fe-8f56a4c5f923
+  # Customer id (GUID) of law-waooaw-demo-validation, which holds the environment console logs and which the acceptance identity may read (Monitoring Reader).
   # Without it the telemetry witness (W4) reports that nothing could be read.
-  telemetry_workspace_id: null
+  telemetry_workspace_id: 8604586b-f914-46ab-8403-398b43186c0a
 keycloak:
   realm: waooaw
   synthetic_group: synthetic

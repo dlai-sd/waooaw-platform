@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-167
 contract_path: work-contracts/WC-167-acceptance-demo-readiness.md
-contract_digest: 0cd262933c8cedef7436f333031ea996fbe3935ace132eec672871c5ea088018
+contract_digest: 4774b383838c4b3846e9b3fd11794f72587fccc7087d29dc2ace972c91e5f6e0
 implementation_scope: true
 result: PLANNED
 
@@ -25,7 +25,7 @@ requirements:
     requirement_id: WC167-R002
     source: WC-167 Canonical Requirement Index, R002
     observable_outcome: A signed-in person without a customer membership or with an expired session sees a distinct message on Connections, and a customer with an active membership loads the list.
-    test_path_or_plan: To be written in slice S2; tests in web/lib provider-connections client and server tests and the Business Platform provider connections tests; Demo read-back with a customer that completed a trial.
+    test_path_or_plan: web/components/connections/ConnectionsWorkspace.test.tsx (expired sign-in, no customer account, real permission refusal, retry) and web/app/api/provider-connections/[[...path]]/route.test.ts (code mapping for 401, IDENTITY_ACTION_DENIED and REGISTRATION_REQUIRED); tsc and eslint in the TypeScript runner; Demo read-back with a customer that completed a trial is still to do.
 
   - <<: *defaults
     requirement_id: WC167-R003
@@ -61,7 +61,7 @@ requirements:
     requirement_id: WC167-R008
     source: WC-167 Canonical Requirement Index, R008
     observable_outcome: On the Demo Business Platform the database command log category is at Warning or above while audit, security and application categories are unchanged, and ingestion lines per hour for the app fall measurably.
-    test_path_or_plan: Terraform workload contract test for the Demo-only Logging__LogLevel block, fmt and validate; Log Analytics lines per hour before and after the deployment.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_revision_cleanup.py::test_probe_log_suppression_is_demo_only_and_not_global (the database command category is Warning, Demo-only and not global); terraform fmt in Docker; Log Analytics lines per hour before and after the deployment is still to do.
 
   - <<: *defaults
     requirement_id: WC167-R009

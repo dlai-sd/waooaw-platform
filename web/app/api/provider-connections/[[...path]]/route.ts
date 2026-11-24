@@ -1,4 +1,4 @@
-// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R007, WC149-R008, WC149-R009
+// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R007, WC149-R008, WC149-R009; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R002
 // Constitutional basis: C-026, C-059, C-063, C-083
 
 import { type NextRequest, NextResponse } from 'next/server';
@@ -15,7 +15,7 @@ async function handle(request: NextRequest, { params }: RouteContext) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) {
     return NextResponse.json(
-      { code: 'CONNECTION_FORBIDDEN', title: 'Secure sign in is required.' },
+      { code: 'CONNECTION_SIGN_IN_REQUIRED', title: 'Secure sign in is required.' },
       { status: 401, headers: noStore }
     );
   }

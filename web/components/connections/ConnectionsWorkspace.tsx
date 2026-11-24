@@ -1,19 +1,26 @@
 'use client';
 
-// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R008, WC149-R009, WC149-R010
+// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R008, WC149-R009, WC149-R010; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R002
 // Constitutional basis: C-026, C-059, C-063
 
 import { Facebook, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PricingMessage, type PricingNotice } from '@/components/admin/pricing/usePricingCommand';
 import { connectionCall } from '@/lib/provider-connections-call';
-import { problemText, type ConnectionStart, type ProviderConnection } from '@/lib/provider-connections-client';
+import {
+  problemAction,
+  problemText,
+  type ConnectionStart,
+  type ProblemAction,
+  type ProviderConnection,
+} from '@/lib/provider-connections-client';
 import { ConnectionCard } from './ConnectionCard';
 import { isSafeAuthorizationUrl, navigateTo } from './navigate';
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'error'; text: string }
+  | { kind: 'error'; text: string; action: ProblemAction | null }
   | { kind: 'ready'; connections: ProviderConnection[] };
 
 type Props = { initialNotice?: PricingNotice | null };
@@ -35,6 +42,7 @@ export function ConnectionsWorkspace({ initialNotice = null }: Props) {
           : {
               kind: 'error',
               text: `Your connections could not be loaded. ${problemText(result.ok ? {} : result.problem)}`,
+              action: result.ok ? null : problemAction(result.problem),
             }
       );
     }
@@ -105,6 +113,11 @@ export function ConnectionsWorkspace({ initialNotice = null }: Props) {
             {load.text}
           </p>
           <div className="workbench-actions">
+            {load.action ? (
+              <Link className="primary-command" href={load.action.href}>
+                {load.action.label}
+              </Link>
+            ) : null}
             <button
               className="secondary-link"
               onClick={() => {

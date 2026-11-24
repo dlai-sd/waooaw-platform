@@ -62,6 +62,7 @@ describe('provider connections proxy route', () => {
 
     expect((await GET(get(''), context())).status).toBe(401);
     expect((await POST(post('meta/start', '{}'), context(['meta', 'start']))).status).toBe(401);
+    expect((await (await GET(get(''), context())).json()).code).toBe('CONNECTION_SIGN_IN_REQUIRED');
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -191,6 +192,25 @@ describe('provider connections proxy route', () => {
 
     expect(response.status).toBe(403);
     expect((await response.json()).code).toBe('CONNECTION_FORBIDDEN');
+  });
+
+  it('tells a person with no active customer account apart from one who is not permitted', async () => {
+    const { GET } = await import('./route');
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(upstream(403, { code: 'IDENTITY_ACTION_DENIED', title: 'internal text' }));
+    const denied = await GET(get(''), context());
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toMatchObject({ code: 'CONNECTION_ACCOUNT_REQUIRED' });
+
+    global.fetch = jest.fn().mockResolvedValue(upstream(409, { code: 'REGISTRATION_REQUIRED' }));
+    const registration = await GET(get(''), context());
+    expect(registration.status).toBe(409);
+    expect((await registration.json()).code).toBe('CONNECTION_ACCOUNT_REQUIRED');
+
+    global.fetch = jest.fn().mockResolvedValue(upstream(401, {}));
+    expect((await (await GET(get(''), context())).json()).code).toBe('CONNECTION_SIGN_IN_REQUIRED');
   });
 
   it('turns an unreachable owner into an unavailable problem', async () => {

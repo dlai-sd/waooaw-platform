@@ -1,6 +1,6 @@
 import 'server-only';
 
-// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R007, WC149-R008, WC149-R009, WC149-R010
+// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R007, WC149-R008, WC149-R009, WC149-R010; work-contracts/WC-167-acceptance-demo-readiness.md WC167-R002
 // Constitutional basis: C-026, C-059, C-063, C-083
 
 import { NextResponse, type NextRequest } from 'next/server';
@@ -63,14 +63,23 @@ const knownProblems: Record<string, string> = {
   CONNECTION_NOT_FOUND: 'The connection was not found.',
   CONNECTION_REVOKED: 'The connection was revoked.',
   CONNECTION_FORBIDDEN: 'Connections are not permitted for this account.',
+  CONNECTION_SIGN_IN_REQUIRED: 'A secure sign-in is required.',
+  CONNECTION_ACCOUNT_REQUIRED: 'A customer account is required for connections.',
   CONNECTION_INVALID: 'The request was not valid.',
   CONNECTION_RATE_LIMITED: 'Too many requests. Wait before trying again.',
   CONNECTION_UNAVAILABLE: 'Connections are temporarily unavailable.',
 };
 
+// The identity layer refuses a signed-in person who has no active customer membership with these codes; the
+// browser gets one distinct, fixable code instead of the generic "not permitted" (WC-167 R002).
+const upstreamAliases: Record<string, string> = {
+  IDENTITY_ACTION_DENIED: 'CONNECTION_ACCOUNT_REQUIRED',
+  REGISTRATION_REQUIRED: 'CONNECTION_ACCOUNT_REQUIRED',
+};
+
 const fallbackProblems: Record<number, string> = {
   400: 'CONNECTION_INVALID',
-  401: 'CONNECTION_FORBIDDEN',
+  401: 'CONNECTION_SIGN_IN_REQUIRED',
   403: 'CONNECTION_FORBIDDEN',
   404: 'CONNECTION_NOT_FOUND',
   409: 'CONNECTION_INVALID',
@@ -83,7 +92,9 @@ function relayedProblem(upstream: unknown, status: number, correlationId: string
   const upstreamCode = typeof source.code === 'string' ? source.code : '';
   const code = Object.hasOwn(knownProblems, upstreamCode)
     ? upstreamCode
-    : (fallbackProblems[status] ?? 'CONNECTION_UNAVAILABLE');
+    : Object.hasOwn(upstreamAliases, upstreamCode)
+      ? upstreamAliases[upstreamCode]
+      : (fallbackProblems[status] ?? 'CONNECTION_UNAVAILABLE');
   return problem(status, code, knownProblems[code], correlationId);
 }
 
