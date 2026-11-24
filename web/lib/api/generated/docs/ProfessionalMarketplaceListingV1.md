@@ -16,7 +16,6 @@
 | `limitations`        | Array&lt;string&gt;                                           |
 | `customerRights`     | Array&lt;string&gt;                                           |
 | `eligibility`        | [ProfessionalEligibility](ProfessionalEligibility.md)         |
-| `indicativePrice`    | [IndicativePriceDisclosure](IndicativePriceDisclosure.md)     |
 | `trial`              | [ProfessionalTrialDisclosure](ProfessionalTrialDisclosure.md) |
 | `evidencePosture`    | string                                                        |
 | `offerabilityState`  | string                                                        |
@@ -42,7 +41,6 @@ const example = {
   limitations: null,
   customerRights: null,
   eligibility: null,
-  indicativePrice: null,
   trial: null,
   evidencePosture: null,
   offerabilityState: null,

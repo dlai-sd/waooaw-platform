@@ -28,7 +28,6 @@ it.each([
     customerRights: ['Stop at any time'],
     trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
     evidencePosture: 'Evidence-backed',
-    indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Indicative' },
   });
 
   render(
@@ -42,4 +41,8 @@ it.each([
   expect(screen.getByTestId('continuation')).toHaveTextContent('"professionalType":"DIGITAL_MARKETING_LOCAL_SERVICE"');
   expect(screen.getByTestId('continuation')).toHaveTextContent('"professionalVersion":"1.0.0"');
   expect(screen.getByTestId('continuation')).toHaveTextContent(`"initialIntent":"${intent}"`);
+  // WC169-R021: an anonymous visitor sees no amount, and none is handed to the continuation.
+  expect(screen.getByText('Price shown after you sign in')).toBeInTheDocument();
+  expect(screen.queryByText(/₹|\d{2},\d{3}/)).not.toBeInTheDocument();
+  expect(screen.getByTestId('continuation')).not.toHaveTextContent('priceInrPaise');
 });

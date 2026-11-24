@@ -6,6 +6,9 @@ export type AcquisitionIntentCommand = {
   termsVersion: string;
   acceptance: 'ACCEPT_EMPLOYMENT_CONTRACT';
   couponCode?: string;
+  packageCode?: string;
+  quoteVersion?: string;
+  validateQuoteBeforeCharge?: boolean;
 };
 
 export async function persistAcquisitionIntent(

@@ -25,12 +25,6 @@ const professional: ProfessionalDisclosure = {
   customerRights: ['Stop at any time'],
   trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
   evidencePosture: 'Every claim links to retained evidence.',
-  indicativePrice: {
-    currency: 'INR',
-    amountInrPaise: 100000,
-    cadence: 'MONTH',
-    qualification: 'Final price follows configuration.',
-  },
 };
 
 describe('ProfessionalComparison', () => {
@@ -41,6 +35,8 @@ describe('ProfessionalComparison', () => {
     expect(screen.getByText(/no paid APIs and no external actions/i)).toBeVisible();
     expect(screen.getByText('No guaranteed outcome')).toBeVisible();
     expect(screen.getByText('Stop at any time')).toBeVisible();
+    expect(screen.getByText('Price shown after you sign in')).toBeVisible();
+    expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Inspect all 2 skills'));
     expect(screen.getByText('Requires contract authority')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Interview this professional' })).toHaveAttribute(

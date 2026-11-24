@@ -133,7 +133,7 @@ public sealed class AcquisitionControllerTests
     }
 
     [Fact]
-    public async Task RegistrationHandoffCompletesTheSameIdentityBoundIntent()
+    public async Task RegistrationHandoffPricesAndCompletesTheHireOnlyAfterTheWorkspaceExists()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
@@ -166,7 +166,7 @@ public sealed class AcquisitionControllerTests
         );
 
         Assert.Equal(
-            StatusCodes.Status201Created,
+            StatusCodes.Status409Conflict,
             Assert.IsType<ObjectResult>(persisted).StatusCode
         );
         Assert.Equal(
@@ -179,6 +179,7 @@ public sealed class AcquisitionControllerTests
         Assert.Equal("COMPLETED", intent.Status);
         Assert.Equal(membership.TenantId, intent.TenantId);
         Assert.Equal(membership.AccountId, intent.ParticipantId);
+        Assert.Equal(118000, intent.QuoteGrossInrPaise);
         Assert.Single(await db.EmploymentRelationships.ToListAsync());
     }
 
@@ -517,6 +518,436 @@ public sealed class AcquisitionControllerTests
         Assert.Empty(db.EmploymentRelationships);
     }
 
+    private static FakePackageCatalogGateway DefaultPackages() =>
+        new(
+            HireQuoteFixtures.Package("GROWTH", 354000),
+            HireQuoteFixtures.Package("STARTER", 118000)
+        );
+
+    private static CustomerWorkspaceMembership NewMembership() =>
+        new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+
+    private static async Task<AcquisitionIntent> OnlyIntentAsync(
+        InMemoryEmploymentRelationshipFactory factory
+    )
+    {
+        await using var db = factory.CreateDbContext();
+        return Assert.Single(await db.AcquisitionIntents.AsNoTracking().ToListAsync());
+    }
+
+    private static (
+        InMemoryEmploymentRelationshipFactory Factory,
+        EmploymentRelationshipService Relationships
+    ) NewServices()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        return (
+            factory,
+            new EmploymentRelationshipService(
+                factory,
+                new RecordingRelationshipConstitutionalGateway(),
+                NullLogger<EmploymentRelationshipService>.Instance
+            )
+        );
+    }
+
+    [Fact]
+    public async Task WC169_R013_AHireLocksTheLowestPricedPackageForSaleAndTheContractHashBindsIt()
+    {
+        var (factory, relationships) = NewServices();
+        var membership = NewMembership();
+        var controller = Controller(factory, Catalog(), relationships, membership);
+        var key = Guid.NewGuid();
+
+        var created = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(ValidRequest("HIRE"), key, CancellationToken.None)
+        );
+
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        var body = Assert.IsType<AcquisitionIntentResponse>(created.Value);
+        Assert.Equal("STARTER", body.Quote!.PackageCode);
+        Assert.Equal(118000, body.Quote.GrossAmountInrPaise);
+        Assert.Equal(18000, body.Quote.GstAmountInrPaise);
+        Assert.Equal("INR", body.Quote.Currency);
+        Assert.Equal("MONTHLY", body.Quote.Cadence);
+        var stored = await OnlyIntentAsync(factory);
+        Assert.Equal(membership.TenantId, stored.TenantId);
+        Assert.Equal(membership.AccountId, stored.ParticipantId);
+        Assert.Equal(body.Quote.QuoteVersion, stored.QuoteVersion);
+        Assert.Equal(118000, stored.QuoteGrossInrPaise);
+
+        // Same disclosure, different package price: a different contract hash.
+        var (otherFactory, otherRelationships) = NewServices();
+        var dearer = Controller(
+            otherFactory,
+            Catalog(),
+            otherRelationships,
+            membership,
+            packages: new FakePackageCatalogGateway(HireQuoteFixtures.Package("STARTER", 129800))
+        );
+        await dearer.CreateIntentAsync(ValidRequest("HIRE"), key, CancellationToken.None);
+        Assert.NotEqual(stored.ContractHash, (await OnlyIntentAsync(otherFactory)).ContractHash);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AnExplicitPackageCodeIsLockedAndAnUnknownOneIsRefused()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, NewMembership());
+
+        var refused = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE") with
+                {
+                    PackageCode = "FORGED",
+                },
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        var accepted = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE") with
+                {
+                    PackageCode = "GROWTH",
+                },
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, refused.StatusCode);
+        Assert.Equal(
+            354000,
+            Assert.IsType<AcquisitionIntentResponse>(accepted.Value).Quote!.GrossAmountInrPaise
+        );
+        Assert.Equal("GROWTH", (await OnlyIntentAsync(factory)).QuotePackageCode);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AFounderChosenPackageCodeWithMixedCaseDashAndDotIsLocked()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            NewMembership(),
+            packages: new FakePackageCatalogGateway(
+                HireQuoteFixtures.Package("Starter-Monthly.1", 118000)
+            )
+        );
+
+        var accepted = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE") with
+                {
+                    PackageCode = "Starter-Monthly.1",
+                },
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(
+            "Starter-Monthly.1",
+            Assert.IsType<AcquisitionIntentResponse>(accepted.Value).Quote!.PackageCode
+        );
+        Assert.Equal("Starter-Monthly.1", (await OnlyIntentAsync(factory)).QuotePackageCode);
+    }
+
+    [Fact]
+    public async Task WC169_R013_WithNoPackageForSaleThereIsNoAmountAndNoHire()
+    {
+        var (factory, relationships) = NewServices();
+        var membership = NewMembership();
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            packages: new FakePackageCatalogGateway()
+        );
+
+        var intent = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE"),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        var continuation = Assert.IsType<ObjectResult>(
+            await controller.ContinueAsync(
+                ValidRequest("HIRE"),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, intent.StatusCode);
+        Assert.Equal(StatusCodes.Status409Conflict, continuation.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AcquisitionIntents);
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AnOwnerOutageIsUnavailableWithNoAmountNoHireAndNoDescriptorFallback()
+    {
+        var (factory, relationships) = NewServices();
+        var membership = NewMembership();
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            packages: new FakePackageCatalogGateway(HireQuoteFixtures.Package("STARTER", 118000))
+            {
+                Failure = new PackageCatalogUnavailableException("billing owner is down"),
+            }
+        );
+
+        var intent = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE"),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        var continuation = Assert.IsType<ObjectResult>(
+            await controller.ContinueAsync(
+                ValidRequest("HIRE"),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        var preview = Assert.IsType<ObjectResult>(
+            await controller.PreviewHireQuoteAsync(
+                new HireQuoteRequest(HireQuoteFixtures.AgentType, HireQuoteFixtures.AgentVersion),
+                null,
+                CancellationToken.None
+            )
+        );
+
+        Assert.All(
+            new[] { intent, continuation, preview },
+            result => Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode)
+        );
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AcquisitionIntents);
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AHireWithoutACustomerWorkspaceIsNeverPriced()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, null);
+
+        var result = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE"),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, result.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AcquisitionIntents);
+    }
+
+    [Fact]
+    public async Task WC169_R013_APriceChangeBeforeChargingNeedsRenewedAcceptanceButAPaidHireKeepsItsLockedPrice()
+    {
+        var (factory, relationships) = NewServices();
+        var membership = NewMembership();
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var packages = DefaultPackages();
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            packages: packages
+        );
+        var key = Guid.NewGuid();
+        await controller.CreateIntentAsync(ValidRequest("HIRE"), key, CancellationToken.None);
+        var locked = await OnlyIntentAsync(factory);
+
+        // The Founder changes the price after acceptance.
+        packages.Packages.Clear();
+        packages.Packages.Add(HireQuoteFixtures.Package("STARTER", 129800));
+
+        var beforeCharging = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE") with
+                {
+                    ValidateQuoteBeforeCharge = true,
+                },
+                key,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(StatusCodes.Status409Conflict, beforeCharging.StatusCode);
+
+        // Confirming a payment that was already taken replays the locked quote and completes at that price.
+        var replay = Assert.IsType<OkObjectResult>(
+            await controller.CreateIntentAsync(ValidRequest("HIRE"), key, CancellationToken.None)
+        );
+        Assert.Equal(
+            118000,
+            Assert.IsType<AcquisitionIntentResponse>(replay.Value).Quote!.GrossAmountInrPaise
+        );
+        var completed = Assert.IsType<ObjectResult>(
+            await controller.ContinueAsync(ValidRequest("HIRE"), key, key, CancellationToken.None)
+        );
+        Assert.Equal(StatusCodes.Status201Created, completed.StatusCode);
+        var after = await OnlyIntentAsync(factory);
+        Assert.Equal(locked.QuoteVersion, after.QuoteVersion);
+        Assert.Equal(118000, after.QuoteGrossInrPaise);
+        Assert.Equal("COMPLETED", after.Status);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AnUnchangedQuotePassesTheBeforeChargingCheck()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, NewMembership());
+        var key = Guid.NewGuid();
+        var request = ValidRequest("HIRE") with { ValidateQuoteBeforeCharge = true };
+        await controller.CreateIntentAsync(request, key, CancellationToken.None);
+
+        var replay = await controller.CreateIntentAsync(request, key, CancellationToken.None);
+
+        Assert.True(
+            Assert
+                .IsType<AcquisitionIntentResponse>(Assert.IsType<OkObjectResult>(replay).Value)
+                .Replayed
+        );
+    }
+
+    [Fact]
+    public async Task WC169_R013_AQuoteVersionTheCustomerDidNotSeeIsRefused()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, NewMembership());
+
+        var result = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("HIRE") with
+                {
+                    QuoteVersion = new string('0', 64),
+                },
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, result.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AcquisitionIntents);
+    }
+
+    [Fact]
+    public async Task WC169_R013_AHireIntentWithoutALockedQuoteCannotComplete()
+    {
+        var (factory, relationships) = NewServices();
+        var membership = NewMembership();
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var key = Guid.NewGuid();
+        var request = ValidRequest("HIRE");
+        var controller = Controller(factory, Catalog(), relationships, membership);
+        await controller.CreateIntentAsync(request, key, CancellationToken.None);
+        await using (var db = factory.CreateDbContext())
+        {
+            // A row from before quotes existed: same identity, no locked price.
+            var original = await db.AcquisitionIntents.SingleAsync();
+            db.AcquisitionIntents.Remove(original);
+            db.AcquisitionIntents.Add(
+                new AcquisitionIntent
+                {
+                    AcquisitionIntentId = original.AcquisitionIntentId,
+                    ActorIdentityHash = original.ActorIdentityHash,
+                    IdempotencyKey = original.IdempotencyKey,
+                    TenantId = original.TenantId,
+                    ParticipantId = original.ParticipantId,
+                    ProfessionalType = original.ProfessionalType,
+                    ProfessionalVersion = original.ProfessionalVersion,
+                    Mode = original.Mode,
+                    DisclosureRevision = original.DisclosureRevision,
+                    ContractVersion = original.ContractVersion,
+                    ContractHash = original.ContractHash,
+                    MaterialRequestHash = original.MaterialRequestHash,
+                    ContractAcceptedAt = original.ContractAcceptedAt,
+                    ExpiresAt = original.ExpiresAt,
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+
+        var replay = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(request, key, CancellationToken.None)
+        );
+        var completion = Assert.IsType<ObjectResult>(
+            await controller.ContinueAsync(request, key, key, CancellationToken.None)
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, replay.StatusCode);
+        Assert.Equal(StatusCodes.Status409Conflict, completion.StatusCode);
+        await using var check = factory.CreateDbContext();
+        Assert.Empty(check.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC169_R013_APreviewQuoteIsServerResolvedAndStoresNothing()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, NewMembership());
+
+        var ok = Assert.IsType<OkObjectResult>(
+            await controller.PreviewHireQuoteAsync(
+                new HireQuoteRequest(HireQuoteFixtures.AgentType, HireQuoteFixtures.AgentVersion),
+                null,
+                CancellationToken.None
+            )
+        );
+        var stale = Assert.IsType<ObjectResult>(
+            await controller.PreviewHireQuoteAsync(
+                new HireQuoteRequest(HireQuoteFixtures.AgentType, "9.9.9"),
+                null,
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(118000, Assert.IsType<HireQuoteResponse>(ok.Value).GrossAmountInrPaise);
+        Assert.Equal(StatusCodes.Status409Conflict, stale.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AcquisitionIntents);
+    }
+
+    [Fact]
+    public async Task WC169_R013_ATrialCarriesNoPrice()
+    {
+        var (factory, relationships) = NewServices();
+        var controller = Controller(factory, Catalog(), relationships, null);
+
+        var created = Assert.IsType<ObjectResult>(
+            await controller.CreateIntentAsync(
+                ValidRequest("TRIAL"),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Null(Assert.IsType<AcquisitionIntentResponse>(created.Value).Quote);
+        Assert.Null((await OnlyIntentAsync(factory)).QuoteVersion);
+    }
+
     private static ContinueAcquisitionRequest ValidRequest(string intent) =>
         new(
             "DIGITAL_MARKETING_LOCAL_SERVICE",
@@ -554,7 +985,8 @@ public sealed class AcquisitionControllerTests
         IProfessionalCatalog catalog,
         EmploymentRelationshipService relationships,
         CustomerWorkspaceMembership? membership,
-        RelationshipTrialService? trials = null
+        RelationshipTrialService? trials = null,
+        FakePackageCatalogGateway? packages = null
     )
     {
         var controller = new AcquisitionController(
@@ -562,7 +994,8 @@ public sealed class AcquisitionControllerTests
             catalog,
             relationships,
             NullLogger<AcquisitionController>.Instance,
-            trials
+            trials,
+            new HireQuoteService(packages ?? DefaultPackages())
         )
         {
             ControllerContext = new ControllerContext

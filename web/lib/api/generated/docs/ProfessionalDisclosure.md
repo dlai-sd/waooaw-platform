@@ -17,7 +17,6 @@
 | `customerRights`     | Array&lt;string&gt;                                                        |
 | `trial`              | [ProfessionalTrialDisclosure](ProfessionalTrialDisclosure.md)              |
 | `evidencePosture`    | string                                                                     |
-| `indicativePrice`    | [IndicativePriceDisclosure](IndicativePriceDisclosure.md)                  |
 | `eligibility`        | [ProfessionalEligibility](ProfessionalEligibility.md)                      |
 
 ## Example
@@ -40,7 +39,6 @@ const example = {
   customerRights: null,
   trial: null,
   evidencePosture: null,
-  indicativePrice: null,
   eligibility: null,
 } satisfies ProfessionalDisclosure;
 

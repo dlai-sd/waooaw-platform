@@ -1001,6 +1001,7 @@ else
     builder.Services.AddSingleton<IPackageCatalogGateway, UnconfiguredPackageCatalogGateway>();
 builder.Services.AddSingleton<IPackageComponentLabelSource, HumanizedComponentLabelSource>();
 builder.Services.AddSingleton<PackageCatalogService>();
+builder.Services.AddSingleton<HireQuoteService>();
 var employmentDomainBaseUrl = builder.Configuration["AgentAdapters:EmploymentBaseUrl"];
 if (
     workloadIdentity is not null

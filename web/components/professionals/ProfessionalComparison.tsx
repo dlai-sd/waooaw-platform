@@ -83,15 +83,8 @@ export function ProfessionalComparison({ professionals }: { professionals: Profe
             </ul>
           </details>
           <footer>
-            <span>Indicative price</span>
-            <strong>
-              {new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: professional.indicativePrice.currency,
-              }).format(professional.indicativePrice.amountInrPaise / 100)}{' '}
-              / {professional.indicativePrice.cadence.toLowerCase()}
-            </strong>
-            <small>{professional.indicativePrice.qualification}</small>
+            <span>Price</span>
+            <strong>Price shown after you sign in</strong>
           </footer>
           <a
             className="primary-command"

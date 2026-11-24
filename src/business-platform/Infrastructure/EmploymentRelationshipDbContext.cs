@@ -2,6 +2,7 @@
 // Constitutional basis: C-005, C-007, C-023, C-026, C-059, C-063
 
 using Microsoft.EntityFrameworkCore;
+using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
@@ -416,6 +417,13 @@ public sealed class AcquisitionIntent
     public string ContractHash { get; init; } = string.Empty;
     public string MaterialRequestHash { get; init; } = string.Empty;
     public string? CouponCode { get; init; }
+    public Guid? QuotePackageId { get; init; }
+    public string? QuotePackageCode { get; init; }
+    public int? QuotePeriodDays { get; init; }
+    public long? QuoteGrossInrPaise { get; init; }
+    public long? QuoteGstInrPaise { get; init; }
+    public long? QuoteBaseInrPaise { get; init; }
+    public string? QuoteVersion { get; init; }
     public Guid? PlannedRelationshipId { get; set; }
     public Guid? PlannedAgentInstanceId { get; set; }
     public string Status { get; set; } = "PENDING_REGISTRATION";
@@ -425,6 +433,18 @@ public sealed class AcquisitionIntent
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? CompletedAt { get; set; }
+
+    /// <summary>The immutable price locked when the customer accepted this Hire; null for Trial and for rows created before quotes existed.</summary>
+    public HireQuote? ToQuote() =>
+        QuotePackageId is { } packageId
+        && QuotePackageCode is { } packageCode
+        && QuotePeriodDays is { } periodDays
+        && QuoteGrossInrPaise is { } gross
+        && QuoteGstInrPaise is { } gst
+        && QuoteBaseInrPaise is { } basePrice
+        && QuoteVersion is { } version
+            ? new HireQuote(packageId, packageCode, periodDays, gross, gst, basePrice, version)
+            : null;
 }
 
 public sealed class ActivationIntent
@@ -1810,6 +1830,15 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .Property(value => value.MaterialRequestHash)
                 .HasColumnName("material_request_hash");
             entity.Property(value => value.CouponCode).HasColumnName("coupon_code");
+            entity.Property(value => value.QuotePackageId).HasColumnName("quote_package_id");
+            entity.Property(value => value.QuotePackageCode).HasColumnName("quote_package_code");
+            entity.Property(value => value.QuotePeriodDays).HasColumnName("quote_period_days");
+            entity
+                .Property(value => value.QuoteGrossInrPaise)
+                .HasColumnName("quote_gross_inr_paise");
+            entity.Property(value => value.QuoteGstInrPaise).HasColumnName("quote_gst_inr_paise");
+            entity.Property(value => value.QuoteBaseInrPaise).HasColumnName("quote_base_inr_paise");
+            entity.Property(value => value.QuoteVersion).HasColumnName("quote_version");
             entity
                 .Property(value => value.PlannedRelationshipId)
                 .HasColumnName("planned_relationship_id");

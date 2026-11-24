@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from "../runtime";
+import type { HireQuote } from "./HireQuote";
+import {
+  HireQuoteFromJSON,
+  HireQuoteFromJSONTyped,
+  HireQuoteToJSON,
+  HireQuoteToJSONTyped,
+} from "./HireQuote";
+
 /**
  *
  * @export
@@ -61,6 +69,12 @@ export interface AcquisitionIntent {
    * @memberof AcquisitionIntent
    */
   replayed: boolean;
+  /**
+   *
+   * @type {HireQuote}
+   * @memberof AcquisitionIntent
+   */
+  quote?: HireQuote;
 }
 
 /**
@@ -128,6 +142,7 @@ export function AcquisitionIntentFromJSONTyped(
     contractHash: json["contractHash"],
     expiresAt: new Date(json["expiresAt"]),
     replayed: json["replayed"],
+    quote: json["quote"] == null ? undefined : HireQuoteFromJSON(json["quote"]),
   };
 }
 
@@ -151,5 +166,6 @@ export function AcquisitionIntentToJSONTyped(
     contractHash: value["contractHash"],
     expiresAt: value["expiresAt"].toISOString(),
     replayed: value["replayed"],
+    quote: HireQuoteToJSON(value["quote"]),
   };
 }

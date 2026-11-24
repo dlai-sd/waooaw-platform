@@ -16,6 +16,9 @@ export function DisclosureContinuation({
   professionalVersion,
   termsVersion,
   priceInrPaise,
+  packageCode,
+  quoteVersion,
+  hireUnavailable = false,
   trialAvailable,
   trialDurationDays,
 }: {
@@ -25,6 +28,9 @@ export function DisclosureContinuation({
   professionalVersion: string;
   termsVersion: string;
   priceInrPaise?: number;
+  packageCode?: string;
+  quoteVersion?: string;
+  hireUnavailable?: boolean;
   trialAvailable: boolean;
   trialDurationDays?: number;
 }) {
@@ -51,6 +57,7 @@ export function DisclosureContinuation({
 
   function continueWith(intent: AcquisitionIntent) {
     if (!accepted) return;
+    if (intent === 'hire' && hireUnavailable) return;
     setContinuation({
       professionalType,
       professionalVersion,
@@ -60,6 +67,8 @@ export function DisclosureContinuation({
       idempotencyKey: crypto.randomUUID(),
       contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT',
       ...(intent === 'hire' && appliedCoupon ? { couponCode: appliedCoupon } : {}),
+      ...(intent === 'hire' && packageCode ? { packageCode } : {}),
+      ...(intent === 'hire' && quoteVersion ? { quoteVersion } : {}),
     });
   }
 
@@ -72,7 +81,12 @@ export function DisclosureContinuation({
       const response = await fetch('/api/acquisition/hire-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ professionalType, professionalVersion, couponCode: normalized }),
+        body: JSON.stringify({
+          professionalType,
+          professionalVersion,
+          couponCode: normalized,
+          ...(packageCode ? { packageCode } : {}),
+        }),
       });
       const result = (await response.json().catch(() => ({}))) as {
         coupon_code?: string;
@@ -123,11 +137,15 @@ export function DisclosureContinuation({
           ) : null}
           <button
             className={trialAvailable ? 'secondary-command' : 'primary-command'}
+            disabled={hireUnavailable}
             onClick={() => setSelectedIntent('hire')}
             type="button"
           >
             Review Hire
           </button>
+          {hireUnavailable ? (
+            <p aria-live="polite">Hire pricing is not available right now, so nothing can be hired or charged.</p>
+          ) : null}
           <Link className="text-command" href="/marketplace">
             Not now
           </Link>
@@ -223,12 +241,19 @@ export function DisclosureContinuation({
           </button>
         ) : null}
         {selectedIntent === 'hire' ? (
-          <button className="primary-command" disabled={!accepted} onClick={() => continueWith('hire')} type="button">
-            {zeroPayableHire
-              ? 'Confirm Hire - no payment required'
-              : priceInrPaise !== undefined
-                ? `Continue to Razorpay - ${hireAmount}`
-                : 'Continue to Hire'}
+          <button
+            className="primary-command"
+            disabled={!accepted || hireUnavailable}
+            onClick={() => continueWith('hire')}
+            type="button"
+          >
+            {hireUnavailable
+              ? 'Hire pricing is unavailable'
+              : zeroPayableHire
+                ? 'Confirm Hire - no payment required'
+                : priceInrPaise !== undefined
+                  ? `Continue to Razorpay - ${hireAmount}`
+                  : 'Continue to Hire'}
           </button>
         ) : null}
         <Link className="text-command" href="/marketplace">

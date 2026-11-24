@@ -206,4 +206,96 @@ describe('DisclosureContinuation', () => {
     expect(await screen.findByText(message)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹2,499.00' })).toBeDisabled();
   });
+
+  it('carries the server-resolved package and quote version, and nothing it could price with, into a Hire', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        initialIntent="hire"
+        packageCode="STARTER"
+        priceInrPaise={354000}
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        quoteVersion={'e'.repeat(64)}
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Razorpay - ₹3,540.00' }));
+
+    const continuation = JSON.parse(screen.getByTestId('continuation').textContent ?? '{}');
+    expect(continuation).toMatchObject({ intent: 'hire', packageCode: 'STARTER', quoteVersion: 'e'.repeat(64) });
+    expect(Object.keys(continuation)).not.toEqual(expect.arrayContaining(['priceInrPaise']));
+  });
+
+  it('previews a coupon against the same package it will charge', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ coupon_code: 'GOODWILL', payable_inr_paise: 300000 }),
+    });
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        initialIntent="hire"
+        packageCode="STARTER"
+        priceInrPaise={354000}
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        quoteVersion={'e'.repeat(64)}
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Coupon code (optional)'), { target: { value: 'goodwill' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹3,000.00' })).toBeInTheDocument()
+    );
+    expect(JSON.parse(String(jest.mocked(global.fetch).mock.calls[0][1]?.body))).toEqual({
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      professionalVersion: '1.0.0',
+      couponCode: 'GOODWILL',
+      packageCode: 'STARTER',
+    });
+  });
+
+  it('offers no way to hire or charge when the Hire price is unavailable, and keeps the Trial', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        hireUnavailable
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        trialAvailable
+        trialDurationDays={14}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Review Hire' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
+    expect(screen.getByText(/Hire pricing is not available right now/)).toBeVisible();
+  });
+
+  it('never continues a Hire when its price is unavailable, even if reached directly', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        hireUnavailable
+        initialIntent="hire"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByRole('button', { name: 'Hire pricing is unavailable' })).toBeDisabled();
+    expect(screen.queryByTestId('continuation')).not.toBeInTheDocument();
+  });
 });

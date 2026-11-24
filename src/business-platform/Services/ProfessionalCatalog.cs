@@ -21,13 +21,6 @@ public sealed record ProfessionalTrialDisclosure(
     bool ExternalActionsAllowed
 );
 
-public sealed record IndicativePriceDisclosure(
-    string Currency,
-    long AmountInrPaise,
-    string Cadence,
-    string Qualification
-);
-
 public sealed record ProfessionalDisclosure(
     string ProfessionalType,
     string ProjectionVersion,
@@ -40,7 +33,6 @@ public sealed record ProfessionalDisclosure(
     IReadOnlyList<string> CustomerRights,
     ProfessionalTrialDisclosure Trial,
     string EvidencePosture,
-    IndicativePriceDisclosure IndicativePrice,
     ProfessionalEligibility Eligibility
 )
 {
@@ -146,7 +138,6 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
                 manifest.CustomerRights,
                 manifest.Trial,
                 manifest.EvidencePosture,
-                manifest.IndicativePrice,
                 new ProfessionalEligibility(true, manifest.EligibilityExplanation)
             );
     }
@@ -207,7 +198,6 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
         IReadOnlyList<string> AuthorityNeeds,
         IReadOnlyList<string> CustomerRights,
         ProfessionalTrialDisclosure Trial,
-        string EvidencePosture,
-        IndicativePriceDisclosure IndicativePrice
+        string EvidencePosture
     );
 }

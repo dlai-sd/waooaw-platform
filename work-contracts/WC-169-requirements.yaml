@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-169
 contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
-contract_digest: 28f5ea86487fa5e44ff63fb0493da66262de3736e9386bc86e900f9cc54a6d96
+contract_digest: ce48f1695fbefd93c3d6de38f45902e7567f1da760ea40536421fc64de4b6686
 implementation_scope: true
 result: PLANNED
 

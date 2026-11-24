@@ -118,7 +118,6 @@ public sealed class ProfessionalsController : ControllerBase
                 limitations = disclosure.Limitations,
                 customerRights = disclosure.CustomerRights,
                 eligibility = disclosure.Eligibility,
-                indicativePrice = disclosure.IndicativePrice,
                 trial = disclosure.Trial,
                 evidencePosture = disclosure.EvidencePosture,
                 offerabilityState = disclosure.Eligibility.Eligible

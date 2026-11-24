@@ -1,12 +1,50 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import MarketplacePage from '@/app/(application)/marketplace/page';
+import { resolveHireQuote } from '@/lib/api/hire-quote';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 jest.mock('@/lib/api/professionals', () => ({ browseMarketplaceProfessionals: jest.fn() }));
+jest.mock('@/lib/api/hire-quote', () => ({ resolveHireQuote: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
+
+const quote = {
+  packageCode: 'STARTER',
+  currency: 'INR',
+  grossAmountInrPaise: 354000,
+  gstAmountInrPaise: 54000,
+  basePriceInrPaise: 300000,
+  cadence: 'MONTHLY',
+  billingPeriodDays: 30,
+  quoteVersion: 'e'.repeat(64),
+};
+const listing = {
+  schemaVersion: '1.0.0',
+  producedAt: new Date('2026-09-15T00:00:00Z'),
+  items: [
+    {
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      version: '1.0.0',
+      displayName: 'Digital Marketing Agent',
+      disclosurePath: '/marketplace/digital-marketing',
+      availableIntents: new Set(['TRIAL', 'HIRE']),
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      suitability: ['Build an evidence-backed marketing plan.'],
+      capabilitySignals: ['Customer Profiling', 'Market Research', 'Content Strategy'],
+      limitations: ['No guaranteed outcome'],
+      customerRights: ['Stop at any time'],
+      eligibility: { isEligible: true, explanation: 'Available for your business.' },
+      trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+      evidencePosture: 'Every claim links to retained evidence.',
+      offerabilityState: 'OFFERABLE',
+      trialTerms: '14-day governed trial',
+      nextAction: 'VIEW_DISCLOSURE',
+    },
+  ],
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -42,35 +80,12 @@ it('uses the authenticated visitor token only for the published Marketplace proj
 
 it('uses the canonical disclosure route and preserves each available intent', async () => {
   jest.mocked(getServerAccessToken).mockResolvedValue('visitor-access-token');
-  jest.mocked(browseMarketplaceProfessionals).mockResolvedValue({
-    schemaVersion: '1.0.0',
-    producedAt: new Date('2026-09-15T00:00:00Z'),
-    items: [
-      {
-        professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
-        version: '1.0.0',
-        displayName: 'Digital Marketing Agent',
-        disclosurePath: '/marketplace/digital-marketing',
-        availableIntents: new Set(['TRIAL', 'HIRE']),
-        disclosureRevision: '1.0.0',
-        termsVersion: '2026-07-18',
-        suitability: ['Build an evidence-backed marketing plan.'],
-        capabilitySignals: ['Customer Profiling', 'Market Research', 'Content Strategy'],
-        limitations: ['No guaranteed outcome'],
-        customerRights: ['Stop at any time'],
-        eligibility: { isEligible: true, explanation: 'Available for your business.' },
-        indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Indicative' },
-        trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
-        evidencePosture: 'Every claim links to retained evidence.',
-        offerabilityState: 'OFFERABLE',
-        trialTerms: '14-day governed trial',
-        nextAction: 'VIEW_DISCLOSURE',
-      },
-    ],
-  } as never);
+  jest.mocked(browseMarketplaceProfessionals).mockResolvedValue(listing as never);
+  jest.mocked(resolveHireQuote).mockResolvedValue({ kind: 'quote', quote });
 
   render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
 
+  expect(resolveHireQuote).toHaveBeenCalledWith('visitor-access-token', 'DIGITAL_MARKETING_LOCAL_SERVICE', '1.0.0');
   expect(screen.queryByRole('button', { name: 'Start 14-day trial' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Hire for ₹2,499.00' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
@@ -97,4 +112,36 @@ it('uses the canonical disclosure route and preserves each available intent', as
 
   expect(screen.getByRole('heading', { name: 'Hire checkout' })).toBeInTheDocument();
   expect(screen.getByRole('checkbox')).not.toBeChecked();
+});
+
+it('shows the amount from the for-sale package quote and never the descriptor price in the listing', async () => {
+  jest.mocked(getServerAccessToken).mockResolvedValue('visitor-access-token');
+  const staleDescriptor = {
+    indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Indicative' },
+  };
+  jest
+    .mocked(browseMarketplaceProfessionals)
+    .mockResolvedValue({ ...listing, items: [{ ...listing.items[0], ...staleDescriptor }] } as never);
+  jest.mocked(resolveHireQuote).mockResolvedValue({ kind: 'quote', quote });
+
+  render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.getByText('₹3,540.00')).toBeInTheDocument();
+  expect(screen.queryByText('₹2,499.00')).not.toBeInTheDocument();
+});
+
+it.each([
+  ['no package is for sale', { kind: 'not-offered' }],
+  ['the billing owner is unavailable', { kind: 'unavailable' }],
+])('shows no amount and no way to hire when %s', async (_name, outcome) => {
+  jest.mocked(getServerAccessToken).mockResolvedValue('visitor-access-token');
+  jest.mocked(browseMarketplaceProfessionals).mockResolvedValue(listing as never);
+  jest.mocked(resolveHireQuote).mockResolvedValue(outcome as never);
+
+  render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.getByText('Price is not available right now')).toBeInTheDocument();
+  expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Review Hire' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
 });

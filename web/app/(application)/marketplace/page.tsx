@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A01-A03
+// Implements: work-contracts/WC-169-paid-hire-and-connected-accounts.md WC169-R021
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { ArrowRight, Sparkles } from 'lucide-react';
@@ -7,6 +8,7 @@ import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionCon
 import { DisclosureContinuation } from '@/components/acquisition/DisclosureContinuation';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { type HireQuoteResult, resolveHireQuote } from '@/lib/api/hire-quote';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
 import { describePortalFailure } from '@/lib/api/portal-failure';
 import { portalMessages } from '@/lib/portal-i18n';
@@ -62,6 +64,14 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
 
   try {
     const page = await browseMarketplaceProfessionals(accessToken, filters);
+    // The amount is the server-resolved quote from the for-sale packages; the listing itself carries no price.
+    const quotes = await Promise.all(
+      page.items.map((professional) =>
+        professional.availableIntents.has('HIRE')
+          ? resolveHireQuote(accessToken, professional.professionalType, professional.version)
+          : Promise.resolve<HireQuoteResult>({ kind: 'not-offered' })
+      )
+    );
     return (
       <section className="portal-page" aria-labelledby="marketplace-title">
         <header className="portal-heading marketplace-heading">
@@ -80,81 +90,89 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
           />
         ) : (
           <ul className="marketplace-grid">
-            {page.items.map((professional) => (
-              <li className="marketplace-offer" key={`${professional.professionalType}:${professional.version}`}>
-                <header className="marketplace-offer-heading">
-                  <span className="offer-mark">
-                    <Sparkles aria-hidden="true" size={22} />
-                  </span>
-                  <div>
-                    <p className="eyebrow">Growth professional</p>
-                    <h2>{professional.displayName}</h2>
-                  </div>
-                  <span className="offer-available">
-                    <span aria-hidden="true" />
-                    Available now
-                  </span>
-                </header>
-                {professional.suitability?.[0] ? <p className="offer-promise">{professional.suitability[0]}</p> : null}
-                <ul className="offer-capabilities" aria-label="Included capabilities">
-                  {professional.capabilitySignals.map((capability) => (
-                    <li key={capability}>{capability}</li>
-                  ))}
-                </ul>
-                <div className="offer-commercial">
-                  {professional.indicativePrice ? (
-                    <p>
-                      <span>From</span>
-                      <strong>
-                        {new Intl.NumberFormat(locale, {
-                          style: 'currency',
-                          currency: professional.indicativePrice.currency,
-                        }).format(professional.indicativePrice.amountInrPaise / 100)}
-                      </strong>
-                      <span>/ {professional.indicativePrice.cadence.toLowerCase()}</span>
-                      <small>{professional.indicativePrice.qualification}</small>
-                    </p>
-                  ) : (
-                    <p>Price available during review</p>
-                  )}
-                  {professional.trialTerms ? (
-                    <p>
-                      <strong>{professional.trialTerms}</strong>
-                    </p>
+            {page.items.map((professional, index) => {
+              const quoted = quotes[index];
+              const quote = quoted.kind === 'quote' ? quoted.quote : undefined;
+              const hireOffered = professional.availableIntents.has('HIRE');
+              return (
+                <li className="marketplace-offer" key={`${professional.professionalType}:${professional.version}`}>
+                  <header className="marketplace-offer-heading">
+                    <span className="offer-mark">
+                      <Sparkles aria-hidden="true" size={22} />
+                    </span>
+                    <div>
+                      <p className="eyebrow">Growth professional</p>
+                      <h2>{professional.displayName}</h2>
+                    </div>
+                    <span className="offer-available">
+                      <span aria-hidden="true" />
+                      Available now
+                    </span>
+                  </header>
+                  {professional.suitability?.[0] ? (
+                    <p className="offer-promise">{professional.suitability[0]}</p>
                   ) : null}
-                </div>
-                <details className="offer-details">
-                  <summary>Scope, safeguards and your control</summary>
-                  <h3>Honest limits</h3>
-                  <ul>
-                    {professional.limitations.map((item) => (
-                      <li key={item}>{item}</li>
+                  <ul className="offer-capabilities" aria-label="Included capabilities">
+                    {professional.capabilitySignals.map((capability) => (
+                      <li key={capability}>{capability}</li>
                     ))}
                   </ul>
-                  <h3>Your control</h3>
-                  <ul>
-                    {professional.customerRights.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <Link href={professional.disclosurePath}>Open expanded disclosure</Link>
-                </details>
-                {professional.indicativePrice ? (
+                  <div className="offer-commercial">
+                    {quote ? (
+                      <p>
+                        <span>From</span>
+                        <strong>
+                          {new Intl.NumberFormat(locale, {
+                            style: 'currency',
+                            currency: quote.currency,
+                          }).format(quote.grossAmountInrPaise / 100)}
+                        </strong>
+                        <span>/ {quote.cadence.toLowerCase()}</span>
+                        <small>Monthly price including GST. Final terms are shown before you accept.</small>
+                      </p>
+                    ) : hireOffered ? (
+                      <p>Price is not available right now</p>
+                    ) : null}
+                    {professional.trialTerms ? (
+                      <p>
+                        <strong>{professional.trialTerms}</strong>
+                      </p>
+                    ) : null}
+                  </div>
+                  <details className="offer-details">
+                    <summary>Scope, safeguards and your control</summary>
+                    <h3>Honest limits</h3>
+                    <ul>
+                      {professional.limitations.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    <h3>Your control</h3>
+                    <ul>
+                      {professional.customerRights.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    <Link href={professional.disclosurePath}>Open expanded disclosure</Link>
+                  </details>
                   <DisclosureContinuation
                     disclosureRevision={professional.disclosureRevision}
-                    priceInrPaise={professional.indicativePrice.amountInrPaise}
+                    hireUnavailable={hireOffered && !quote}
+                    packageCode={quote?.packageCode}
+                    priceInrPaise={quote?.grossAmountInrPaise}
                     professionalType={professional.professionalType}
                     professionalVersion={professional.version}
+                    quoteVersion={quote?.quoteVersion}
                     termsVersion={professional.termsVersion}
                     trialAvailable={professional.availableIntents.has('TRIAL')}
                     trialDurationDays={professional.trial.durationDays}
                   />
-                ) : null}
-                <p className="offer-footnote">
-                  Review what is included before you decide. Nothing starts until you confirm.
-                </p>
-              </li>
-            ))}
+                  <p className="offer-footnote">
+                    Review what is included before you decide. Nothing starts until you confirm.
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         )}
         {page.nextCursor ? (

@@ -17,6 +17,8 @@ export type AcquisitionContinuationProps = {
   idempotencyKey: string;
   contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT';
   couponCode?: string;
+  packageCode?: string;
+  quoteVersion?: string;
 };
 
 interface CheckoutOutcome {
