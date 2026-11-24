@@ -3,7 +3,8 @@
     "workbench_enabled": true,
     "wallet_authority": "WALLET",
     "trial_identity_binding_mode": "RECORD",
-    "whatsapp_stop_acknowledgement_enabled": true
+    "whatsapp_stop_acknowledgement_enabled": true,
+    "acceptance_synthetic_tenants_enabled": true
   },
   "platform_access": {
     "founders": [

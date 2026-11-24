@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-167
 contract_path: work-contracts/WC-167-acceptance-demo-readiness.md
-contract_digest: 4774b383838c4b3846e9b3fd11794f72587fccc7087d29dc2ace972c91e5f6e0
+contract_digest: 0e5c63d669cefdf99c9a51872274c5ea65af9cdc57576c37876f3c83c3c150ea
 implementation_scope: true
 result: PLANNED
 
@@ -37,7 +37,7 @@ requirements:
     requirement_id: WC167-R004
     source: WC-167 Canonical Requirement Index, R004
     observable_outcome: The Demo profile carries acceptance_client_id, the Keycloak provisioning client exists with its secret in the vault, and acceptance_synthetic_tenants_enabled is true on Demo, each read back from Demo.
-    test_path_or_plan: To be written in slice S4; tests/pipeline/test_acceptance_infrastructure.py profile and realm checks; az containerapp read-back of AcceptanceSyntheticTenants__Enabled; Keycloak client read-back.
+    test_path_or_plan: tests/pipeline/test_goal006_deployment_inputs.py::test_only_demo_enables_synthetic_acceptance_tenants_in_the_committed_settings and tests/business-platform.Tests/AcceptanceSynthetic/SyntheticEffectsTests.cs WC159_R001_TheShippedSettingsAreOff... (the Demo flag, on for Demo only); tests/pipeline/test_acceptance_infrastructure.py (profile and realm checks); az containerapp read-back of AcceptanceSyntheticTenants__Enabled after the next Demo deployment is still to do; the Keycloak client and secret need the Founder's approval of the realm change.
 
   - <<: *defaults
     requirement_id: WC167-R005
@@ -49,7 +49,7 @@ requirements:
     requirement_id: WC167-R006
     source: WC-167 Canonical Requirement Index, R006
     observable_outcome: Every UI page or component changed under R001 to R005 is styled to the visual system and passes the component, responsive (360x800, 768x1024, 1440x900), light and dark, loading, error, empty and denied, axe (zero critical), lint, strict TypeScript, production build and 90 percent changed interactive coverage layers; the PR body shows screenshots of each changed page.
-    test_path_or_plan: Carried by slices S1 to S3; Jest and Testing Library tests next to each changed component in web/; Playwright specs under web/tests with the responsive and axe projects from architecture/reference/ux/hybrid-ui-acceptance-contract.md (UX-RESP-01, UX-SHELL-03, UX-VIS); pnpm lint, tsc and next build in the TypeScript runner; screenshots in the PR body.
+    test_path_or_plan: Done for /connections - web/tests/e2e/wc167-connections.spec.ts (11 checks on chromium at 360x800, 768x1024 and 1440x900, light and dark, no sideways scroll, zero serious or critical axe findings; 33 runs passing) plus the Jest tests next to ConnectionsWorkspace and the provider-connections route; pnpm tsc and eslint in the TypeScript runner. Other pages carry the same bar when they change; Firefox and WebKit runs are left to the CI browser matrix.
 
   - <<: *defaults
     requirement_id: WC167-R007

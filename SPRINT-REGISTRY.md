@@ -218,7 +218,7 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #635 |
+| WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |
 | WC-164 | Dedicated Acceptance Key Vault | IMPLEMENTATION_AUTHORIZED | #630 |
