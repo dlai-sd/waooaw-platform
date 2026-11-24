@@ -1,0 +1,21 @@
+{
+  "authority": "diagnostic-local-only",
+  "base_sha": "dc6bf8368af6c722db15d58c2841509597af8e8f",
+  "catalog_controlled": true,
+  "compose_project": "wc109-01e434b2dd1fda62",
+  "execution_namespace": "wc109-01e434b2dd1fda62",
+  "gate_id": "quality:scripts",
+  "head_sha": "5482471675f13ee785aadf3a578c396410ac318c",
+  "invocation_source": "catalog",
+  "mode": "qualification",
+  "output_directory": "test-results/wc109/runs/wc109-01e434b2dd1fda62/quality-scripts",
+  "product_image_build_events": 0,
+  "result": "PASS",
+  "return_code": 0,
+  "runner_build_events": 0,
+  "runner_digest": "sha256:66a67f357c491cd5aa04c2afe28389c082f4aaeee00111248e263168e42b3b4d",
+  "schema": "waooaw.wc109-tier2-execution/v1",
+  "service_identities": {},
+  "stderr_artifact": null,
+  "stdout_artifact": null
+}

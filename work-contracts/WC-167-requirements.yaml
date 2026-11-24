@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-167
 contract_path: work-contracts/WC-167-acceptance-demo-readiness.md
-contract_digest: 8cbbd1bb9fd0f24e3a0f0b85c9d3944db73559415ec15ba161464ff7b875ea5d
+contract_digest: 0cd262933c8cedef7436f333031ea996fbe3935ace132eec672871c5ea088018
 implementation_scope: true
 result: PLANNED
 
@@ -50,3 +50,21 @@ requirements:
     source: WC-167 Canonical Requirement Index, R006
     observable_outcome: Every UI page or component changed under R001 to R005 is styled to the visual system and passes the component, responsive (360x800, 768x1024, 1440x900), light and dark, loading, error, empty and denied, axe (zero critical), lint, strict TypeScript, production build and 90 percent changed interactive coverage layers; the PR body shows screenshots of each changed page.
     test_path_or_plan: Carried by slices S1 to S3; Jest and Testing Library tests next to each changed component in web/; Playwright specs under web/tests with the responsive and axe projects from architecture/reference/ux/hybrid-ui-acceptance-contract.md (UX-RESP-01, UX-SHELL-03, UX-VIS); pnpm lint, tsc and next build in the TypeScript runner; screenshots in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC167-R007
+    source: WC-167 Canonical Requirement Index, R007
+    observable_outcome: The Founder's decision on the production Meta app secret (AF-1) is recorded; if a reset is chosen, meta-login-client-secret and the Keycloak Facebook broker carry the new value and a Facebook sign-in on Demo is read back; the old acceptance-vault versions stay disabled.
+    test_path_or_plan: Founder decision recorded in the contract; if reset, the governed secret rotation path and a Demo Facebook sign-in read-back; az keyvault secret list-versions on the acceptance vault showing the old versions disabled.
+
+  - <<: *defaults
+    requirement_id: WC167-R008
+    source: WC-167 Canonical Requirement Index, R008
+    observable_outcome: On the Demo Business Platform the database command log category is at Warning or above while audit, security and application categories are unchanged, and ingestion lines per hour for the app fall measurably.
+    test_path_or_plan: Terraform workload contract test for the Demo-only Logging__LogLevel block, fmt and validate; Log Analytics lines per hour before and after the deployment.
+
+  - <<: *defaults
+    requirement_id: WC167-R009
+    source: WC-167 Canonical Requirement Index, R009
+    observable_outcome: The blocked outbound WhatsApp message behind DEAD_LETTER_AGE_BREACH has a recorded cause and is resolved through the governed operations path; the PAGE alert stops repeating and no row was deleted and no alert muted.
+    test_path_or_plan: Cause read from the WhatsApp operations path and recorded; Log Analytics showing the alert no longer repeats and BlockedOutboxCount back to zero; the governed resolution evidence.

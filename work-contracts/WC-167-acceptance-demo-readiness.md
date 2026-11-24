@@ -7,7 +7,7 @@
 | Work Contract | WC-167 |
 | Office | Platform IT Expert (INST-010) |
 | Initiative | IB-167 |
-| Founder assignment | Current conversation, 2026-11-24: report that a Founder sign-in on Demo shows no administrative menu and no discount table, and that the Connections page fails for Founder and customers; "let me know rca of these points. Create new work contract with high level objectives as 5 items we need to do and we will use this work contract to iron out defects and to build required stuff for this testing" |
+| Founder assignment | Current conversation, 2026-11-24: report that a Founder sign-in on Demo shows no administrative menu and no discount table, and that the Connections page fails for Founder and customers; "let me know rca of these points. Create new work contract with high level objectives as 5 items we need to do and we will use this work contract to iron out defects and to build required stuff for this testing"; then, on the same day, "add them" for the three additional findings AF-1 to AF-3 |
 | Status | CONTRACT_AUTHORED. The RCA below is for Founder review. Any `src/`, `web/` or Terraform change starts only when the Founder authorizes that slice in the conversation |
 | Baseline | `origin/main` at `dc6bf836` (PR #634 merged) |
 | Branch | `ib/167/acceptance-demo-readiness` |
@@ -65,11 +65,25 @@ Method: Log Analytics workspace `law-waooaw-demo-validation`, the Container App 
 | Cause | The Demo workload is not wired to the Billing Engine pricing owner under ADR-046, which is the open blocker CB-021. |
 | Effect | `/admin/pricing/coupons` returns 503 even for a Founder, so the coupon cannot be entered until this is configured. |
 
-### Other findings (recorded, not in scope unless the Founder adds them)
+### Additional findings (added to scope by the Founder on 2026-11-24: "add them")
 
-- **Old production Meta secret in the acceptance vault.** On 2026-11-24 the vault held the production app id and secret; both were replaced with the acceptance app's and the old versions were disabled. Whether to reset the production app secret is the Founder's decision.
-- **Log volume.** The Business Platform logged about 281 thousand lines in 6 hours, almost all Entity Framework command text at Information level.
-- **Stale alert.** `WhatsApp operations alert: Code=DEAD_LETTER_AGE_BREACH Severity=PAGE` repeats since 2026-11-22.
+- **AF-1 Old production Meta secret in the acceptance vault.** On 2026-11-24 the vault held the production Meta app id and secret (`2590813568086235`, "WAOOAW Customer Login", used by the Keycloak Facebook broker through `meta-login-client-secret` in the private vault). Both were replaced with the acceptance app's and the old versions were disabled (not purgeable: purge protection is on). The old values were readable by vault readers for about 80 minutes. Open decision: reset the production app secret or accept the residual risk. A reset also changes the live Facebook login, so it needs the new value in `meta-login-client-secret` and a Keycloak restart, through the governed path.
+- **AF-2 Log volume.** The Business Platform logged about 281 thousand lines in 6 hours, almost all `Microsoft.EntityFrameworkCore.Database.Command` text at Information level. The Demo workload already lowers two other categories for the same reason (`modules/workload/main.tf`, the Demo-only `Logging__LogLevel__...` block); the database command category was left at the default.
+- **AF-3 Standing PAGE alert.** `WhatsApp operations alert: Code=DEAD_LETTER_AGE_BREACH Severity=PAGE` repeats every 30 seconds with `TriggeredAt=2026-11-22 08:56:11`. By `ConversationOperationsService` it fires when the oldest blocked outbound message is older than 30 minutes; the heartbeat shows `BlockedOutboxCount=1`. It is a real unresolved blocked message, not noise, and it pollutes the evidence of any acceptance run while it stands.
+
+## Review Of PR #618 (WC-149, merged) Against This Contract
+
+Method: read the merged code and tests at `dc6bf836`; nothing was run and no page was viewed rendered. "Gap" means a difference from WC-167, not a claim that WC-149 failed its own contract.
+
+| # | Finding | Evidence | Requirement |
+|---|---|---|---|
+| RV-1 | **Connections is offered to everyone but works only for a customer with an active membership.** The menu shows Connections to every signed-in customer, yet `ProviderConnectionsController` is `[CustomerIdentityRoute(requiresMembership: true)]`. A person without a membership is refused and the page says "not permitted to manage this connection". The Connect button is drawn only when the list loads (`ConnectionsWorkspace.tsx`), so one refusal also removes the way forward. WC149-R008 says "a customer can connect" without stating the membership precondition, and no test separates "sign in again", "no membership" and "not permitted". | `web/components/connections/ConnectionsWorkspace.tsx`, `web/lib/provider-connections-server.ts` (`fallbackProblems`), `ProviderConnectionsController.cs` | R002 |
+| RV-2 | **The Meta flow is untested against the acceptance app type.** It builds the classic login dialog (`dialog/oauth?...&scope=pages_show_list,pages_manage_posts,pages_read_engagement`) on Graph `v21.0`, set in `modules/workload/provider-credentials.tf` (`ProviderConnections__Meta__GraphVersion`). The acceptance app uses the Pages use case (Facebook Login for Business), which may expect a `config_id`, and `v21.0` is old next to the `v27.0` the app defaults to. Whether Meta accepts the classic dialog for this app is unproven. | `MetaGraphClient.cs` (`AuthorizationUrl`, `DefaultGraphVersion`) | R005 |
+| RV-3 | **A Founder-only screen hides itself instead of denying.** `/admin/providers` redirects a non-Founder silently to `/home`; the UI acceptance contract expects `/403` without Founder navigation (UX-SHELL-03). The `meta` row, which holds the app id and secret as JSON `{"appId","appSecret"}`, is reachable only through that screen, so RCA-1 blocks Meta registration. | `web/app/(application)/admin/providers/page.tsx` | R001, R005, R006 |
+| RV-4 | **UI quality is partial.** Good: 10 component tests (loading, empty, error with retry, https-only navigation, revoke dialog with focus return, return codes). Gaps: the customer page borrows admin styling and components (`providers-admin` class, `PricingMessage` from admin pricing); I found no responsive, light and dark, or axe specs for `/connections`. | `ConnectionsWorkspace.test.tsx`, `connections/page.tsx`, `web/tests/e2e` | R006 |
+| RV-5 | **An assumption no longer holds.** WC-149 says test users and app roles work in development mode. Meta now refuses to create test users, so the tester is a dedicated real account with the Tester role, and the runbook and ADR-055 wording must change. | `WC-149-...md` line 49; session of 2026-11-24 | R005 |
+
+What conforms and should stay: tokens exist only in Key Vault, OAuth state is single-use, the redirect address must be https, revoke deletes the secret version, and the browser receives only fixed problem codes.
 
 ## Authority And Scope
 
@@ -81,6 +95,9 @@ Method: Log Analytics workspace `law-waooaw-demo-validation`, the Container App 
 4. Acceptance enablement (O4): set `acceptance_client_id` in the Demo profile, apply the Keycloak provisioning client, store its secret, and set `acceptance_synthetic_tenants_enabled` for Demo through the deployment.
 5. Sandbox completion and first calibration run (O5): register the Meta acceptance app on the provider screen, produce the saved tester session, seed the coupon, confirm 12 of 12 secrets, run the workflow once and triage the report.
 6. UI styling and testing for every page or component changed above (the Founder menu and `/access`, the Connections page and its messages, the pricing and coupons screens, the provider screen): apply the visual system and test layers listed in WC167-R006, and fix styling and layout defects found on those pages during Demo checks. A UI defect found on an in-scope page is fixed under this contract, not deferred.
+7. AF-1: record the Founder's decision on the production Meta app secret; if a reset is chosen, do it through the governed path and read the Facebook login back.
+8. AF-2: lower the database command log category for the Demo Business Platform through the Terraform workload, keeping the audit and security categories unchanged.
+9. AF-3: find why the blocked outbound message is blocked, resolve it through the governed WhatsApp operations path (not by deleting the row or muting the alert), and show the alert clearing.
 
 ### Out of scope and prohibited
 
@@ -110,6 +127,9 @@ Method: Log Analytics workspace `law-waooaw-demo-validation`, the Container App 
 | WC167-R004 | The Demo profile carries `acceptance_client_id`; the Keycloak provisioning client exists with its secret in the vault; `acceptance_synthetic_tenants_enabled` is true on Demo; each is read back from Demo |
 | WC167-R005 | The vault holds 12 of 12 secrets, the Meta app is registered in the product, one Demo calibration run produced a valid report, and every NOT-WITNESSED or FAIL item is triaged with an owner |
 | WC167-R006 | Every UI page or component changed under R001 to R005 follows `hybrid-visual-system-contract.md` and `constitutional-ux-vocabulary.md` and passes the layers of `hybrid-ui-acceptance-contract.md`: Jest and Testing Library component tests (states, keyboard, accessible names, error recovery); Playwright at 360x800, 768x1024 and 1440x900 with no horizontal overflow (UX-RESP-01); light and dark themes; loading, error, empty and denied states (a non-Founder sees `/403` without Founder navigation, UX-SHELL-03); axe with zero critical violations; Next.js lint, strict TypeScript and production build; at least 90 percent changed interactive line coverage |
+| WC167-R007 | The Founder's decision on the production Meta app secret (AF-1) is recorded; if a reset is chosen, `meta-login-client-secret` and the Keycloak Facebook broker carry the new value and a Facebook sign-in on Demo is read back; the old acceptance-vault versions stay disabled |
+| WC167-R008 | On the Demo Business Platform the database command log category is at Warning or above while audit, security and application categories are unchanged; Demo ingestion for the app falls measurably (lines per hour before and after) |
+| WC167-R009 | The blocked outbound WhatsApp message behind `DEAD_LETTER_AGE_BREACH` has a recorded cause and is resolved through the governed operations path; the PAGE alert stops repeating and no row was deleted and no alert muted to achieve it |
 
 ## Definition Of Done
 
@@ -120,9 +140,11 @@ Method: Log Analytics workspace `law-waooaw-demo-validation`, the Container App 
 ## Stop Conditions
 
 - A fix that would grant a role from a token claim or from manual database edits.
+- Any step that deletes the blocked outbound row, mutes the PAGE alert, or hides the symptom instead of resolving the cause (AF-3).
+- A reset of the production Meta app secret that is not paired with the new value in `meta-login-client-secret` and a Facebook sign-in read-back (AF-1).
 - A need to hold or print a secret value.
 - RCA-1 or RCA-2 shows a cause outside the Business Platform or Keycloak configuration that the Founder has not reviewed.
 
 ## Implementation Record
 
-Not started. The RCA above is the first deliverable. Slice order proposed: S1 (R001, after the `/access` result), S2 (R002), S3 (R003), S4 (R004), S5 (R005). R006 is not a slice of its own: it is the UI quality bar that S1, S2 and S3 each carry, so no slice that touches a page merges without its styling and tests.
+Not started. The RCA above is the first deliverable. Slice order proposed: S1 (R001, after the `/access` result), S2 (R002), S3 (R003), S4 (R004), S5 (R005), then S6 (R007 and R008, one small Terraform change), S7 (R009, after the cause is read from the WhatsApp operations path) and the AF-1 decision (R007) whenever the Founder decides. R006 is not a slice of its own: it is the UI quality bar that S1, S2 and S3 each carry, so no slice that touches a page merges without its styling and tests.
