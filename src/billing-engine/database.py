@@ -14,6 +14,9 @@ from config import settings
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
+# Test the connection on checkout and retire any connection older than five minutes (PgBouncer closes idle ones).
+POOL_LIVENESS: dict[str, Any] = {"pool_pre_ping": True, "pool_recycle": 300}
+
 
 _ASYNCPG_SSL_MODES = {
     "disable": False,
@@ -56,7 +59,9 @@ def asyncpg_engine_target(url: str) -> tuple[str, dict[str, Any]]:
 async def init_db() -> None:
     global _engine, _session_factory
     database_url, connect_args = asyncpg_engine_target(settings.DATABASE_URL)
-    _engine = create_async_engine(database_url, echo=False, connect_args=connect_args)
+    # PgBouncer and a stopped or restarted Demo close connections the pool still holds; without a liveness check
+    # the next request, including the Founder pricing screen, fails with "connection is closed" (WC-169 R022).
+    _engine = create_async_engine(database_url, echo=False, connect_args=connect_args, **POOL_LIVENESS)
     # Fail closed at startup: the readiness probe must not report a runtime whose database
     # route is misconfigured, so the route is exercised once before the application serves.
     async with _engine.connect() as connection:
