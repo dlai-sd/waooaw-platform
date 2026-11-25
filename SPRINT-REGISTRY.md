@@ -219,7 +219,7 @@ whole Work Contract is complete).
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
 | WC-170 | Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON | GATED SKELETON | #640 |
-| WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #640 |
+| WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #641, #640 |
 | WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #640 |
 | WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #640, #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
@@ -253,7 +253,7 @@ whole Work Contract is complete).
 | WC-137 | Platform Access And Environment Feature Settings | IMPLEMENTED - FOUNDER REVIEW PENDING | #605 |
 | WC-136 | Common Agent Workbench, Spend Accounts And Pricing Engine | IMPLEMENTED - FOUNDER REVIEW PENDING; EXACT-HEAD CI QUALIFICATION OPEN (WC136-R045) | #604, #603 |
 | WC-135 | Visitor Conversation, Lead Capture And Simulated Customers | IMPLEMENTED AND DEPLOYED TO DEMO - RETROSPECTIVE PR FOR FOUNDER REVIEW (see Implementation And Evidence Record) | #602, #601 |
-| WC-134 | Durable Batching, Offering Metering And Shared Spend Work Component | IMPLEMENTATION WORK COMPONENT; NOT A COMPLETION, PR, DEPLOYMENT OR LIVE-ACCEPTANCE CLAIM | #600, #599, #597, #595, #594, #593, #592, #591, #590, #589 |
+| WC-134 | Durable Batching, Offering Metering And Shared Spend Work Component | IMPLEMENTATION WORK COMPONENT; NOT A COMPLETION, PR, DEPLOYMENT OR LIVE-ACCEPTANCE CLAIM | #641, #600, #599, #597, #595, #594, #593, #592, #591, #590, #589 |
 | WC-133 | WhatsApp-First Registration And Web Registration Repair | IMPLEMENTATION AUTHORIZED; REPOSITORY REGRESSIONS VALIDATED; PR GATES AND LIVE ACCEPTANCE PENDING | #588, #587, #586, #585, #584, #583, #582, #581, #580, #579, #578, #577 |
 | WC-132 | Clean Sign-Out, Deploy-Window Safety And Azure Runtime Noise | LOCALLY QUALIFIED - session-authorized implementation complete; exact-head PR | #573, #572, #571 |
 | WC-131 | Install Pinned Azure CLI Extensions On The Deploy Runner | LOCALLY QUALIFIED - Founder review/merge pending. | #570 |
@@ -264,10 +264,10 @@ whole Work Contract is complete).
 | WC-126 | Safe Web Server Failure Logging | LOCALLY QUALIFIED - exact-head PR preparation and Founder review/merge pending. | #604, #565 |
 | WC-125 | AI Office Cost And Effectiveness Analysis | GOVERNANCE IMPLEMENTATION IN PROGRESS — NOT UNIVERSAL RUNTIME ENFORCEMENT | #548 |
 | WC-124 | Demo Deployment Remediation Plan | LOCAL QUALIFICATION COMPLETE - PR PREPARATION IN PROGRESS | #640, #612, #595, #570, #564, #563, #562, #561, #560, #559, #558, #557, #556, #555, #554, #553, #552, #551, #550, #549, #547, #546, #545, #544, #541, #536, #535, #534, #533, #531, #528, #526, #524, #523, #522 |
-| WC-123 | Authentication and Authorization Simplification Implementation | AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED | #564, #518, #516, #512, #511, #510, #509, #508, #507, #506 |
+| WC-123 | Authentication and Authorization Simplification Implementation | AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED | #641, #564, #518, #516, #512, #511, #510, #509, #508, #507, #506 |
 | WC-122 | Authentication and Authorization Simplification | AUTHOR CANDIDATE - IMPLEMENTATION BLOCKED | #506 |
 | WC-121 | Customer Engagement Workspace Implementation | AUTHOR REVIEW PASS - SPECIALIST-INTEGRATED CANDIDATE FOR FOUNDER REVIEW - IMPLEMENTATION BLOCKED | #516, #515, #514, #513, #512, #503, #502 |
-| WC-120 | Channel-Neutral Conversation And WhatsApp Implementation | CURRENT-SESSION IMPLEMENTATION AUTHORIZED - DEMO SCOPE INCLUDED; EXACT PROTECTED INPUTS AND CANDIDATE QUALIFICATION PEND | #577, #576, #575, #574, #501, #500 |
+| WC-120 | Channel-Neutral Conversation And WhatsApp Implementation | CURRENT-SESSION IMPLEMENTATION AUTHORIZED - DEMO SCOPE INCLUDED; EXACT PROTECTED INPUTS AND CANDIDATE QUALIFICATION PEND | #641, #577, #576, #575, #574, #501, #500 |
 | WC-119 | Authentication Session Account-Switch Recovery | IMPLEMENTATION AUTHORIZED - SOURCE, TESTS, AND UNMERGED PR | #497 |
 | WC-118 | DMA Packages C/D/E Paid Demand, Search, Lifecycle, And Advanced Capabilities | CANDIDATE FOR FOUNDER REVIEW - IMPLEMENTATION, DEPLOYMENT, PROVIDER CONNECTION, EXTERNAL ACTION, CUSTOMER TRAFFIC, AND A | #496, #495 |
 | WC-117 | DMA Packages B1/B2 Content Production, Social Publication, And Measurement | FOUNDER ACCEPTED - CURRENT-SESSION IMPLEMENTATION AUTHORIZED 2026-10-09 - DEPLOYMENT, PROVIDER CONNECTION, PUBLICATION, | #494, #493 |
