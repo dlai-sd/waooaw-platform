@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-25 · **Version:** 1.45.0 · **Work Contracts:** 162 Work Contracts recorded · 109 with merged-PR evidence · 53 without
+**Last Updated:** 2026-11-25 · **Version:** 1.45.0 · **Work Contracts:** 164 Work Contracts recorded · 109 with merged-PR evidence · 55 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,6 +218,8 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
+| WC-172 | Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED | **GROOMED | none recorded |
+| WC-171 | Agent Navigation, Alerts And Oversight (Roadmap Iteration 4, Milestone M4) - GROOMED | **GROOMED | none recorded |
 | WC-170 | Agent Execution Instructions | accepted when the Founder merges the WC-170 grooming pull request. | #643, #640 |
 | WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #642, #641, #640 |
 | WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #640 |

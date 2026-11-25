@@ -30,7 +30,7 @@ Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · S
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 CCT inventory:        82 institutionally declared · 82 centrally catalogued · no unified 72/72 run
-Sprint Registry:      SPRINT-REGISTRY.md — 162 Work Contracts recorded · 109 with merged-PR evidence · 53 without
+Sprint Registry:      SPRINT-REGISTRY.md — 164 Work Contracts recorded · 109 with merged-PR evidence · 55 without
 Agent references:     Current state=PROJECT_STATE.md · WC/PR coverage=SPRINT-REGISTRY.md · services=COMPONENT-QUICK-REF.md · decisions=ADR-INDEX.md
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
