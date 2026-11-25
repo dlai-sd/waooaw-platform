@@ -62,6 +62,7 @@ src/models/WorkbenchMonitorV1.ts
 src/models/WorkbenchNarrativeListV1.ts
 src/models/WorkbenchNarrativePartV1.ts
 src/models/WorkbenchNarrativeV1.ts
+src/models/WorkbenchNavigationEntryV1.ts
 src/models/WorkbenchPlanV1.ts
 src/models/WorkbenchProblemCodeV1.ts
 src/models/WorkbenchProblemDetailV1.ts

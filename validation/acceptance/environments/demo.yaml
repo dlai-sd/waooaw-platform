@@ -32,6 +32,7 @@ journeys:
   - slice-2-publish
   - slice-3-hire-and-selection
   - slice-4-agent-work
+  - slice-5-navigation-alerts-oversight
 synthetic:
   customers_per_run: 2
   max_open_relationships: 20

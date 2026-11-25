@@ -54,7 +54,7 @@ async def _run_daily_reconciliation(
 
 async def _trigger_meter_daily_scan(settings: Settings) -> None:
     """06:00 IST job: POST to {WBE_INTERNAL_BASE_URL}/meter/daily-scan."""
-    url = f"{settings.WBE_INTERNAL_BASE_URL}/meter/daily-scan"
+    url = f"{str(settings.WBE_INTERNAL_BASE_URL).rstrip('/')}/meter/daily-scan"
     logger.info("Triggering meter daily-scan at url=%s", url)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:

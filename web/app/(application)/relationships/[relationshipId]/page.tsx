@@ -26,12 +26,14 @@ export default async function RelationshipPage({
   searchParams,
 }: {
   params: Promise<{ relationshipId: string }>;
-  searchParams?: Promise<{ handoff?: string | string[] }>;
+  searchParams?: Promise<{ handoff?: string | string[]; surface?: string | string[] }>;
 }) {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/login');
   const { relationshipId } = await params;
-  const handoff = (await searchParams)?.handoff;
+  const query = await searchParams;
+  const handoff = query?.handoff;
+  const surface = query?.surface;
 
   const relationship = await getRelationship(relationshipId, accessToken);
   const operational = relationship.state === 'TRIAL_ACTIVE' || relationship.state === 'ACTIVE';
@@ -63,6 +65,7 @@ export default async function RelationshipPage({
         copy={workbenchMessages(locale)}
         handoffToken={typeof handoff === 'string' ? handoff : undefined}
         initial={workbench.snapshot}
+        initialSurface={typeof surface === 'string' ? surface : undefined}
         relationshipId={relationshipId}
       />
     );

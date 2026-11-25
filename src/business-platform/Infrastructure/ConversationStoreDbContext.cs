@@ -216,6 +216,8 @@ public sealed class ConversationStoreDbContext : DbContext
     public DbSet<PortalInteractionIdempotencyOutcome> PortalInteractionIdempotencyOutcomes =>
         Set<PortalInteractionIdempotencyOutcome>();
     public DbSet<ConversationOutboxRecord> ConversationOutbox => Set<ConversationOutboxRecord>();
+    public DbSet<ConversationOutboxResolution> OutboxResolutions =>
+        Set<ConversationOutboxResolution>();
     public DbSet<ProviderEventClaim> ProviderEventClaims => Set<ProviderEventClaim>();
     public DbSet<ConversationContextObservation> ContextObservations =>
         Set<ConversationContextObservation>();

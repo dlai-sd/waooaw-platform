@@ -94,20 +94,22 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('WC167-R001: the menu points at Access for a staff person, and Staff access is in everyone’s account menu', async ({
+test('WC171-R001 UX-SHELL-03: the Operations group and Staff access are for staff only; a customer sees only platform concerns', async ({
   context,
   page,
 }) => {
   await signIn(context, 'light', 'fixture-founder-token');
   await page.goto('/connections');
   await expect(page.locator('#customer-navigation a[href="/access"]')).toHaveCount(1);
+  await expect(page.getByRole('navigation', { name: 'Operations' })).toBeVisible();
   await expect(page.locator('a[href="/access"]')).not.toHaveCount(0);
 
   await signIn(context, 'light', customerToken);
   await page.goto('/connections');
   await expect(page.locator('#customer-navigation a[href="/access"]')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Staff access', includeHidden: true }).first()).toHaveAttribute(
-    'href',
-    '/access'
-  );
+  await expect(page.getByRole('navigation', { name: 'Operations' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Staff access', includeHidden: true })).toHaveCount(0);
+  for (const href of ['/professionals/mine', '/marketplace', '/alerts', '/settings']) {
+    await expect(page.locator(`#customer-navigation a[href="${href}"]`)).toHaveCount(1);
+  }
 });

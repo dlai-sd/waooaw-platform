@@ -1,27 +1,15 @@
 import { logServerFailure } from '@/lib/server-failure';
 // Implements: work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md §8.7 Alerts
+// Implements: work-contracts/WC-171-agent-navigation-alerts-and-oversight.md WC171-R007
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { AlertFeed } from '@/components/portal/AlertFeed';
+import { AlertInbox } from '@/components/portal/AlertInbox';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getIdentitySession } from '@/lib/api/identity';
-import type { CustomerPortalDestinationV1 } from '@/lib/api/generated/models/CustomerPortalDestinationV1';
-import { listCustomerAlerts } from '@/lib/api/notifications';
+import { listEmploymentRelationships } from '@/lib/api/relationships';
 import { portalMessages } from '@/lib/portal-i18n';
 import { getServerAccessToken } from '@/lib/server-auth';
-
-function alertHref(destination: CustomerPortalDestinationV1): string {
-  if (destination.relationshipId) return `/relationships/${encodeURIComponent(destination.relationshipId)}`;
-  const routes: Partial<Record<CustomerPortalDestinationV1['surface'], string>> = {
-    MARKETPLACE: '/marketplace',
-    ALERTS: '/alerts',
-    BILLING: '/profile',
-    PROFILE: '/profile',
-    SETTINGS: '/settings',
-  };
-  return routes[destination.surface] ?? '/home';
-}
 
 export default async function AlertsPage() {
   const { locale, messages } = await getRequestI18n();
@@ -52,19 +40,12 @@ export default async function AlertsPage() {
       );
     }
     if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
-    const page = await listCustomerAlerts(accessToken);
-    if (page.items.length === 0) {
-      return (
-        <StateView
-          actionHref="/home"
-          actionLabel={messages.returnHome}
-          back
-          kind="empty"
-          title="No alerts"
-          description="There are no current alerts for your authorized relationships."
-        />
-      );
-    }
+    // One inbox across agents; the agent filter lists only the agents this customer actually has.
+    const relationships = await listEmploymentRelationships(accessToken);
+    const agents = relationships.items.map((item) => ({
+      id: item.relationshipId,
+      name: item.professionalDisplayName ?? item.professionalType,
+    }));
     return (
       <section className="portal-page" aria-labelledby="alerts-title">
         <header className="portal-heading">
@@ -72,14 +53,7 @@ export default async function AlertsPage() {
           <h1 id="alerts-title">{portalMessages[locale].alerts}</h1>
           <p>Opening or acknowledging an alert does not approve or complete its underlying action.</p>
         </header>
-        <AlertFeed
-          initialAlerts={page.items.map((alert) => ({
-            ...alert,
-            occurredAt: alert.occurredAt.toISOString(),
-            href: alertHref(alert.destination),
-          }))}
-          locale={locale}
-        />
+        <AlertInbox agents={agents} locale={locale} showControls />
       </section>
     );
   } catch (error) {

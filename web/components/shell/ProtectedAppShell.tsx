@@ -7,6 +7,7 @@
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import {
+  Activity,
   Bell,
   Bot,
   ChevronLeft,
@@ -14,7 +15,7 @@ import {
   CircleUserRound,
   CreditCard,
   KeyRound,
-  Link2,
+  Menu,
   Settings,
   ShieldCheck,
   Store,
@@ -22,6 +23,7 @@ import {
   UserCheck,
   UserRound,
   Vault,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -35,6 +37,7 @@ import type { Messages } from '@/lib/i18n';
 import { portalMessages } from '@/lib/portal-i18n';
 import type { SupportedLocale } from '@/lib/preferences';
 import { recordAuthTransition } from '@/lib/auth-transition';
+import { founderMenu, operationsMenu, platformMenu, type MenuIcon, type MenuLink } from '@/lib/navigation-model';
 import { AppShell } from './AppShell';
 import { Brand } from './Brand';
 import { ExperienceControls } from './ExperienceControls';
@@ -47,6 +50,19 @@ export interface StopContext {
 
 type ProtectedVariant = 'customer' | 'founder';
 
+const menuIcons: Record<MenuIcon, LucideIcon> = {
+  agents: Bot,
+  marketplace: Store,
+  alerts: Bell,
+  settings: Settings,
+  operations: Activity,
+  vault: Vault,
+  pricing: Tag,
+  providers: KeyRound,
+  access: UserCheck,
+  founder: ShieldCheck,
+};
+
 export function ProtectedAppShell({
   children,
   identitySession,
@@ -54,6 +70,7 @@ export function ProtectedAppShell({
   messages,
   showAccess = false,
   showKeyVaultAdmin = false,
+  showOperations = false,
   showPricingAdmin = false,
   showProviderAdmin = false,
   stopContext,
@@ -66,6 +83,7 @@ export function ProtectedAppShell({
   messages: Messages;
   showAccess?: boolean;
   showKeyVaultAdmin?: boolean;
+  showOperations?: boolean;
   showPricingAdmin?: boolean;
   showProviderAdmin?: boolean;
   stopContext?: StopContext;
@@ -79,24 +97,20 @@ export function ProtectedAppShell({
   const accountToggle = useRef<HTMLElement>(null);
   const portal = portalMessages[locale];
   const registeredCustomer = identitySession !== undefined;
-  const customerLinks = [
-    { href: '/professionals/mine', label: portal.myAgents, icon: Bot },
-    { href: '/marketplace', label: portal.marketplace, icon: Store },
-    { href: '/alerts', label: portal.alerts, icon: Bell },
-    { href: '/connections', label: 'Connections', icon: Link2 },
-    { href: '/settings', label: messages.settings, icon: Settings },
-    ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
-    ...(showPricingAdmin ? [{ href: '/admin/pricing', label: 'Pricing', icon: Tag }] : []),
-    ...(showProviderAdmin ? [{ href: '/admin/providers', label: 'Providers', icon: KeyRound }] : []),
-    ...(showAccess ? [{ href: '/access', label: 'Access', icon: UserCheck }] : []),
-  ];
-  const links =
+  // One global menu for every customer and agent; staff tools sit in their own group and never in the customer list.
+  const links: MenuLink[] =
     variant === 'founder'
-      ? [
-          { href: '/founder', label: messages.founderHome, icon: ShieldCheck },
-          { href: '/founder/access', label: 'Access', icon: UserCheck },
-        ]
-      : customerLinks;
+      ? founderMenu(messages.founderHome)
+      : platformMenu({
+          myAgents: portal.myAgents,
+          marketplace: portal.marketplace,
+          alerts: portal.alerts,
+          settings: messages.settings,
+        });
+  const operationsLinks: MenuLink[] =
+    variant === 'founder'
+      ? []
+      : operationsMenu({ showAccess, showKeyVaultAdmin, showOperations, showPricingAdmin, showProviderAdmin });
   useEffect(() => {
     if (identitySession) recordAuthTransition('SESSION_RESOLVED');
   }, [identitySession]);
@@ -158,19 +172,37 @@ export function ProtectedAppShell({
             <CreditCard aria-hidden="true" size={18} />
             Billing
           </Link>
-          <Link href="/settings">
-            <Settings aria-hidden="true" size={18} />
-            Settings
-          </Link>
-          <Link href="/access">
-            <UserCheck aria-hidden="true" size={18} />
-            Staff access
-          </Link>
+          {showAccess ? (
+            <Link href="/access">
+              <UserCheck aria-hidden="true" size={18} />
+              Staff access
+            </Link>
+          ) : null}
           <AccountSwitchCommand label="Switch account" />
           <SignOutCommand label="Sign out" />
         </div>
       </details>
     ) : null;
+
+  function renderLinks(items: MenuLink[]) {
+    return items.map(({ id, href, label, icon }) => {
+      const Icon = menuIcons[icon];
+      return (
+        <Link
+          aria-current={pathname === href || pathname.startsWith(`${href}/`) ? 'page' : undefined}
+          key={id}
+          href={href}
+          onClick={() => {
+            if (window.matchMedia('(max-width: 899px)').matches) setNavigationExpanded(false);
+          }}
+          title={navigationExpanded ? undefined : label}
+        >
+          <Icon aria-hidden="true" size={20} />
+          <span>{label}</span>
+        </Link>
+      );
+    });
+  }
 
   const sideNavigation = (
     <aside className="side-navigation" data-expanded={navigationExpanded} id="customer-navigation">
@@ -193,21 +225,14 @@ export function ProtectedAppShell({
         </button>
       </div>
       <nav aria-label={variant === 'founder' ? messages.founderNavigation : messages.customerNavigation}>
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            aria-current={pathname === href || pathname.startsWith(`${href}/`) ? 'page' : undefined}
-            key={href}
-            href={href}
-            onClick={() => {
-              if (window.matchMedia('(max-width: 899px)').matches) setNavigationExpanded(false);
-            }}
-            title={navigationExpanded ? undefined : label}
-          >
-            <Icon aria-hidden="true" size={20} />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {renderLinks(links)}
       </nav>
+      {operationsLinks.length > 0 ? (
+        <nav aria-label="Operations" className="operations-navigation">
+          <p className="section-label">Operations</p>
+          {renderLinks(operationsLinks)}
+        </nav>
+      ) : null}
       <ExperienceControls messages={messages} />
     </aside>
   );
@@ -235,6 +260,16 @@ export function ProtectedAppShell({
             <Bell aria-hidden="true" size={21} />
             <span>{portal.alerts}</span>
           </Link>
+          <button
+            aria-controls="customer-navigation"
+            aria-expanded={navigationExpanded}
+            className="bottom-menu-command"
+            onClick={toggleNavigation}
+            type="button"
+          >
+            <Menu aria-hidden="true" size={21} />
+            <span>Menu</span>
+          </button>
         </>
       )}
     </nav>

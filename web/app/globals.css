@@ -1448,6 +1448,23 @@ select:focus-visible,
   align-content: start;
   gap: .35rem;
 }
+.side-navigation .operations-navigation {
+  margin-block-start: .75rem;
+  padding-block-start: .5rem;
+  border-block-start: 1px solid var(--line);
+}
+.side-navigation .operations-navigation .section-label {
+  margin: 0;
+  font-size: .68rem;
+  text-align: center;
+}
+.side-navigation:not([data-expanded="true"]) .operations-navigation .section-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
 .side-navigation a {
   min-height: 56px;
   display: flex;
@@ -3870,15 +3887,17 @@ select:focus-visible,
     z-index: 30;
     height: 72px;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     border-block-start: 1px solid var(--line);
     background: var(--surface);
   }
   .bottom-navigation-founder {
     grid-template-columns: minmax(0, 1fr);
   }
-  .bottom-navigation a {
+  .bottom-navigation a,
+  .bottom-navigation .bottom-menu-command {
     min-width: 0;
+    min-height: 44px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3888,6 +3907,13 @@ select:focus-visible,
     font-size: .7rem;
     text-align: center;
     text-decoration: none;
+  }
+  .bottom-navigation .bottom-menu-command {
+    border: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    font-size: .7rem;
   }
   .stop-control {
     inset-block-end: 80px;
@@ -5929,6 +5955,26 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
 .workbench-rail button {
   justify-content: flex-start;
   text-align: left;
+}
+
+.workbench-rail .workbench-rail-group {
+  margin: 0.5rem 0 0;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--line);
+  font-size: 0.75rem;
+}
+
+.declared-surface,
+.alert-inbox,
+.operations-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.alert-filter {
+  display: grid;
+  gap: 0.25rem;
+  max-width: 24rem;
 }
 
 .workbench-panel:focus-visible,

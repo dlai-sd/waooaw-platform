@@ -146,6 +146,7 @@ All URIs are relative to *https://api.waooaw.com*
 - [WorkbenchNarrativeListV1](docs/WorkbenchNarrativeListV1.md)
 - [WorkbenchNarrativePartV1](docs/WorkbenchNarrativePartV1.md)
 - [WorkbenchNarrativeV1](docs/WorkbenchNarrativeV1.md)
+- [WorkbenchNavigationEntryV1](docs/WorkbenchNavigationEntryV1.md)
 - [WorkbenchPlanV1](docs/WorkbenchPlanV1.md)
 - [WorkbenchProblemCodeV1](docs/WorkbenchProblemCodeV1.md)
 - [WorkbenchProblemDetailV1](docs/WorkbenchProblemDetailV1.md)

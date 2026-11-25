@@ -182,6 +182,8 @@ Class | Method | HTTP request | Description
  - [Model.EmploymentExperienceManifestV1OperateCadenceInner](docs/EmploymentExperienceManifestV1OperateCadenceInner.md)
  - [Model.EmploymentExperienceManifestV1Plan](docs/EmploymentExperienceManifestV1Plan.md)
  - [Model.EmploymentExperienceMeasureV1](docs/EmploymentExperienceMeasureV1.md)
+ - [Model.EmploymentExperienceNavigationEntryV1](docs/EmploymentExperienceNavigationEntryV1.md)
+ - [Model.EmploymentExperienceNavigationSurfaceV1](docs/EmploymentExperienceNavigationSurfaceV1.md)
  - [Model.EmploymentGovernanceReferencesV1](docs/EmploymentGovernanceReferencesV1.md)
  - [Model.EmploymentInductionManifestV1](docs/EmploymentInductionManifestV1.md)
  - [Model.EmploymentInterfaceManifestV1](docs/EmploymentInterfaceManifestV1.md)

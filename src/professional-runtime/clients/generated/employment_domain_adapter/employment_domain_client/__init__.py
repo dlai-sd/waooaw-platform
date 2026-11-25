@@ -51,6 +51,8 @@ __all__ = [
     "EmploymentExperienceManifestV1OperateCadenceInner",
     "EmploymentExperienceManifestV1Plan",
     "EmploymentExperienceMeasureV1",
+    "EmploymentExperienceNavigationEntryV1",
+    "EmploymentExperienceNavigationSurfaceV1",
     "EmploymentGovernanceReferencesV1",
     "EmploymentInductionManifestV1",
     "EmploymentInterfaceManifestV1",
@@ -103,6 +105,8 @@ from employment_domain_client.models.employment_experience_manifest_v1_operate_a
 from employment_domain_client.models.employment_experience_manifest_v1_operate_cadence_inner import EmploymentExperienceManifestV1OperateCadenceInner as EmploymentExperienceManifestV1OperateCadenceInner
 from employment_domain_client.models.employment_experience_manifest_v1_plan import EmploymentExperienceManifestV1Plan as EmploymentExperienceManifestV1Plan
 from employment_domain_client.models.employment_experience_measure_v1 import EmploymentExperienceMeasureV1 as EmploymentExperienceMeasureV1
+from employment_domain_client.models.employment_experience_navigation_entry_v1 import EmploymentExperienceNavigationEntryV1 as EmploymentExperienceNavigationEntryV1
+from employment_domain_client.models.employment_experience_navigation_surface_v1 import EmploymentExperienceNavigationSurfaceV1 as EmploymentExperienceNavigationSurfaceV1
 from employment_domain_client.models.employment_governance_references_v1 import EmploymentGovernanceReferencesV1 as EmploymentGovernanceReferencesV1
 from employment_domain_client.models.employment_induction_manifest_v1 import EmploymentInductionManifestV1 as EmploymentInductionManifestV1
 from employment_domain_client.models.employment_interface_manifest_v1 import EmploymentInterfaceManifestV1 as EmploymentInterfaceManifestV1

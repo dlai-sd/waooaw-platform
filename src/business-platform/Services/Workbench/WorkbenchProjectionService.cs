@@ -268,8 +268,37 @@ public sealed class WorkbenchProjectionService(
             limitations,
             next,
             AvailableCommands(data, context, plan, goal is not null),
-            blocks
+            blocks,
+            Navigation(data, plan)
         );
+    }
+
+    /// <summary>
+    /// The agent's declared context-menu entries for this caller's audience. The platform decides availability from
+    /// what it knows (an agreed plan); the agent only declares the entry.
+    /// </summary>
+    private static IReadOnlyList<WorkbenchNavigationEntry>? Navigation(
+        WorkbenchData data,
+        WorkbenchPlan? plan
+    )
+    {
+        var entries = data.Declaration?.Navigation;
+        if (entries is null || entries.Count == 0)
+            return null;
+        return entries
+            .Where(entry => entry.Audiences.Contains(data.Audience))
+            .Select(entry => new WorkbenchNavigationEntry(
+                entry.EntryId,
+                entry.LabelKey,
+                entry.Label,
+                entry.Icon,
+                entry.Order,
+                entry.Surface.Kind,
+                entry.Surface.Target,
+                entry.Surface.Blocks,
+                entry.AvailabilityGate != "AFTER_FIRST_APPROVAL" || plan is not null
+            ))
+            .ToArray();
     }
 
     public async Task<WorkbenchGoalList> ListGoalsAsync(

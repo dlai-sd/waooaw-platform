@@ -44,6 +44,8 @@ from relationship_workspace import configure_relationship_workspace, service_lin
 from relationship_workspace import router as relationship_workspace_router
 from employment_protocol import configure_employment_protocol
 from employment_air_gateway import EmploymentAirGateway
+from real_work_gateway import BusinessPlatformRealWorkGateway
+from spend_client import WbeSpendClient
 from activities.conversation_dispatch import ConversationDispatchActivity
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
 
@@ -154,6 +156,18 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             Path(workload_credentials),
         )
         application.state.employment_air_gateway = employment_air_gateway
+    application.state.real_work_gateway = None
+    application.state.real_work_spend_client = None
+    real_work_gateway: BusinessPlatformRealWorkGateway | None = None
+    spend_client: WbeSpendClient | None = None
+    bp_base_url = os.getenv("BP_REAL_WORK_BASE_URL")
+    if bp_base_url and workload_credentials:
+        real_work_gateway = BusinessPlatformRealWorkGateway.from_credentials(bp_base_url, Path(workload_credentials))
+        application.state.real_work_gateway = real_work_gateway
+    wbe_spend_base_url = os.getenv("WBE_SPEND_BASE_URL")
+    if wbe_spend_base_url and workload_credentials:
+        spend_client = WbeSpendClient.from_credentials(wbe_spend_base_url, Path(workload_credentials))
+        application.state.real_work_spend_client = spend_client
     jwks_url = os.getenv("KEYCLOAK_JWKS_URL")
     if jwks_url:
         issuer = os.getenv("KEYCLOAK_ISSUER") or jwks_url.removesuffix("/protocol/openid-connect/certs")
@@ -206,6 +220,12 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         await air_client.aclose()
     if employment_air_gateway is not None:
         await employment_air_gateway.close()
+    application.state.real_work_gateway = None
+    application.state.real_work_spend_client = None
+    if real_work_gateway is not None:
+        await real_work_gateway.close()
+    if spend_client is not None:
+        await spend_client.close()
 
 
 app = FastAPI(

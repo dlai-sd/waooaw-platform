@@ -1,0 +1,111 @@
+schema: waooaw.journey-test-plan/v1
+journey_id: slice-5-navigation-alerts-oversight
+version: 1
+status: ACCEPTED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - personal_data_leakage
+# Slice 5 (WC-171, Roadmap Iteration 4, M4) follows a customer through the global menu and an agent's context menu, and
+# an operator through alerts and oversight. S21 and S22 are fully exercised. S23 to S27 need things this environment may
+# not have (producers wired to the alert policy, the Founder's proactive-WhatsApp gate and rate, an operator sign-in,
+# the billing engine route grant); each reports BLOCKED-BY-FLAG or NOT-COVERED with the named reason and its owner,
+# never a pass. The calibration report lists an owner for every such step.
+steps:
+  - id: S21
+    title: The global menu is the same for every agent and carries no staff link
+    customer: A
+    stimulus: Sign in as a customer and read the global menu on desktop and on a phone.
+    claims:
+      - id: S21-C1
+        statement: The menu lists My Agents, Marketplace, Alerts and Settings, has the same entries on the phone with a Menu button, and carries no Operations, Pricing, Providers, Key Vault or Access link.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    proves:
+      requirements: [WC171-R001]
+  - id: S22
+    title: An agent opens its own context menu
+    customer: A
+    stimulus: Open a hired agent and read its context menu.
+    claims:
+      - id: S22-C1
+        statement: The context menu lists the fixed surfaces in one order, then the agent's declared entries in its own words, and a deep link to a surface opens that surface.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [employment_protocol_enabled]
+    proves:
+      requirements: [WC171-R002, WC171-R004]
+  - id: S23
+    title: An alert from each source is delivered once
+    customer: A
+    stimulus: Read the inbox after an agent-declared, a billing, a spend and an Emergency Stop alert.
+    claims:
+      - id: S23-C1
+        statement: Each material event appears once in the portal, a billing threshold and a spend discrepancy for the same period are one alert, and an Emergency Stop alert cannot be muted or snoozed.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [alert_producers_wired]
+    proves:
+      gaps: [PG-24]
+      requirements: [WC171-R005, WC171-R007]
+  - id: S24
+    title: The allowance runs out and alerts fall back to the portal
+    customer: A
+    stimulus: Raise the thirty-first proactive alert in a month.
+    claims:
+      - id: S24-C1
+        statement: The thirty-first proactive message is delivered in the portal only and says why, replies and Emergency Stop alerts stay uncounted, and nothing is sent to a non-sandbox recipient.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [proactive_whatsapp_gate_open, thread_rate_authorized, template_approved]
+    proves:
+      requirements: [WC171-R006]
+  - id: S25
+    title: A blocked message is resolved by the operator
+    customer: A
+    stimulus: As the Founder, open Operations, read the blocked message and resolve it.
+    claims:
+      - id: S25-C1
+        statement: The blocked message is listed without recipient or body, a resolution with a reason is recorded, the message row is kept, and the repeating page for it stops without the alert being muted.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    failure_path: true
+    preconditions: [operator_sign_in_present]
+    proves:
+      requirements: [WC171-R008, WC171-R009]
+  - id: S26
+    title: A spend discrepancy is read and resolved with evidence
+    customer: A
+    stimulus: As the Founder, read the spend chain of a relationship and resolve a discrepancy.
+    claims:
+      - id: S26-C1
+        statement: Every authorization, reservation, charge and reconciliation is readable, and a discrepancy is resolved only with evidence.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [spend_chain_route_grant_present]
+    proves:
+      requirements: [WC171-R010]
+  - id: S27
+    title: The operator sees what became of a page
+    customer: A
+    stimulus: As the Founder, open Operations and read the page outcomes, then acknowledge one.
+    claims:
+      - id: S27-C1
+        statement: Each page shows its outcome (emitted, suppressed or acknowledged), an acknowledgement stops the repeat paging for its window, and the signal stays open.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [operator_sign_in_present]
+    proves:
+      requirements: [WC171-R008]
+witness_exceptions: []

@@ -28,6 +28,7 @@ from employment_domain_client.models.employment_experience_manifest_v1_domain_bl
 from employment_domain_client.models.employment_experience_manifest_v1_monitor import EmploymentExperienceManifestV1Monitor
 from employment_domain_client.models.employment_experience_manifest_v1_operate import EmploymentExperienceManifestV1Operate
 from employment_domain_client.models.employment_experience_manifest_v1_plan import EmploymentExperienceManifestV1Plan
+from employment_domain_client.models.employment_experience_navigation_entry_v1 import EmploymentExperienceNavigationEntryV1
 from employment_domain_client.models.immutable_contract_reference_v1 import ImmutableContractReferenceV1
 from typing import Optional, Set
 from typing_extensions import Self
@@ -49,8 +50,9 @@ class EmploymentExperienceManifestV1(BaseModel):
     modalities: Annotated[List[StrictStr], Field(min_length=1)]
     channel_support: EmploymentExperienceManifestV1ChannelSupport = Field(alias="channelSupport")
     conformance_scenarios: Annotated[List[Annotated[str, Field(min_length=1, strict=True)]], Field(min_length=1)] = Field(alias="conformanceScenarios")
+    navigation: Optional[Annotated[List[EmploymentExperienceNavigationEntryV1], Field(max_length=12)]] = Field(default=None, description="WC-171. Optional entries the agent adds after the platform's fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. ")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["contractVersion", "vocabularyRef", "componentCatalogueRef", "goalTypes", "plan", "operate", "monitor", "domainBlocks", "components", "audiences", "modalities", "channelSupport", "conformanceScenarios"]
+    __properties: ClassVar[List[str]] = ["contractVersion", "vocabularyRef", "componentCatalogueRef", "goalTypes", "plan", "operate", "monitor", "domainBlocks", "components", "audiences", "modalities", "channelSupport", "conformanceScenarios", "navigation"]
 
     @field_validator('modalities')
     def modalities_validate_enum(cls, value):
@@ -140,6 +142,13 @@ class EmploymentExperienceManifestV1(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of channel_support
         if self.channel_support:
             _dict['channelSupport'] = self.channel_support.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in navigation (list)
+        _items = []
+        if self.navigation:
+            for _item_navigation in self.navigation:
+                if _item_navigation:
+                    _items.append(_item_navigation.to_dict())
+            _dict['navigation'] = _items
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -169,7 +178,8 @@ class EmploymentExperienceManifestV1(BaseModel):
             "audiences": obj.get("audiences"),
             "modalities": obj.get("modalities"),
             "channelSupport": EmploymentExperienceManifestV1ChannelSupport.from_dict(obj["channelSupport"]) if obj.get("channelSupport") is not None else None,
-            "conformanceScenarios": obj.get("conformanceScenarios")
+            "conformanceScenarios": obj.get("conformanceScenarios"),
+            "navigation": [EmploymentExperienceNavigationEntryV1.from_dict(_item) for _item in obj["navigation"]] if obj.get("navigation") is not None else None
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

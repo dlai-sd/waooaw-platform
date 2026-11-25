@@ -1,0 +1,221 @@
+openapi: 3.1.0
+info:
+  title: WAOOAW Alerts And Oversight (WC-171)
+  version: 1.0.0-candidate.1
+  description: |
+    The customer's alert controls (one inbox across agents, snooze, per-category mute) and the operations console
+    (overview, blocked outbound messages, page outcomes, work timeline, spend chain) of the Business Platform. The alert
+    policy is in architecture/reference/product/alert-policy-contract.md. A floor alert (Emergency Stop, authority and
+    safety) can be neither snoozed nor muted. The operations routes are staff routes: the Founder and the operations
+    authority read, only the Founder resolves, and a resolution needs a fresh multi-factor sign-in. No route returns a
+    recipient, a message body, a credential or another tenant's content beyond what an operator needs to act.
+servers:
+  - url: https://api.demo.waooaw.com
+paths:
+  /api/v1/alert-controls/alerts:
+    get:
+      operationId: listAlertInbox
+      summary: One inbox across agents, optionally for one agent
+      parameters:
+        - { name: relationshipId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: includeSnoozed, in: query, required: false, schema: { type: boolean, default: false } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200": { description: Alerts newest first with their class and whether they may be snoozed or muted, content: { application/json: { schema: { $ref: "#/components/schemas/AlertInboxV1" } } } }
+  /api/v1/alert-controls/alerts/{alertId}/snooze:
+    post:
+      operationId: snoozeAlert
+      summary: Hide a routine alert until a later time, within thirty days
+      parameters:
+        - { name: alertId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SnoozeRequestV1" } } }
+      responses:
+        "200": { description: The alert with its new version, content: { application/json: { schema: { $ref: "#/components/schemas/InboxAlertV1" } } } }
+        "409": { description: ALERT_CLASS_NOT_MUTABLE for a floor or action-required alert, or a version conflict }
+  /api/v1/alert-controls/categories:
+    get:
+      operationId: listAlertCategories
+      summary: The categories the customer has switched off, and the floor categories that cannot be
+      responses:
+        "200": { description: Mutes and floor categories, content: { application/json: { schema: { $ref: "#/components/schemas/CategoriesV1" } } } }
+  /api/v1/alert-controls/categories/{category}:
+    put:
+      operationId: setAlertCategoryMute
+      summary: Switch proactive messages for one category off or on
+      parameters:
+        - { name: category, in: path, required: true, schema: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,39}$" } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CategoryMuteRequestV1" } } }
+      responses:
+        "200": { description: The category state }
+        "409": { description: ALERT_CLASS_NOT_MUTABLE for Emergency Stop, authority and safety }
+  /api/v1/operations/overview:
+    get:
+      operationId: getOperationsOverview
+      summary: Open signals, blocked and unresolved message counts with ages, alert delivery outcomes and service health
+      responses:
+        "200": { description: The overview, content: { application/json: { schema: { $ref: "#/components/schemas/OperationsOverviewV1" } } } }
+        "403": { description: OPERATIONS_FORBIDDEN }
+  /api/v1/operations/blocked-messages:
+    get:
+      operationId: listBlockedMessages
+      summary: Blocked outbound messages without recipient or body
+      responses:
+        "200": { description: Blocked messages oldest first, content: { application/json: { schema: { $ref: "#/components/schemas/BlockedMessagesV1" } } } }
+        "503": { description: OPERATIONS_WHATSAPP_INACTIVE }
+  /api/v1/operations/blocked-messages/{outboxId}/resolve:
+    post:
+      operationId: resolveBlockedMessage
+      summary: Retry, close with a reason, or mark undeliverable. Idempotent, audited, never deletes.
+      parameters:
+        - { name: outboxId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveBlockedRequestV1" } } }
+      responses:
+        "201": { description: Resolution recorded }
+        "200": { description: The same resolution replayed }
+        "403": { description: OPERATIONS_FORBIDDEN or OPERATIONS_STEP_UP_REQUIRED }
+        "409": { description: OPERATIONS_MESSAGE_NOT_BLOCKED or OPERATIONS_IDEMPOTENCY_CONFLICT }
+  /api/v1/operations/pages:
+    get:
+      operationId: listOperatorPages
+      summary: What became of each page, newest first
+      responses:
+        "200": { description: Page outcomes (EMITTED, SUPPRESSED, ACKNOWLEDGED, DELIVERED, FAILED), content: { application/json: { schema: { type: object } } } }
+  /api/v1/operations/pages/{code}/acknowledge:
+    post:
+      operationId: acknowledgeOperatorPage
+      summary: Stop the repeat paging for a signal for thirty minutes; the signal itself stays open
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,159}$" } }
+      responses:
+        "202": { description: Acknowledged }
+        "403": { description: OPERATIONS_FORBIDDEN }
+  /api/v1/operations/relationships/{relationshipId}/work-timeline:
+    get:
+      operationId: getOperationsWorkTimeline
+      summary: The execution timeline of one relationship for an operator
+      parameters:
+        - { name: relationshipId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: tenantId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: The timeline, content: { application/json: { schema: { type: object } } } }
+  /api/v1/operations/relationships/{relationshipId}/spend-chain:
+    get:
+      operationId: getOperationsSpendChain
+      summary: Authorizations, reservations, charges and reconciliation of one relationship
+      parameters:
+        - { name: relationshipId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: tenantId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: The spend chain, content: { application/json: { schema: { type: object } } } }
+        "503": { description: SPEND_CHAIN_READ_UNAVAILABLE until the billing engine route grant exists }
+  /api/v1/operations/relationships/{relationshipId}/spend-discrepancies/{resultId}/resolve:
+    post:
+      operationId: resolveSpendDiscrepancy
+      summary: Resolve a spend discrepancy with evidence
+      parameters:
+        - { name: relationshipId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: resultId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveDiscrepancyRequestV1" } } }
+      responses:
+        "200": { description: Resolved }
+        "403": { description: OPERATIONS_FORBIDDEN or OPERATIONS_STEP_UP_REQUIRED }
+        "503": { description: SPEND_CHAIN_READ_UNAVAILABLE }
+components:
+  schemas:
+    AlertClassV1:
+      type: string
+      enum: [FLOOR, ACTION_REQUIRED, AT_RISK, INFORMATION, OPERATIONS]
+    InboxAlertV1:
+      type: object
+      additionalProperties: false
+      required: [alertId, version, alertClass, category, severity, source, occurredAt, readState, mutable, destination]
+      properties:
+        alertId: { type: string, format: uuid }
+        version: { type: string }
+        alertClass: { $ref: "#/components/schemas/AlertClassV1" }
+        category: { type: string }
+        severity: { type: string }
+        source: { type: string }
+        relationshipId: { type: [string, "null"], format: uuid }
+        occurredAt: { type: string, format: date-time }
+        dueMeaning: { type: [string, "null"] }
+        readState: { type: string, enum: [UNREAD, READ, ACKNOWLEDGED] }
+        snoozedUntil: { type: [string, "null"], format: date-time }
+        mutable: { type: boolean }
+        destination: { type: object }
+        availableAction: { type: [string, "null"] }
+    AlertInboxV1:
+      type: object
+      required: [schemaVersion, policyVersion, items]
+      properties:
+        schemaVersion: { type: string }
+        policyVersion: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/InboxAlertV1" } }
+    SnoozeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedAlertVersion, until]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        expectedAlertVersion: { type: string }
+        until: { type: string, format: date-time }
+    CategoriesV1:
+      type: object
+      required: [schemaVersion, floorCategories, items]
+      properties:
+        schemaVersion: { type: string }
+        floorCategories: { type: array, items: { type: string } }
+        items: { type: array, items: { type: object } }
+    CategoryMuteRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, muted]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        muted: { type: boolean }
+    OperationsOverviewV1:
+      type: object
+      required: [environment, whatsApp, openSignals, blockedMessages, unresolvedMessages, deliveries, services, observedAt]
+      properties:
+        environment: { type: string }
+        whatsApp: { type: string, enum: [ACTIVE, INACTIVE] }
+        whatsAppReason: { type: [string, "null"] }
+        openSignals: { type: integer }
+        blockedMessages: { type: integer }
+        unresolvedMessages: { type: integer }
+        oldestQueuedMinutes: { type: [number, "null"] }
+        oldestBlockedMinutes: { type: [number, "null"] }
+        deliveries: { type: array, items: { type: object } }
+        services: { type: array, items: { type: object } }
+        observedAt: { type: string, format: date-time }
+    BlockedMessagesV1:
+      type: object
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string }
+        items: { type: array, items: { type: object } }
+    ResolveBlockedRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, action, reason]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        action: { type: string, enum: [RETRY, CLOSE_WITH_REASON, MARK_UNDELIVERABLE] }
+        reason: { type: string, minLength: 5, maxLength: 240 }
+    ResolveDiscrepancyRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, tenantId, evidenceId]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        tenantId: { type: string, format: uuid }
+        evidenceId: { type: string, format: uuid }

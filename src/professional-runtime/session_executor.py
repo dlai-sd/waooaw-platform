@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
 from evaluation_workflow import EvaluationMessage, InterviewAnswerService, TypedAnswerEnvelope
+from execution_timeline import ExecutionTimeline, ProviderResult, TimelineEvent, WorkItem
 from intent_crystallizer import CrystallizerRequiredError, LockedArtifact, StubApprovalRefused
 from skill_resolver import SessionSkillContext
 
@@ -76,12 +78,14 @@ class SessionExecutor:
         interview_service: InterviewAnswerService | None = None,
         trial_mode: bool = False,
         trial_expires_at: datetime | None = None,
+        timeline: ExecutionTimeline | None = None,
     ) -> None:
         self._ctx = session_ctx
         self._dispatcher = dispatcher
         self._interview_service = interview_service
         self._trial_mode = trial_mode
         self._trial_expires_at = trial_expires_at
+        self._timeline = timeline
         # Temporal-persisted session state (WC041-04)
         self._locked_artifacts: dict[str, LockedArtifact] = {}
         self._crystallization_complete: dict[str, bool] = {}
@@ -172,6 +176,37 @@ class SessionExecutor:
 
         logger.warning("No dispatcher injected — tool call returned stub. tool=%s", tool_name)
         return {"status": "dispatched", "tool": tool_name}
+
+    async def execute_work_item(
+        self,
+        tool_name: str,
+        params: dict[str, Any],
+        item: WorkItem,
+        to_result: Callable[[Any], ProviderResult],
+    ) -> TimelineEvent:
+        """Run a consequential tool call as a work item on the execution stream (WC-171 C1).
+
+        The same three pre-flight gates run first. The stream then asks the Constitutional Engine to validate the
+        artifact binding, asks the durable stop barrier, reserves any spend, reports each state to the Business
+        Platform, and only then calls the tool. Without a stream no consequential step runs at all.
+        """
+        self._check_tool_authorized(tool_name)
+        self._check_trial_capability(tool_name)
+        self._check_crystallizer_gate(tool_name)
+        if self._timeline is None:
+            raise RuntimeError("Execution stream is not configured; a consequential step is not run without it")
+        dcm_category = self._ctx.dcm_categories.get(tool_name, "DETERMINISTIC_REQUIRED")
+        skill_id = self._ctx.tool_skill_index.get(tool_name, "")
+        dispatcher = self._dispatcher
+
+        async def call() -> ProviderResult:
+            if dispatcher is None:
+                raise RuntimeError("No dispatcher injected")
+            return to_result(
+                await dispatcher.dispatch(tool_name=tool_name, params=params, dcm_category=dcm_category, skill_id=skill_id)
+            )
+
+        return await self._timeline.dispatch(item, call)
 
     async def answer_interview(
         self,

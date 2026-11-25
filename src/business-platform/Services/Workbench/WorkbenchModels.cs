@@ -175,7 +175,22 @@ public sealed record WorkbenchProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         WorkbenchRecommendedAction? RecommendedNextAction,
     IReadOnlyList<WorkbenchAvailableCommand> AvailableCommands,
-    IReadOnlyList<ExperienceBlock> Blocks
+    IReadOnlyList<ExperienceBlock> Blocks,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        IReadOnlyList<WorkbenchNavigationEntry>? Navigation = null
+);
+
+/// <summary>An entry the agent declared for its context menu, in platform terms. No layout, markup or code.</summary>
+public sealed record WorkbenchNavigationEntry(
+    string EntryId,
+    string LabelKey,
+    string Label,
+    string Icon,
+    int Order,
+    string SurfaceKind,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Target,
+    IReadOnlyList<string> Blocks,
+    bool Available
 );
 
 public sealed record WorkbenchCommandReceipt(

@@ -3,8 +3,9 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-05
 // Constitutional basis: C-001, C-023, C-042, C-059, C-063, ADR-051
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { OpenConversationCommand } from '@/components/conversation/OpenConversationCommand';
+import { AlertInbox } from '@/components/portal/AlertInbox';
 import type {
   WorkbenchCapabilityList,
   WorkbenchEvidenceList,
@@ -16,10 +17,19 @@ import type {
   WorkbenchWallet,
   WorkbenchWorkItemList,
 } from '@/lib/api/workbench-types';
+import {
+  contextSurfaces,
+  declaredSurfaceId,
+  LEGACY_TOOL_SURFACE,
+  resolveSurface,
+  type DeclaredEntry,
+} from '@/lib/navigation-model';
 import { readWorkbench, sendWorkbenchCommand } from '@/lib/workbench-client';
 import type { WorkbenchMessages } from '@/lib/workbench-i18n';
+import { AgentContextMenu, type ContextMenuItem } from './AgentContextMenu';
 import { CapabilitiesPanel } from './CapabilitiesPanel';
 import { ControlsBar } from './ControlsBar';
+import { DeclaredSurface } from './DeclaredSurface';
 import { DecisionQueue } from './DecisionQueue';
 import { EvidencePanel } from './EvidencePanel';
 import { GoalPlanPanel } from './GoalPlanPanel';
@@ -76,14 +86,16 @@ export function WorkbenchShell({
   initial,
   copy,
   handoffToken,
+  initialSurface,
 }: {
   relationshipId: string;
   initial: WorkbenchSnapshot;
   copy: WorkbenchMessages;
   handoffToken?: string;
+  initialSurface?: string | null;
 }) {
   const [snapshot, setSnapshot] = useState(initial);
-  const [tool, setTool] = useState<ToolId>('overview');
+  const [surface, setSurface] = useState<string>(() => resolveSurface(initialSurface, initial.projection.navigation));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [handoffFailed, setHandoffFailed] = useState(false);
@@ -121,41 +133,47 @@ export function WorkbenchShell({
         return;
       }
       changedTool.current = true;
-      setTool(toolForPurpose(result.data.purpose, beneficiaryView));
+      setSurface(LEGACY_TOOL_SURFACE[toolForPurpose(result.data.purpose, beneficiaryView)]);
     })();
   }, [handoffToken, relationshipId, beneficiaryView]);
 
   useEffect(() => {
     if (changedTool.current) panelRef.current?.focus();
-  }, [tool]);
+  }, [surface]);
 
   const beneficiary = snapshot.projection.audience === 'beneficiary';
   const pending = snapshot.projection.decisions.length;
-  const tools: Array<{ id: ToolId; label: string }> = [
-    { id: 'overview', label: copy.toolOverview },
-    { id: 'goals', label: copy.toolGoals },
-    { id: 'capabilities', label: copy.toolCapabilities },
-    { id: 'decisions', label: copy.toolDecisions },
-    { id: 'monitor', label: copy.toolMonitor },
-    { id: 'work', label: copy.toolWork },
-    ...(beneficiary ? [] : [{ id: 'wallet' as const, label: copy.toolWallet }]),
-    { id: 'evidence', label: copy.toolEvidence },
-  ];
+  const declared: DeclaredEntry[] = snapshot.projection.navigation ?? [];
+  const fixedLabels: Record<string, string> = {
+    overview: copy.toolOverview,
+    plan: copy.toolPlan,
+    decisions: copy.toolDecisions,
+    work: copy.toolWork,
+    results: copy.surfaceResults,
+    usage: copy.surfaceUsage,
+    alerts: copy.surfaceAlerts,
+    rights: copy.surfaceRights,
+  };
+  const surfaces = contextSurfaces(declared);
+  const fixedItems: ContextMenuItem[] = surfaces
+    .filter((item) => item.kind === 'fixed')
+    // The allowance belongs to the owner; a beneficiary has no budget surface.
+    .filter((item) => !(beneficiary && item.id === 'usage'))
+    .map((item) => ({
+      id: item.id,
+      label: fixedLabels[item.id] ?? item.id,
+      badge: item.id === 'decisions' ? pending : undefined,
+    }));
+  const declaredItems: ContextMenuItem[] = [...declared]
+    .sort((left, right) => left.order - right.order || left.entryId.localeCompare(right.entryId))
+    .map((entry) => ({ id: declaredSurfaceId(entry.entryId), label: entry.label, unavailable: !entry.available }));
+  const declaredEntry = declared.find((entry) => declaredSurfaceId(entry.entryId) === surface);
 
-  function choose(id: ToolId) {
+  function choose(id: string) {
     changedTool.current = true;
-    setTool(id);
-  }
-
-  function moveWithArrows(event: KeyboardEvent<HTMLElement>) {
-    const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
-    if (!keys.includes(event.key)) return;
-    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
-    const index = buttons.findIndex((button) => button === document.activeElement);
-    if (index < 0) return;
-    event.preventDefault();
-    const step = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1;
-    buttons[(index + step + buttons.length) % buttons.length]?.focus();
+    setSurface(id);
+    // A deep link names the surface, so a reload or a shared link opens the same one.
+    window.history.replaceState(null, '', `${window.location.pathname}?surface=${encodeURIComponent(id)}`);
   }
 
   const panel: WorkbenchPanelProps = { relationshipId, snapshot, copy, onChanged: refresh };
@@ -177,29 +195,36 @@ export function WorkbenchShell({
       </output>
       <ControlsBar {...panel} />
       <div className="workbench-layout">
-        <nav aria-label={copy.toolsLabel} className="workbench-rail" onKeyDown={moveWithArrows}>
-          {tools.map((item) => (
-            <button
-              aria-current={tool === item.id ? 'page' : undefined}
-              className={tool === item.id ? 'primary-command' : 'secondary-link'}
-              key={item.id}
-              onClick={() => choose(item.id)}
-              type="button"
-            >
-              {item.label}
-              {item.id === 'decisions' && pending > 0 ? <span> ({pending})</span> : null}
-            </button>
-          ))}
-        </nav>
+        <AgentContextMenu
+          current={surface}
+          declared={declaredItems}
+          declaredLabel={copy.declaredMenuLabel}
+          fixed={fixedItems}
+          label={copy.agentMenuLabel}
+          onChoose={choose}
+        />
         <div aria-busy={refreshing} className="workbench-panel" ref={panelRef} tabIndex={-1}>
-          {tool === 'overview' ? <OverviewPanel {...panel} /> : null}
-          {tool === 'goals' ? <GoalPlanPanel {...panel} /> : null}
-          {tool === 'capabilities' ? <CapabilitiesPanel {...panel} /> : null}
-          {tool === 'decisions' ? <DecisionQueue {...panel} /> : null}
-          {tool === 'monitor' ? <MonitorPanel {...panel} /> : null}
-          {tool === 'work' ? <RealWorkPanel relationshipId={relationshipId} /> : null}
-          {tool === 'wallet' && !beneficiary ? <WalletPanel {...panel} /> : null}
-          {tool === 'evidence' ? <EvidencePanel {...panel} /> : null}
+          {surface === 'overview' ? <OverviewPanel {...panel} /> : null}
+          {surface === 'plan' ? <GoalPlanPanel {...panel} /> : null}
+          {surface === 'decisions' ? <DecisionQueue {...panel} /> : null}
+          {surface === 'work' ? <RealWorkPanel relationshipId={relationshipId} /> : null}
+          {surface === 'results' ? <MonitorPanel {...panel} /> : null}
+          {surface === 'usage' ? (
+            <>
+              <CapabilitiesPanel {...panel} />
+              {beneficiary ? null : <WalletPanel {...panel} />}
+            </>
+          ) : null}
+          {surface === 'alerts' ? <AlertInbox locale="en" relationshipId={relationshipId} /> : null}
+          {surface === 'rights' ? <EvidencePanel {...panel} /> : null}
+          {declaredEntry ? (
+            <DeclaredSurface
+              blocks={snapshot.projection.blocks}
+              copy={copy}
+              entry={declaredEntry}
+              onOpenWork={() => choose('work')}
+            />
+          ) : null}
         </div>
       </div>
     </main>

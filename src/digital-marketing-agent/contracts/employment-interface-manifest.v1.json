@@ -337,6 +337,48 @@
       "WC136-PRICING-A03",
       "WC136-PRICING-A04",
       "WC136-PRICING-A05"
+    ],
+    "navigation": [
+      {
+        "entryId": "PROFILE_AND_MATURITY",
+        "labelKey": "NAV_PROFILE_AND_MATURITY",
+        "label": "Profile and maturity",
+        "icon": "profile",
+        "order": 10,
+        "surface": {"kind": "DOMAIN_BLOCK", "target": "MARKETING_MATURITY_SUMMARY"},
+        "audiences": ["customer_owner", "delegate", "steward"],
+        "availabilityGate": "ALWAYS"
+      },
+      {
+        "entryId": "CAMPAIGNS_AND_CALENDAR",
+        "labelKey": "NAV_CAMPAIGNS_AND_CALENDAR",
+        "label": "Campaigns and calendar",
+        "icon": "calendar",
+        "order": 20,
+        "surface": {"kind": "DOMAIN_BLOCK", "target": "CONTENT_CALENDAR_PREVIEW"},
+        "audiences": ["customer_owner", "delegate", "steward"],
+        "availabilityGate": "AFTER_FIRST_APPROVAL"
+      },
+      {
+        "entryId": "PLATFORM_ACCOUNTS",
+        "labelKey": "NAV_PLATFORM_ACCOUNTS",
+        "label": "Platform accounts",
+        "icon": "accounts",
+        "order": 30,
+        "surface": {"kind": "KERNEL_VIEW", "target": "connections"},
+        "audiences": ["customer_owner", "delegate"],
+        "availabilityGate": "ALWAYS"
+      },
+      {
+        "entryId": "BUSINESS_RESULTS",
+        "labelKey": "NAV_BUSINESS_RESULTS",
+        "label": "Business results",
+        "icon": "results",
+        "order": 40,
+        "surface": {"kind": "BLOCK_COMPOSITION", "blocks": ["METRIC", "STATUS", "EVIDENCE"]},
+        "audiences": ["customer_owner", "delegate", "steward"],
+        "availabilityGate": "AFTER_FIRST_APPROVAL"
+      }
     ]
   },
   "conformanceScenarios": [

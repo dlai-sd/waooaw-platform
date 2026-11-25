@@ -109,6 +109,8 @@ Class | Method | HTTP request | Description
  - [EmploymentExperienceManifestV1OperateCadenceInner](employment_domain_client/docs/EmploymentExperienceManifestV1OperateCadenceInner.md)
  - [EmploymentExperienceManifestV1Plan](employment_domain_client/docs/EmploymentExperienceManifestV1Plan.md)
  - [EmploymentExperienceMeasureV1](employment_domain_client/docs/EmploymentExperienceMeasureV1.md)
+ - [EmploymentExperienceNavigationEntryV1](employment_domain_client/docs/EmploymentExperienceNavigationEntryV1.md)
+ - [EmploymentExperienceNavigationSurfaceV1](employment_domain_client/docs/EmploymentExperienceNavigationSurfaceV1.md)
  - [EmploymentGovernanceReferencesV1](employment_domain_client/docs/EmploymentGovernanceReferencesV1.md)
  - [EmploymentInductionManifestV1](employment_domain_client/docs/EmploymentInductionManifestV1.md)
  - [EmploymentInterfaceManifestV1](employment_domain_client/docs/EmploymentInterfaceManifestV1.md)

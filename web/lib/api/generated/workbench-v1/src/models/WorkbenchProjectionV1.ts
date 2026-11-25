@@ -13,20 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { EmploymentPhaseKind } from './EmploymentPhaseKind';
-import {
-    EmploymentPhaseKindFromJSON,
-    EmploymentPhaseKindFromJSONTyped,
-    EmploymentPhaseKindToJSON,
-    EmploymentPhaseKindToJSONTyped,
-} from './EmploymentPhaseKind';
-import type { ProjectionFreshnessV1 } from './ProjectionFreshnessV1';
-import {
-    ProjectionFreshnessV1FromJSON,
-    ProjectionFreshnessV1FromJSONTyped,
-    ProjectionFreshnessV1ToJSON,
-    ProjectionFreshnessV1ToJSONTyped,
-} from './ProjectionFreshnessV1';
 import type { WorkbenchComponentBalanceV1 } from './WorkbenchComponentBalanceV1';
 import {
     WorkbenchComponentBalanceV1FromJSON,
@@ -41,13 +27,6 @@ import {
     WorkbenchRecommendedActionV1ToJSON,
     WorkbenchRecommendedActionV1ToJSONTyped,
 } from './WorkbenchRecommendedActionV1';
-import type { ProjectionEvidenceStateV1 } from './ProjectionEvidenceStateV1';
-import {
-    ProjectionEvidenceStateV1FromJSON,
-    ProjectionEvidenceStateV1FromJSONTyped,
-    ProjectionEvidenceStateV1ToJSON,
-    ProjectionEvidenceStateV1ToJSONTyped,
-} from './ProjectionEvidenceStateV1';
 import type { WorkbenchAlertV1 } from './WorkbenchAlertV1';
 import {
     WorkbenchAlertV1FromJSON,
@@ -62,6 +41,41 @@ import {
     WorkbenchAvailableCommandV1ToJSON,
     WorkbenchAvailableCommandV1ToJSONTyped,
 } from './WorkbenchAvailableCommandV1';
+import type { WorkbenchAudienceV1 } from './WorkbenchAudienceV1';
+import {
+    WorkbenchAudienceV1FromJSON,
+    WorkbenchAudienceV1FromJSONTyped,
+    WorkbenchAudienceV1ToJSON,
+    WorkbenchAudienceV1ToJSONTyped,
+} from './WorkbenchAudienceV1';
+import type { WorkbenchReadinessV1 } from './WorkbenchReadinessV1';
+import {
+    WorkbenchReadinessV1FromJSON,
+    WorkbenchReadinessV1FromJSONTyped,
+    WorkbenchReadinessV1ToJSON,
+    WorkbenchReadinessV1ToJSONTyped,
+} from './WorkbenchReadinessV1';
+import type { EmploymentPhaseKind } from './EmploymentPhaseKind';
+import {
+    EmploymentPhaseKindFromJSON,
+    EmploymentPhaseKindFromJSONTyped,
+    EmploymentPhaseKindToJSON,
+    EmploymentPhaseKindToJSONTyped,
+} from './EmploymentPhaseKind';
+import type { ProjectionFreshnessV1 } from './ProjectionFreshnessV1';
+import {
+    ProjectionFreshnessV1FromJSON,
+    ProjectionFreshnessV1FromJSONTyped,
+    ProjectionFreshnessV1ToJSON,
+    ProjectionFreshnessV1ToJSONTyped,
+} from './ProjectionFreshnessV1';
+import type { ProjectionEvidenceStateV1 } from './ProjectionEvidenceStateV1';
+import {
+    ProjectionEvidenceStateV1FromJSON,
+    ProjectionEvidenceStateV1FromJSONTyped,
+    ProjectionEvidenceStateV1ToJSON,
+    ProjectionEvidenceStateV1ToJSONTyped,
+} from './ProjectionEvidenceStateV1';
 import type { WorkbenchTileV1 } from './WorkbenchTileV1';
 import {
     WorkbenchTileV1FromJSON,
@@ -76,13 +90,6 @@ import {
     ExperienceBlockV2ToJSON,
     ExperienceBlockV2ToJSONTyped,
 } from './ExperienceBlockV2';
-import type { WorkbenchAudienceV1 } from './WorkbenchAudienceV1';
-import {
-    WorkbenchAudienceV1FromJSON,
-    WorkbenchAudienceV1FromJSONTyped,
-    WorkbenchAudienceV1ToJSON,
-    WorkbenchAudienceV1ToJSONTyped,
-} from './WorkbenchAudienceV1';
 import type { WorkbenchDecisionV1 } from './WorkbenchDecisionV1';
 import {
     WorkbenchDecisionV1FromJSON,
@@ -90,13 +97,13 @@ import {
     WorkbenchDecisionV1ToJSON,
     WorkbenchDecisionV1ToJSONTyped,
 } from './WorkbenchDecisionV1';
-import type { WorkbenchReadinessV1 } from './WorkbenchReadinessV1';
+import type { WorkbenchNavigationEntryV1 } from './WorkbenchNavigationEntryV1';
 import {
-    WorkbenchReadinessV1FromJSON,
-    WorkbenchReadinessV1FromJSONTyped,
-    WorkbenchReadinessV1ToJSON,
-    WorkbenchReadinessV1ToJSONTyped,
-} from './WorkbenchReadinessV1';
+    WorkbenchNavigationEntryV1FromJSON,
+    WorkbenchNavigationEntryV1FromJSONTyped,
+    WorkbenchNavigationEntryV1ToJSON,
+    WorkbenchNavigationEntryV1ToJSONTyped,
+} from './WorkbenchNavigationEntryV1';
 
 /**
  *
@@ -206,6 +213,12 @@ export interface WorkbenchProjectionV1 {
      * @memberof WorkbenchProjectionV1
      */
     blocks: Array<ExperienceBlockV2>;
+    /**
+     * WC-171. The agent's declared context-menu entries for this audience, after the platform's fixed surfaces. Omitted when the agent declares none.
+     * @type {Array<WorkbenchNavigationEntryV1>}
+     * @memberof WorkbenchProjectionV1
+     */
+    navigation?: Array<WorkbenchNavigationEntryV1>;
 }
 
 
@@ -265,6 +278,7 @@ export function WorkbenchProjectionV1FromJSONTyped(json: any, ignoreDiscriminato
         'recommendedNextAction': json['recommendedNextAction'] == null ? undefined : WorkbenchRecommendedActionV1FromJSON(json['recommendedNextAction']),
         'availableCommands': ((json['availableCommands'] as Array<any>).map(WorkbenchAvailableCommandV1FromJSON)),
         'blocks': ((json['blocks'] as Array<any>).map(ExperienceBlockV2FromJSON)),
+        'navigation': json['navigation'] == null ? undefined : ((json['navigation'] as Array<any>).map(WorkbenchNavigationEntryV1FromJSON)),
     };
 }
 
@@ -296,5 +310,6 @@ export function WorkbenchProjectionV1ToJSONTyped(value?: WorkbenchProjectionV1 |
         'recommendedNextAction': WorkbenchRecommendedActionV1ToJSON(value['recommendedNextAction']),
         'availableCommands': ((value['availableCommands'] as Array<any>).map(WorkbenchAvailableCommandV1ToJSON)),
         'blocks': ((value['blocks'] as Array<any>).map(ExperienceBlockV2ToJSON)),
+        'navigation': value['navigation'] == null ? undefined : ((value['navigation'] as Array<any>).map(WorkbenchNavigationEntryV1ToJSON)),
     };
 }

@@ -56,5 +56,8 @@ covered:
   - WC170-R010
   - WC170-R011
   - WC170-R012
+  - WC171-R001
+  - WC171-R002
+  - WC171-R004
 deferred:
   - WC107-R019
