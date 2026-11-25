@@ -118,9 +118,7 @@ class WbeSpendClient:
             work_item_id,
         )
 
-    async def _post(
-        self, name: str, tenant_id: UUID, relationship_id: UUID, body: dict[str, Any], key_seed: UUID
-    ) -> None:
+    async def _post(self, name: str, tenant_id: UUID, relationship_id: UUID, body: dict[str, Any], key_seed: UUID) -> None:
         route, operation = ROUTES[name]
         # One idempotency key per (operation, work item): a retry of the same step replays, never double-reserves.
         key = str(UUID(hashlib.sha256(f"{name}:{key_seed}".encode()).hexdigest()[:32]))

@@ -203,9 +203,7 @@ class SessionExecutor:
             if dispatcher is None:
                 raise RuntimeError("No dispatcher injected")
             return to_result(
-                await dispatcher.dispatch(
-                    tool_name=tool_name, params=params, dcm_category=dcm_category, skill_id=skill_id
-                )
+                await dispatcher.dispatch(tool_name=tool_name, params=params, dcm_category=dcm_category, skill_id=skill_id)
             )
 
         return await self._timeline.dispatch(item, call)

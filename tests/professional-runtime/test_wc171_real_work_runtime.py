@@ -128,7 +128,7 @@ async def test_a_barrier_that_cannot_confirm_the_step_refuses_it_and_never_calls
 
 @pytest.mark.asyncio
 async def test_a_stop_that_lands_while_the_provider_runs_makes_the_late_result_halted_evidence() -> None:
-    timeline, sink = _timeline(Barrier(BarrierDecision.CLEAR, BarrierDecision.CLEAR, BarrierDecision.STOPPED))
+    timeline, _sink = _timeline(Barrier(BarrierDecision.CLEAR, BarrierDecision.CLEAR, BarrierDecision.STOPPED))
 
     final = await timeline.dispatch(_item(), Provider())
 
@@ -157,7 +157,7 @@ async def test_reconcile_after_a_stop_is_halted_never_completed() -> None:
 @pytest.mark.asyncio
 async def test_spend_is_reserved_before_the_call_and_charged_only_with_the_providers_proof() -> None:
     spend = Spend()
-    timeline, sink = _timeline(spend=spend)
+    timeline, _sink = _timeline(spend=spend)
 
     final = await timeline.dispatch(_item(paise=500), Provider())
 
@@ -282,9 +282,7 @@ def _to_result(raw) -> ProviderResult:
 @pytest.mark.asyncio
 async def test_the_session_executor_runs_a_consequential_tool_only_through_the_stream() -> None:
     dispatcher, (timeline, sink) = Dispatcher(), _timeline()
-    executor = SessionExecutor(
-        SessionSkillContext(authorized_tools={"post_content"}), dispatcher=dispatcher, timeline=timeline
-    )
+    executor = SessionExecutor(SessionSkillContext(authorized_tools={"post_content"}), dispatcher=dispatcher, timeline=timeline)
 
     final = await executor.execute_work_item("post_content", {}, _item(), _to_result)
 
@@ -309,7 +307,7 @@ async def test_the_session_executor_keeps_its_pre_flight_gates_and_refuses_witho
 
 @pytest.mark.asyncio
 async def test_a_missing_dispatcher_is_an_unknown_outcome_not_a_silent_success() -> None:
-    timeline, sink = _timeline()
+    timeline, _sink = _timeline()
     executor = SessionExecutor(SessionSkillContext(authorized_tools={"post_content"}), timeline=timeline)
 
     final = await executor.execute_work_item("post_content", {}, _item(), _to_result)
@@ -323,7 +321,12 @@ async def test_bp_holding_an_unknown_outcome_is_the_durable_blind_retry_refusal(
         transport=httpx.MockTransport(lambda request: httpx.Response(409, json={"code": "REAL_WORK_BLIND_RETRY"}))
     )
     gateway = BusinessPlatformRealWorkGateway(
-        "http://bp", client, "spiffe://demo/workload/professional-runtime", "key-1", "urn:bp", ec.generate_private_key(ec.SECP256R1())
+        "http://bp",
+        client,
+        "spiffe://demo/workload/professional-runtime",
+        "key-1",
+        "urn:bp",
+        ec.generate_private_key(ec.SECP256R1()),
     )
     provider = Provider()
     timeline = ExecutionTimeline(sink=gateway, gate=Gate())
