@@ -34,6 +34,7 @@ builder.Services.AddSingleton<IClaimEvaluator, C048NonExploitationEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C049HonestLimitationEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C062AiSecurityEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, AgentAdmissionTransitionEvaluator>();
+builder.Services.AddSingleton<IClaimEvaluator, ArtifactBindingEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, RelationshipAdmissionEvaluator>();
 builder.Services.AddSingleton<EvaluatorRegistry>();
 builder

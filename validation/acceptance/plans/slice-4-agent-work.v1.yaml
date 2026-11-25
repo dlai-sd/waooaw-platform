@@ -1,0 +1,154 @@
+schema: waooaw.journey-test-plan/v1
+journey_id: slice-4-agent-work
+version: 1
+status: ACCEPTED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - personal_data_leakage
+# Slice 4 (WC-170, Roadmap Iteration 3, M3) follows the customer through real agent work: profile, maturity baseline,
+# campaign brief, the two decisions, a draft, the execution timeline, the trace from an outcome claim, sandbox spend and
+# Emergency Stop mid-work. It starts from a customer with a paid, connected hire (slices 1 and 2 leave one behind) and
+# reads the Work tab and the platform's real-work routes. A step whose precondition is off is reported BLOCKED-BY-FLAG
+# with the named reason (employment protocol off, no AI provider key, no proposal yet); it is never a pass or a failure.
+steps:
+  - id: S12
+    title: Confirm the business profile
+    customer: A
+    stimulus: Open the relationship, open the Work tab and confirm the profile the agent proposed.
+    claims:
+      - id: S12-C1
+        statement: The customer sees the profile in business language with its limitations, approves that exact version, and the platform shows it locked with an approval evidence id and a digest.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S02]
+      gaps: [PG-17, PG-18]
+      requirements: [WC170-R001, WC170-R003, WC170-R004, WC170-R005]
+  - id: S13
+    title: Read the maturity baseline
+    customer: A
+    stimulus: Open the Work tab and read the maturity report the agent proposed.
+    claims:
+      - id: S13-C1
+        statement: Every dimension shows either a score from 1 to 10 with its evidence or the words Not enough information, never a low score for a dimension without evidence, and the report carries its limitations.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S02]
+      gaps: [PG-18]
+      requirements: [WC170-R005]
+  - id: S14
+    title: Approve the campaign brief
+    customer: A
+    stimulus: Open the Work tab and press Approve this version on the campaign brief.
+    claims:
+      - id: S14-C1
+        statement: Approval binds the exact brief digest, the brief becomes LOCKED, and a changed brief would need a new approval.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S03]
+      gaps: [PG-18, PG-19]
+      requirements: [WC170-R005, WC170-R006]
+  - id: S15
+    title: Confirm the scope boundary
+    customer: A
+    stimulus: Press Confirm the boundary on the approved brief.
+    claims:
+      - id: S15-C1
+        statement: Scope confirmation is a second step with its own evidence record, and only with both records does the platform report the brief executable.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S03, AE-02-S04]
+      gaps: [PG-19]
+      requirements: [WC170-R006]
+  - id: S16
+    title: Review a draft and correct it
+    customer: A
+    stimulus: Read a content draft with its authority boundary, then ask for a correction.
+    claims:
+      - id: S16-C1
+        statement: A correction is a new version that does not inherit approval, and the earlier version shows as replaced.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    failure_path: true
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S04]
+      gaps: [PG-19]
+      requirements: [WC170-R006]
+  - id: S17
+    title: The agent works and the timeline tells it
+    customer: A
+    stimulus: Let the agent run the approved brief and read the timeline.
+    claims:
+      - id: S17-C1
+        statement: The timeline shows one plain sentence per event in the six states, every execution step names its artifact digest, and a publication counts as done only with the provider's own post reference.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present, meta_test_page_token_present]
+    proves:
+      stories: [AE-02-S04, AE-02-S05]
+      gaps: [PG-20]
+      requirements: [WC170-R002, WC170-R007, WC170-R012]
+  - id: S18
+    title: Trace a result to its work
+    customer: A
+    stimulus: Open a result on the Work tab and expand what is behind it.
+    claims:
+      - id: S18-C1
+        statement: Work completed is shown apart from business results, every shown claim lists its work items and evidence, an agent-stated figure is labelled, and an outcome that cannot be measured yet says Not measurable yet.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S05]
+      gaps: [PG-21]
+      requirements: [WC170-R008]
+  - id: S19
+    title: Sandbox spend is authorized, charged on proof and reconciled
+    customer: A
+    stimulus: Read the spend chain for the executed work.
+    claims:
+      - id: S19-C1
+        statement: Every sandbox rupee has an authorization, a reservation made before dispatch, a charge written only on verified provider proof, and a reconciliation result; a discrepancy blocks new spend.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S04, AE-02-S05]
+      gaps: [PG-22]
+      requirements: [WC170-R009]
+  - id: S20
+    title: Stop mid-work and read the monitor tiles
+    customer: A
+    stimulus: Press Stop all agent work now while a work item is executing, then open the Monitor tab.
+    claims:
+      - id: S20-C1
+        statement: The timeline shows the work halted with the Emergency Stop reason, no late success appears afterwards, and the monitor shows business results first with stale tiles marked.
+        witnesses_required: [W1, W2]
+        depth_target: L5
+    failure_path: true
+    preconditions: [employment_protocol_enabled, ai_provider_key_present]
+    proves:
+      stories: [AE-02-S05]
+      gaps: [PG-20, PG-23]
+      requirements: [WC170-R010, WC170-R011]
+witness_exceptions: []

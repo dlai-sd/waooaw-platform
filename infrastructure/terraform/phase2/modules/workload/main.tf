@@ -608,7 +608,7 @@ locals {
       WEB_SESSION_EXPECTED_CONFIG_DIGEST          = var.web_session_expected_config_digest
       WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST = var.web_session_expected_telemetry_route_digest
       WEB_SESSION_TELEMETRY_ROUTE_DIGEST          = var.web_session_telemetry_route_digest
-    })
+    }, local.feature_settings_runtime["web"])
     "billing-engine" = merge({
       BILLING_CONTRACT_ID            = "goal006-demo"
       BILLING_DECISION_SPACE_VERSION = "1"

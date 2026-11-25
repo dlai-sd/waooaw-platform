@@ -19,7 +19,7 @@ on:
         required: true
         default: slice-1-discover-to-connect
         type: choice
-        options: [slice-1-discover-to-connect, slice-2-publish, slice-3-hire-and-selection]
+        options: [slice-1-discover-to-connect, slice-2-publish, slice-3-hire-and-selection, slice-4-agent-work]
       device:
         description: Viewport the journey runs on (WC107-R019 needs one run of each)
         required: true

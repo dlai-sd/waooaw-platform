@@ -16,6 +16,7 @@
 | S6 | Adding a flag: add it default-off to the closed key list in `goal006_deployment_inputs.py`, the matching workload Terraform variable and `feature-settings.tf`, read it through configuration in the service, and add a test. No environment-name conditionals. |
 | S7 | The private blob is reachable only from the private runner. Never bypass that (no account key, SAS, public-network toggle or ad hoc privileged job; WC-124). To change a blob value, use the deployment path. |
 | S8 | Founder-gated values (for example `wallet_authority: WALLET`, WhatsApp STOP acknowledgement) change in UAT or Production only with Founder authorization quoted in the PR. |
+| S9 | WC-170 activation switches follow S6: `employment_protocol_enabled` (default off), `employment_protocol_rollback_epoch` (whole number, default 0; it is never reused and raising it blocks in-flight employment commands with evidence and rewrites no history) and `web_conversation_enabled` (default off; it becomes the web `WC120_CONVERSATION_ENABLED` setting). Demo values were authorized for WC-170 only; the Founder-only read-back is `GET /api/v1/admin/employment/readiness`. |
 
 ## 2. Roles and access
 

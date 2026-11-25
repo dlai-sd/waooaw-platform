@@ -12,6 +12,13 @@
  * Do not edit the class manually.
  */
 
+import type { AcceptArtifactVersionCommandV1 } from './AcceptArtifactVersionCommandV1';
+import {
+    instanceOfAcceptArtifactVersionCommandV1,
+    AcceptArtifactVersionCommandV1FromJSON,
+    AcceptArtifactVersionCommandV1FromJSONTyped,
+    AcceptArtifactVersionCommandV1ToJSON,
+} from './AcceptArtifactVersionCommandV1';
 import type { AcceptPlanVersionCommandV1 } from './AcceptPlanVersionCommandV1';
 import {
     instanceOfAcceptPlanVersionCommandV1,
@@ -47,6 +54,13 @@ import {
     ConfirmInductionItemCommandV1FromJSONTyped,
     ConfirmInductionItemCommandV1ToJSON,
 } from './ConfirmInductionItemCommandV1';
+import type { ConfirmScopeBoundaryCommandV1 } from './ConfirmScopeBoundaryCommandV1';
+import {
+    instanceOfConfirmScopeBoundaryCommandV1,
+    ConfirmScopeBoundaryCommandV1FromJSON,
+    ConfirmScopeBoundaryCommandV1FromJSONTyped,
+    ConfirmScopeBoundaryCommandV1ToJSON,
+} from './ConfirmScopeBoundaryCommandV1';
 import type { DeferInductionItemCommandV1 } from './DeferInductionItemCommandV1';
 import {
     instanceOfDeferInductionItemCommandV1,
@@ -81,7 +95,7 @@ import {
  * 
  * @export
  */
-export type EmploymentCommandRequestV1 = { kind: 'ACCEPT_PLAN_VERSION' } & AcceptPlanVersionCommandV1 | { kind: 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL' } & AcknowledgeCorrectiveProposalCommandV1 | { kind: 'ACKNOWLEDGE_MATERIAL_CHANGE' } & AcknowledgeMaterialChangeCommandV1 | { kind: 'APPLY_CANDIDATE_PATCH' } & ApplyCandidatePatchCommandV1 | { kind: 'CONFIRM_INDUCTION_ITEM' } & ConfirmInductionItemCommandV1 | { kind: 'DEFER_INDUCTION_ITEM' } & DeferInductionItemCommandV1 | { kind: 'REQUEST_REASSESSMENT' } & RequestReassessmentCommandV1 | { kind: 'RESCHEDULE_WITHIN_TOLERANCE' } & RescheduleWithinToleranceCommandV1 | { kind: 'SUBMIT_PLAN_FOR_REVIEW' } & SubmitPlanForReviewCommandV1;
+export type EmploymentCommandRequestV1 = { kind: 'ACCEPT_ARTIFACT_VERSION' } & AcceptArtifactVersionCommandV1 | { kind: 'ACCEPT_PLAN_VERSION' } & AcceptPlanVersionCommandV1 | { kind: 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL' } & AcknowledgeCorrectiveProposalCommandV1 | { kind: 'ACKNOWLEDGE_MATERIAL_CHANGE' } & AcknowledgeMaterialChangeCommandV1 | { kind: 'APPLY_CANDIDATE_PATCH' } & ApplyCandidatePatchCommandV1 | { kind: 'CONFIRM_INDUCTION_ITEM' } & ConfirmInductionItemCommandV1 | { kind: 'CONFIRM_SCOPE_BOUNDARY' } & ConfirmScopeBoundaryCommandV1 | { kind: 'DEFER_INDUCTION_ITEM' } & DeferInductionItemCommandV1 | { kind: 'REQUEST_REASSESSMENT' } & RequestReassessmentCommandV1 | { kind: 'RESCHEDULE_WITHIN_TOLERANCE' } & RescheduleWithinToleranceCommandV1 | { kind: 'SUBMIT_PLAN_FOR_REVIEW' } & SubmitPlanForReviewCommandV1;
 
 export function EmploymentCommandRequestV1FromJSON(json: any): EmploymentCommandRequestV1 {
     return EmploymentCommandRequestV1FromJSONTyped(json, false);
@@ -92,6 +106,8 @@ export function EmploymentCommandRequestV1FromJSONTyped(json: any, ignoreDiscrim
         return json;
     }
     switch (json['kind']) {
+        case 'ACCEPT_ARTIFACT_VERSION':
+            return Object.assign({}, AcceptArtifactVersionCommandV1FromJSONTyped(json, true), { kind: 'ACCEPT_ARTIFACT_VERSION' } as const);
         case 'ACCEPT_PLAN_VERSION':
             return Object.assign({}, AcceptPlanVersionCommandV1FromJSONTyped(json, true), { kind: 'ACCEPT_PLAN_VERSION' } as const);
         case 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL':
@@ -102,6 +118,8 @@ export function EmploymentCommandRequestV1FromJSONTyped(json: any, ignoreDiscrim
             return Object.assign({}, ApplyCandidatePatchCommandV1FromJSONTyped(json, true), { kind: 'APPLY_CANDIDATE_PATCH' } as const);
         case 'CONFIRM_INDUCTION_ITEM':
             return Object.assign({}, ConfirmInductionItemCommandV1FromJSONTyped(json, true), { kind: 'CONFIRM_INDUCTION_ITEM' } as const);
+        case 'CONFIRM_SCOPE_BOUNDARY':
+            return Object.assign({}, ConfirmScopeBoundaryCommandV1FromJSONTyped(json, true), { kind: 'CONFIRM_SCOPE_BOUNDARY' } as const);
         case 'DEFER_INDUCTION_ITEM':
             return Object.assign({}, DeferInductionItemCommandV1FromJSONTyped(json, true), { kind: 'DEFER_INDUCTION_ITEM' } as const);
         case 'REQUEST_REASSESSMENT':
@@ -124,6 +142,8 @@ export function EmploymentCommandRequestV1ToJSONTyped(value?: EmploymentCommandR
         return value;
     }
     switch (value['kind']) {
+        case 'ACCEPT_ARTIFACT_VERSION':
+            return Object.assign({}, AcceptArtifactVersionCommandV1ToJSON(value), { kind: 'ACCEPT_ARTIFACT_VERSION' } as const);
         case 'ACCEPT_PLAN_VERSION':
             return Object.assign({}, AcceptPlanVersionCommandV1ToJSON(value), { kind: 'ACCEPT_PLAN_VERSION' } as const);
         case 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL':
@@ -134,6 +154,8 @@ export function EmploymentCommandRequestV1ToJSONTyped(value?: EmploymentCommandR
             return Object.assign({}, ApplyCandidatePatchCommandV1ToJSON(value), { kind: 'APPLY_CANDIDATE_PATCH' } as const);
         case 'CONFIRM_INDUCTION_ITEM':
             return Object.assign({}, ConfirmInductionItemCommandV1ToJSON(value), { kind: 'CONFIRM_INDUCTION_ITEM' } as const);
+        case 'CONFIRM_SCOPE_BOUNDARY':
+            return Object.assign({}, ConfirmScopeBoundaryCommandV1ToJSON(value), { kind: 'CONFIRM_SCOPE_BOUNDARY' } as const);
         case 'DEFER_INDUCTION_ITEM':
             return Object.assign({}, DeferInductionItemCommandV1ToJSON(value), { kind: 'DEFER_INDUCTION_ITEM' } as const);
         case 'REQUEST_REASSESSMENT':

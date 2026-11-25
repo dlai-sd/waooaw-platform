@@ -4,7 +4,10 @@
     "wallet_authority": "WALLET",
     "trial_identity_binding_mode": "RECORD",
     "whatsapp_stop_acknowledgement_enabled": true,
-    "acceptance_synthetic_tenants_enabled": true
+    "acceptance_synthetic_tenants_enabled": true,
+    "employment_protocol_enabled": true,
+    "employment_protocol_rollback_epoch": 0,
+    "web_conversation_enabled": true
   },
   "platform_access": {
     "founders": [

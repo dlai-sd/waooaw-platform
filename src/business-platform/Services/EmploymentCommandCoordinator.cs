@@ -4,6 +4,7 @@
 
 using System.Text.Json;
 using Newtonsoft.Json;
+using Waooaw.BusinessPlatform.Services.RealWork;
 using Waooaw.Generated.DomainEmployment.Api;
 using Waooaw.Generated.DomainEmployment.Model;
 using Waooaw.Generated.WbeEmployment.Api;
@@ -554,7 +555,8 @@ public interface IEmploymentCommandCoordinator
 
 public sealed class EmploymentCommandCoordinator(
     ConversationalEmploymentService employment,
-    IEmploymentCommandOwnerGateway owners
+    IEmploymentCommandOwnerGateway owners,
+    RealWorkDecisionService? decisions = null
 ) : IEmploymentCommandCoordinator
 {
     public async Task CoordinateAsync(
@@ -565,6 +567,14 @@ public sealed class EmploymentCommandCoordinator(
         var outcome =
             employment.GetCommand(context.TenantId, context.RelationshipId, context.CommandId)
             ?? throw new EmploymentProtocolException("EMPLOYMENT_NOT_ACCESSIBLE");
+        // A command the rollback epoch already blocked, or any other finished command, goes no further.
+        if (outcome.State is "COMPLETED" or "REJECTED" or "CONFLICT" or "BLOCKED")
+            return;
+        if (DecisionKinds.IsDecisionCommand(context.CommandKind))
+        {
+            await CoordinateDecisionAsync(context, cancellationToken);
+            return;
+        }
         foreach (var step in outcome.OwnerSteps.Where(step => step.State == "PENDING"))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -582,5 +592,84 @@ public sealed class EmploymentCommandCoordinator(
             if (validation.State is not ("COMPLETED" or "COMMITTED"))
                 return;
         }
+    }
+
+    // The two decisions are owned by BP (artifact and decision records) and recorded by CE; no domain or WBE step applies.
+    private async Task CoordinateDecisionAsync(
+        EmploymentCommandCoordinationContext context,
+        CancellationToken cancellationToken
+    )
+    {
+        EmploymentOwnerValidation result;
+        try
+        {
+            if (decisions is null)
+                throw new InvalidOperationException("Decision owner is not configured.");
+            var artifactId = Guid.Parse(
+                context.Command.GetProperty("expectedArtifactId").GetString()!
+            );
+            var digest = context.Command.GetProperty("expectedArtifactDigest").GetString()!;
+            var professionalType = context
+                .Workspace.Workspace.GetProperty("agentType")
+                .GetString()!;
+            var space = context.Workspace.DecisionSpaceVersion;
+            DecisionView decision;
+            if (context.CommandKind == DecisionKinds.AcceptArtifactVersion)
+                decision = await decisions.ApproveAsync(
+                    context.TenantId,
+                    context.RelationshipId,
+                    context.ActorId,
+                    professionalType,
+                    artifactId,
+                    digest,
+                    context.CommandId,
+                    space,
+                    cancellationToken
+                );
+            else if (
+                context.Command.GetProperty("expectedDecisionSpaceVersion").GetInt64() != space
+            )
+                throw new RealWorkConflictException("REAL_WORK_DECISION_SPACE_CHANGED");
+            else
+                decision = await decisions.ConfirmScopeAsync(
+                    context.TenantId,
+                    context.RelationshipId,
+                    context.ActorId,
+                    professionalType,
+                    artifactId,
+                    digest,
+                    context.CommandId,
+                    space,
+                    cancellationToken
+                );
+            result = new EmploymentOwnerValidation(
+                "COMPLETED",
+                decision.EvidenceId.ToString("D"),
+                digest,
+                $"ce-evidence:{decision.EvidenceId:D}"
+            );
+        }
+        catch (RealWorkConflictException error)
+        {
+            result = new("BLOCKED", null, null, $"artifact-binding:{error.Code}");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            result = new("BLOCKED", null, null, $"ce-denied:{context.CommandId}");
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            result = new("UNKNOWN", null, null, $"owner-failure:CE:{context.CommandId}");
+        }
+        employment.UpdateOwnerStep(
+            context.TenantId,
+            context.RelationshipId,
+            context.CommandId,
+            "CE",
+            result.State,
+            result.OwnerCommandRef,
+            result.SourceVersion,
+            result.EvidenceRef
+        );
     }
 }

@@ -1,7 +1,7 @@
 .gitignore
 .npmignore
-.openapi-generator-ignore
 README.md
+docs/AcceptArtifactVersionCommandV1.md
 docs/AcceptPlanVersionCommandV1.md
 docs/AcknowledgeCorrectiveProposalCommandV1.md
 docs/AcknowledgeMaterialChangeCommandV1.md
@@ -11,6 +11,7 @@ docs/BlockedEffectV1.md
 docs/CalendarCommitmentV1.md
 docs/CalendarTolerancePolicyRefV1.md
 docs/ConfirmInductionItemCommandV1.md
+docs/ConfirmScopeBoundaryCommandV1.md
 docs/ConversationalEmploymentApi.md
 docs/DeferInductionItemCommandV1.md
 docs/EmploymentCommandKind.md
@@ -49,6 +50,7 @@ package.json
 src/apis/ConversationalEmploymentApi.ts
 src/apis/index.ts
 src/index.ts
+src/models/AcceptArtifactVersionCommandV1.ts
 src/models/AcceptPlanVersionCommandV1.ts
 src/models/AcknowledgeCorrectiveProposalCommandV1.ts
 src/models/AcknowledgeMaterialChangeCommandV1.ts
@@ -58,6 +60,7 @@ src/models/BlockedEffectV1.ts
 src/models/CalendarCommitmentV1.ts
 src/models/CalendarTolerancePolicyRefV1.ts
 src/models/ConfirmInductionItemCommandV1.ts
+src/models/ConfirmScopeBoundaryCommandV1.ts
 src/models/DeferInductionItemCommandV1.ts
 src/models/EmploymentCommandKind.ts
 src/models/EmploymentCommandOutcomeV1.ts

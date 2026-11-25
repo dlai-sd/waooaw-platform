@@ -9,7 +9,7 @@
 | Initiative | IB-170 |
 | Roadmap | [ROADMAP.md](../ROADMAP.md), Iteration 3 of 6, milestone M3 |
 | Founder assignment | 2026-11-24: "WC-170 as the gated skeleton ... Yes." 2026-11-25: "groom 170 to full extent and give it on new PR with agent instructions to plan and proceed as per plan, to do docker testing at end of implementation instead of after each story" |
-| Status | **GROOMED. Merging the grooming pull request is the Founder's acceptance of the stories and of the data contracts.** The build is a separate pull request and still needs the Founder's explicit authorization in the session that starts it (BOOTSTRAP implementation gate) |
+| Status | **BUILT in one pull request (this one), awaiting the Founder's review and merge.** Founder authorization to build: 2026-11-25, in the session that built it. The one Demo deployment, the read-back and the slice 4 calibration report follow the merge; until then every row of the ledger is PLANNED, not PASS |
 | Depends on | The Demo environment as left by WC-168 and WC-169. The one Demo deployment now happens after the build merges (Founder, 2026-11-25), so the WC-169 follow-ups ride in it |
 | Controlling specification | [ae02-real-work-solution-contract.md](../architecture/reference/product/ae02-real-work-solution-contract.md) |
 | Agent instructions | [WC-170-agent-execution-instructions.md](./WC-170-agent-execution-instructions.md) |
@@ -232,3 +232,52 @@ Review record (single-pass Solution Architect review, 2026-11-25, read-only): te
 | Definition of done required deployment before merge | Split into build pull request and post-merge qualification |
 | Stop condition banned every provider account | Approved test assets and the configured AI provider are allowed |
 | Ledger digest stale | Recomputed after the repairs |
+
+### Build record (2026-11-25, one pull request, Docker validation once)
+
+The Founder authorized the build in the session that did it, delegated every technical decision to the author, allowed one single-pass office review and no sub-agent implementation, and set the order: all stories first, one consolidated Docker pass, no CI watching, no Azure or Demo change, no merge. The work is on branch `ib/170/real-agent-work-end-to-end`, cut from `main` at `843719eb`.
+
+**Preconditions read before coding (read-only; nothing assumed)**
+
+| Precondition | What was read | Result |
+|---|---|---|
+| Employment protocol setting | `appsettings.json`, Terraform feature settings, `infrastructure/platform-settings/demo.json` | Default `false` and Demo never set it. The build adds three closed settings (S9 of the settings policy) and Demo sets them. The deployed value is read back only after the Founder's deployment |
+| Admitted DMA version | The admission fixture the deployment workflow digests, and the offerable projection the readiness route reads | The fixture is `digital-marketing-local-service-v1.0.0`. Whether Demo has it offerable is read back from the readiness route, never assumed |
+| Model provider key | Not readable by this session and not read | Reported as `MODEL_KEY_NOT_CONFIGURED` until the Founder saves the key on Providers (Founder-reserved); the readiness route reports presence only |
+| Conversation tables | `99zzzzzzzz-wc169-01-conversation-context-media-runtime-access.sql` | The four grants are in the repository; the Demo catalog read-back is after the deployment |
+
+**Technical decisions (author's; the Founder was not asked)**
+
+| Area | Decision and why |
+|---|---|
+| One record store | One append-only table `business.real_work_records` (artifact, lock, supersession, decision, timeline event, claim) with forced row-level security and an advisory lock per relationship, instead of five tables: nothing is updated, so no history can be rewritten, and projections fold records in sequence order |
+| Decisions use the one command pipeline | `ACCEPT_ARTIFACT_VERSION` and `CONFIRM_SCOPE_BOUNDARY` are added to the closed command discriminator and the generated web client; BP checks the exact artifact digest, CE records the evidence, the approval locks the version, and scope confirmation needs the locked version first. The web posts them through the same fresh-strong-sign-in command route |
+| Rollback epoch | The epoch a command was accepted under is stored on its reservation; any later read of a non-terminal command accepted under an older epoch appends a BLOCKED outcome with evidence. History is never rewritten |
+| Vocabulary | The manifest pointed at section 3.22 (the communication standard), not the vocabulary. The build repaired the reference first: `domain-vocabulary.v1.json` was generated from section 3.1 and the manifest now names it with its real digest. Resolution is shared code keyed by data, with the business domain as a data selector |
+| Artifact binding | Enforced in three places: BP refuses a timeline event for a step whose artifact is not LOCKED with both decisions for the exact digest; PR refuses to dispatch it and asks CE (`ArtifactBindingEvaluator`) before the provider call; the stub approval that CE-less sessions produced can no longer lock anything |
+| Timeline | PR owns the stream, BP ingests it over an ADR-046 signed workload call (route grant added to `registry.yaml`) and projects it. Unknown outcome is a reason code on `EXECUTING`; reconciliation appends; a receipt without the provider's reference stays `EXECUTING`; Emergency Stop fences the stream and rewrites a late success to `HALTED` with its evidence kept |
+| Outcomes | Activity counts are computed by BP from completed work with evidence; an agent-reported figure is always stored as agent-stated and labelled; a business outcome never shows a number and reads "Not measurable yet" |
+| Spend | A sandbox-only chain on the existing wallet ledger: authorization (exact artifact and two evidence ids), atomic ceiling and reservation, charge only on verified provider proof, reconciliation per item, a discrepancy blocks new spend until resolved with evidence. Four private routes with route grants |
+| Monitor tiles | Grouped in the web by the declared evidence source (business outcomes first, performance second, telemetry behind a details control); a tile that is not current is marked stale. No wire change, so no specification change |
+| Web | One Work tab in the workbench: your decisions (two steps), what the agent is doing, results. The panel reads in English for every locale until the Founder confirms Hindi wording |
+
+**Single-pass review and repairs.** One read-only Solution Architect review of the data contracts and code returned 21 findings. Repaired in this pull request: refusal of the artifact-creating exemption for steps with a binding or provider proof (BP and PR); a stop is re-checked immediately before the provider call; a scope confirmation given under an older Decision Space is stale; a predecessor is superseded by the fact that its successor is locked; a command already blocked by the rollback epoch goes no further; per-relationship serialization of timeline writes; credential-like references refused; an event id reused with different content is a conflict; Unicode-safe request digest between PR and BP; reservation replay under a race; reconciliation per item so opposite differences cannot cancel and an earlier break stays until resolved; tenant-scoped spend item reads; the exact artifact content and its fingerprint shown before approval; an unreadable section reads as unavailable, not empty.
+
+**Gaps found in the build and not closed here (recorded, not fixed silently)**
+
+| Id | Gap | Owner and next step |
+|---|---|---|
+| B1 | The PR execution stream, the CE step gate and the spend client are built and tested as modules but no running PR code path calls them yet; `SessionExecutor` still dispatches tools the old way. Until a caller is wired, a Demo run produces no timeline events | WC-171 or a repair pull request; Founder to confirm before the proof run (slice 4 S17 reports BLOCKED-BY-FLAG with the reason) |
+| B2 | The stop and unknown-outcome fences are per process. A restart or a second replica forgets them; BP still rewrites a late success after a recorded stop | Wire to the existing durable stop barrier when B1 is wired |
+| B3 | CE checks the shape of the binding (ids, digest, status, two different evidence ids) but cannot read BP's records, so BP ingest is the authoritative check of "locked and both decisions" | Accepted design; a CE read of BP records would be a new owner link |
+| B4 | The decision owner check is the existing "active participant" check used by every employment command; a named-delegate refinement from the Decision Space (PG-07) is not added | Decision Space contract |
+| B5 | WBE trusts the signed callers (BP authorizes, PR reserves and charges) for the evidence ids and the "verified" flag; it does not verify them with the evidence owner | WC-172 (real money) must close this before real spend |
+| B6 | The ingest route proves the caller is PR but the body names the tenant and relationship; the signed envelope's own tenant scope is not compared | Close with B1 when PR's relationship context is wired |
+| B7 | No read route exposes the spend chain to the harness, so slice 4 S19 reports NOT-COVERED; the Founder reads the reconciliation result after deployment | WC-171 oversight screens |
+| B8 | Customer-route and ingest-route controllers have no unit tests; their behavior is covered through the services they call and the web route tests | Add with B1 |
+| B9 | The Work tab reads in English for every locale | Founder's domain-wording confirmation |
+| B10 | The workload trust bundle is at its Key Vault size limit (25,600 bytes; the existing issuer test fails with five more grants). Only one grant was added (professional-runtime to business-platform `ingestRealWorkEvent`). The four Billing Engine spend routes are built and tested but have no route grants, so no service can call them on Demo yet | Split or slim the trust bundle before WC-172 (real money) |
+
+**Known failures that are not this change (shown on a tree without it or unrelated to any file touched).** Eleven billing-engine tests (component units, lifecycle commands, baseline seed, export and import, WC-124 authority); `tests/validation_control/test_wc115_generated_clients.py` for the AI runtime client digest (the AI runtime specification is untouched); `tests/constitutional` failures about WC-027 to WC-034 task tables, DCM specifications and the ADR-046 private operation inventory (none touches a file changed here); `test_workload_credentials` failed once under parallel load and passes alone (43 passed twice).
+
+**Validation.** The one consolidated Docker pass is recorded in the pull request body with every command and its result. The Demo read-back, the slice 4 calibration report and the defect list start after the Founder's single deployment.

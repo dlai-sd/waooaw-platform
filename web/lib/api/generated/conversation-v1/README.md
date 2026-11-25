@@ -83,6 +83,7 @@ All URIs are relative to *https://api.waooaw.com*
 
 ### Models
 
+- [AcceptArtifactVersionCommandV1](docs/AcceptArtifactVersionCommandV1.md)
 - [AcceptPlanVersionCommandV1](docs/AcceptPlanVersionCommandV1.md)
 - [AcknowledgeCorrectiveProposalCommandV1](docs/AcknowledgeCorrectiveProposalCommandV1.md)
 - [AcknowledgeMaterialChangeCommandV1](docs/AcknowledgeMaterialChangeCommandV1.md)
@@ -97,6 +98,7 @@ All URIs are relative to *https://api.waooaw.com*
 - [CanonicalMessageV1](docs/CanonicalMessageV1.md)
 - [ChannelKind](docs/ChannelKind.md)
 - [ConfirmInductionItemCommandV1](docs/ConfirmInductionItemCommandV1.md)
+- [ConfirmScopeBoundaryCommandV1](docs/ConfirmScopeBoundaryCommandV1.md)
 - [ContextCorrectionRequestV1](docs/ContextCorrectionRequestV1.md)
 - [ContextFreshness](docs/ContextFreshness.md)
 - [ContextProfileItemV1](docs/ContextProfileItemV1.md)

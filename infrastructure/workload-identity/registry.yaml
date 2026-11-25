@@ -72,6 +72,7 @@ route_grants:
   - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations", operation: generateConversation, contract_major: 1 }
   - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations/reconcile", operation: reconcileConversationGeneration, contract_major: 1 }
   - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations/recover-content", operation: recoverConversationGenerationContent, contract_major: 1 }
+  - { caller: professional-runtime, target: business-platform, method: POST, route: "/internal/v1/real-work/events", operation: ingestRealWorkEvent, contract_major: 1 }
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/resolve", operation: resolveConversationInference, contract_major: 1 }
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/reserve", operation: reserveConversationInference, contract_major: 1 }
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/reconcile", operation: reconcileConversationInference, contract_major: 1 }

@@ -81,6 +81,7 @@ export const InlineObjectCodeEnum = {
     IdentityActionDenied: 'IDENTITY_ACTION_DENIED',
     IdentityResourceNotAccessible: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE',
     IdentityIdempotencyConflict: 'IDENTITY_IDEMPOTENCY_CONFLICT',
+    IdentityVersionConflict: 'IDENTITY_VERSION_CONFLICT',
     DuplicateResolutionRequired: 'DUPLICATE_RESOLUTION_REQUIRED',
     IdentityChallengeExpired: 'IDENTITY_CHALLENGE_EXPIRED',
     IdentityVerificationRequired: 'IDENTITY_VERIFICATION_REQUIRED',

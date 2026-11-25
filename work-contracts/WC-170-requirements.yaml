@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-170
 contract_path: work-contracts/WC-170-real-agent-work-end-to-end.md
-contract_digest: cd0c9c862b2eb81a949b13c07685032fc200247b7d0f0cacd26ffe5bef501d72
+contract_digest: a3b67ecf9facd9273e69da425bdf2fccd0d328bb60ef8fd4fc91a03ac0d59e2a
 implementation_scope: true
 result: PLANNED
 
@@ -19,78 +19,78 @@ requirements:
     requirement_id: WC170-R001
     source: WC-170 Canonical Requirement Index, R001
     observable_outcome: The employment protocol is switched on for Demo through a gate with a rollback epoch; raising the epoch blocks in-flight commands with evidence and rewrites no history.
-    test_path_or_plan: Business Platform tests for the gate, the epoch and the closed not-accessible answer; Demo read-back of the workspace for a hired DMA relationship; acceptance slice 4 precondition.
+    test_path_or_plan: tests/business-platform.Tests/ConversationalEmploymentServiceTests.cs (rollback epoch blocks in-flight commands with evidence), tests/business-platform.Tests/EmploymentProtocolGateTests.cs, tests/pipeline/test_goal006_deployment_inputs.py (the Demo setting), infrastructure/platform-settings/demo.json; Demo read-back of GET /api/v1/admin/employment/readiness and of the workspace for a hired DMA relationship.
 
   - <<: *defaults
     requirement_id: WC170-R002
     source: WC-170 Canonical Requirement Index, R002
     observable_outcome: The agent is provably able to run, or the report names exactly why not (admission, model key, capacity).
-    test_path_or_plan: Tests for the compatibility start binding and the AIR provider status that never returns a value; capacity read in the report.
+    test_path_or_plan: tests/business-platform.Tests/EmploymentReadinessServiceTests.cs (every miss is a named BLOCKED-BY-FLAG reason, an unreadable fact is never ready, no credential value), tests/business-platform.Tests/EmploymentCompatibilityControllerTests.cs (compatibility start fails closed on a protocol or inventory mismatch); the model key itself is Founder-reserved and read back from the readiness route.
     initial_state: Founder-reserved
 
   - <<: *defaults
     requirement_id: WC170-R003
     source: WC-170 Canonical Requirement Index, R003
     observable_outcome: The conversation stories run on Demo, with the four conversation tables read back as granted.
-    test_path_or_plan: Read-only catalog read after deployment; acceptance conditional stories AE-02-S02 and S03 run.
+    test_path_or_plan: tests/pipeline/test_goal006_deployment_inputs.py (web_conversation_enabled), infrastructure/terraform/phase2/modules/workload/feature-settings.tf (WC120_CONVERSATION_ENABLED for the web app); read-only catalog read of the four conversation tables after deployment; acceptance conditional stories AE-02-S02 and S03 run.
     initial_state: Founder-reserved
 
   - <<: *defaults
     requirement_id: WC170-R004
     source: WC-170 Canonical Requirement Index, R004
     observable_outcome: Domain vocabulary resolves from each agent's own bound vocabulary and digest with no agent branch in shared code.
-    test_path_or_plan: Conformance scenario with DMA and a second profession fixture resolving different vocabularies through one code path; digest mismatch and unknown token tests.
+    test_path_or_plan: tests/professional-runtime/test_wc170_real_work.py (manifest reference resolves to the real vocabulary and its digest, digest mismatch fails closed, two businesses on one agent, two professions through one code path, unknown token is a named gap), tests/fixtures/wc170/tutor-domain-vocabulary.v1.json, tests/contract/test_wc136_experience_contract.py (every contract digest reference resolves to its file).
 
   - <<: *defaults
     requirement_id: WC170-R005
     source: WC-170 Canonical Requirement Index, R005
     observable_outcome: The customer sees and governs locked artifacts (profile, maturity report, campaign brief, calendar); a change creates a successor; approval binds the exact digest; execution steps name their artifact.
-    test_path_or_plan: Business Platform and runtime tests for the artifact projection and the CE refusal of an unlocked or mismatched artifact; web tests; slice 4 steps S12 to S14.
+    test_path_or_plan: tests/business-platform.Tests/RealWorkTests.cs and RealWorkPostgresTests.cs (versions, successor never inherits approval, digest binding), tests/constitutional-engine.Tests/Evaluators/ArtifactBindingEvaluatorTests.cs (CE refuses an unlocked or unbound step), tests/professional-runtime/test_wc170_real_work.py (stub approval never locks), src/digital-marketing-agent/tests/test_wc170_real_work.py (profile and maturity proposals), web/components/workbench/RealWorkPanel.test.tsx; slice 4 steps S12 to S14.
 
   - <<: *defaults
     requirement_id: WC170-R006
     source: WC-170 Canonical Requirement Index, R006
     observable_outcome: Approval and scope-boundary confirmation are two separate customer steps with two evidence records; a consequential step needs both for the exact version; corrections never inherit approval.
-    test_path_or_plan: Tests for the new closed CONFIRM_SCOPE_BOUNDARY command and the CE gate; web tests for the two steps; slice 4 steps S14 to S16.
+    test_path_or_plan: tests/business-platform.Tests/EmploymentCommandCoordinatorTests.cs (the two closed commands through the one command pipeline, approval before scope, wrong digest and stale Decision Space blocked), tests/business-platform.Tests/RealWorkTests.cs (two ordered decisions, two records, successor needs its own), web/app/api/relationships/real-work.test.ts, web/components/workbench/RealWorkPanel.test.tsx; slice 4 steps S14 to S16.
 
   - <<: *defaults
     requirement_id: WC170-R007
     source: WC-170 Canonical Requirement Index, R007
     observable_outcome: One execution timeline per relationship shows the six states, reconciled unknown outcomes, and publication as completed only after verified provider evidence.
-    test_path_or_plan: Runtime and Business Platform tests for event ordering, replay, tenant scope and unknown-outcome reconciliation; web tests; slice 4 step S17.
+    test_path_or_plan: tests/business-platform.Tests/RealWorkTests.cs (six states, replay and reorder, tenant scope, unknown outcome reconciled and never retried blindly, publication done only with the provider reference, no secret in the stream), tests/professional-runtime/test_wc170_real_work.py and test_real_work_gateway.py (PR stream and signed delivery), web/components/workbench/RealWorkPanel.test.tsx; slice 4 step S17.
 
   - <<: *defaults
     requirement_id: WC170-R008
     source: WC-170 Canonical Requirement Index, R008
     observable_outcome: Every outcome claim traces to work items and evidence; agent-stated figures are labelled; activity is not shown as a business result; unmeasurable business outcomes say so.
-    test_path_or_plan: Tests for the trace projection and the no-evidence refusal; web tests; slice 4 step S18.
+    test_path_or_plan: tests/business-platform.Tests/RealWorkTests.cs (activity derived from completed work with evidence, agent-stated figures labelled, a claim without work or evidence withheld, business outcomes read Not measurable yet), web/components/workbench/RealWorkPanel.test.tsx; slice 4 step S18.
 
   - <<: *defaults
     requirement_id: WC170-R009
     source: WC-170 Canonical Requirement Index, R009
     observable_outcome: External spend is authorized, reserved, charged on verified proof, funded by the right account and reconciled; a discrepancy blocks new spend; sandbox only.
-    test_path_or_plan: Billing Engine tests for authorization, reservation, charge, reconciliation and the unfunded refusal against the provider emulator; slice 4 step S19.
+    test_path_or_plan: tests/billing-engine/test_wc170_spend_chain.py (authorization needs the exact artifact binding and refuses real money, atomic ceiling and reservation, replay, unfunded and wrongly funded refusal, charge only on verified proof, reconciliation and the discrepancy block against a provider emulator, route authentication), infrastructure/postgres/init/99zzzzzzzz-wc170-02-spend-chain.sql; slice 4 step S19.
 
   - <<: *defaults
     requirement_id: WC170-R010
     source: WC-170 Canonical Requirement Index, R010
     observable_outcome: Emergency Stop halts agent work mid-execution; the timeline shows HALTED with the reason; no late success appears; evidence exists; another relationship is unaffected.
-    test_path_or_plan: Runtime and Business Platform tests for stop during execution and late-result suppression; slice 4 step S20.
+    test_path_or_plan: tests/professional-runtime/test_wc170_real_work.py (dispatch fenced before any provider call, late result halted as evidence, other relationships unaffected), tests/business-platform.Tests/RealWorkTests.cs (stream fence rewrites late success to HALTED with the Emergency Stop reason); slice 4 step S20.
 
   - <<: *defaults
     requirement_id: WC170-R011
     source: WC-170 Canonical Requirement Index, R011
     observable_outcome: Monitor tiles declared by the agent render with business measures first, stale tiles marked and audience rules applied.
-    test_path_or_plan: Web tests for order, staleness and audience; a browser screenshot at 1440 and 390 pixels; slice 4 step S20.
+    test_path_or_plan: web/lib/monitor-tiles.test.ts and the MonitorPanel test in web/components/workbench/WorkbenchPanels.test.tsx (business results first, technical behind details, stale marked), a Chromium screenshot at 1440 and 390 pixels recorded in the PR body; slice 4 step S20.
 
   - <<: *defaults
     requirement_id: WC170-R012
     source: WC-170 Canonical Requirement Index, R012
     observable_outcome: Acceptance slice 4 runs on Demo with the synthetic customer and produces one calibration report with an owner for every failure.
-    test_path_or_plan: New plan validation/acceptance/plans/slice-4-agent-work.v1.yaml and its steps; the customer journey acceptance workflow run and report artifact.
+    test_path_or_plan: validation/acceptance/plans/slice-4-agent-work.v1.yaml with tests/journey-acceptance/specs/s12-agent-work.spec.ts (steps S12 to S20), registered in validation/acceptance/environments/demo.yaml and the customer journey acceptance workflow; the workflow run and report artifact after the Founder's Demo deployment.
 
   - <<: *defaults
     requirement_id: WC170-R013
     source: WC-170 Canonical Requirement Index, R013
     observable_outcome: The acceptance coverage ratchet rises and never falls, and PG-17 to PG-23 are SPEC_CLOSED with the proof pending until the calibration report.
-    test_path_or_plan: Acceptance static gates and the coverage baseline check; the gap register diff.
+    test_path_or_plan: scripts/acceptance_static_gates.py check (the ratchet) with validation/acceptance/live-scope.yaml and coverage-baseline.yaml; architecture/reference/product/waooaw-product-gap-register.md rows PG-17 to PG-23 stay SPEC_CLOSED with the proof pending until the calibration report.

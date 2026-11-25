@@ -29,6 +29,7 @@ from promotions.router import router as promotions_router
 from payment.router import router as payment_router
 from wallet.router import router as wallet_router
 from wallet.private_routes import router as wallet_private_router
+from spend_chain.private_routes import router as spend_chain_private_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
@@ -202,6 +203,8 @@ def create_app() -> FastAPI:
     app.include_router(service_link_router)
     # WC-136 C4-03/C4-04: wallet parity read and setup-grant open, over the same private mTLS path
     app.include_router(wallet_private_router)
+    # WC-170 DC-6: the sandbox spend chain, over the same private mTLS path
+    app.include_router(spend_chain_private_router)
     configure_relationship_workspace(app)
     # WC-136 C5-03: pricing administration, over the same private mTLS path
     app.include_router(pricing_admin_router)

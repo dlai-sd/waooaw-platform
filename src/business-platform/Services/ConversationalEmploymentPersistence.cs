@@ -48,8 +48,16 @@ public interface IConversationalEmploymentPersistence
     );
 }
 
-public sealed class PostgresConversationalEmploymentPersistence(string connectionString)
-    : IConversationalEmploymentPersistence
+/// <summary>Reads the rollback epoch a command was accepted under, so a later epoch raise can block it (WC170-R001).</summary>
+public interface IEmploymentCommandEpochReader
+{
+    long? LoadRollbackEpoch(Guid tenantId, Guid relationshipId, Guid commandId);
+}
+
+public sealed class PostgresConversationalEmploymentPersistence(
+    string connectionString,
+    IEmploymentProtocolGate? gate = null
+) : IConversationalEmploymentPersistence, IEmploymentCommandEpochReader
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -173,6 +181,27 @@ public sealed class PostgresConversationalEmploymentPersistence(string connectio
         return outcome;
     }
 
+    public long? LoadRollbackEpoch(Guid tenantId, Guid relationshipId, Guid commandId)
+    {
+        using var connection = Open();
+        using var transaction = BeginTenantTransaction(connection, tenantId);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT rollback_epoch
+            FROM business.employment_commands
+            WHERE tenant_id = @tenant_id
+              AND relationship_id = @relationship_id
+              AND command_id = @command_id
+            """;
+        command.Parameters.AddWithValue("tenant_id", tenantId);
+        command.Parameters.AddWithValue("relationship_id", relationshipId);
+        command.Parameters.AddWithValue("command_id", commandId);
+        var value = command.ExecuteScalar();
+        transaction.Commit();
+        return value is long epoch ? epoch : null;
+    }
+
     public PersistedEmploymentCommand ReserveCommand(
         Guid tenantId,
         Guid relationshipId,
@@ -197,7 +226,7 @@ public sealed class PostgresConversationalEmploymentPersistence(string connectio
             VALUES
                 (@tenant_id, @relationship_id, @command_id, @actor_id, @operation_family,
                  @idempotency_key, @canonical_payload_hash, @command_kind,
-                 @expected_workspace_version, @expected_manifest_version, 0)
+                 @expected_workspace_version, @expected_manifest_version, @rollback_epoch)
             ON CONFLICT (tenant_id, relationship_id, actor_id, operation_family, idempotency_key)
             DO NOTHING
             RETURNING command_id
@@ -212,6 +241,7 @@ public sealed class PostgresConversationalEmploymentPersistence(string connectio
         reserve.Parameters.AddWithValue("command_kind", commandKind);
         reserve.Parameters.AddWithValue("expected_workspace_version", expectedWorkspaceVersion);
         reserve.Parameters.AddWithValue("expected_manifest_version", expectedManifestVersion);
+        reserve.Parameters.AddWithValue("rollback_epoch", gate?.Snapshot().RollbackEpoch ?? 0L);
         var inserted = reserve.ExecuteScalar() is Guid;
         if (!inserted)
         {

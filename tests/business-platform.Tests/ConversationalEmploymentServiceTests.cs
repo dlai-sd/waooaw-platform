@@ -57,6 +57,68 @@ public sealed class ConversationalEmploymentServiceTests
     }
 
     [Fact]
+    public void RaisingTheRollbackEpochBlocksInFlightCommandsWithEvidenceAndKeepsHistory()
+    {
+        var gate = new MutableGate(3);
+        var service = new ConversationalEmploymentService(gate: gate);
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        service.RegisterWorkspace(Workspace(tenantId, relationshipId));
+        var accepted = service.Submit(
+            tenantId,
+            relationshipId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ValidConfirmCommand()
+        );
+        var commandId = accepted.Receipt.CommandId;
+        Assert.Equal("ACCEPTED", service.GetCommand(tenantId, relationshipId, commandId)!.State);
+
+        gate.Raise(4);
+        var blocked = service.GetCommand(tenantId, relationshipId, commandId)!;
+
+        Assert.Equal("BLOCKED", blocked.State);
+        Assert.Contains("employment-rollback-epoch:3->4", blocked.EvidenceRefs);
+        Assert.Contains($"bp-command-accepted:{commandId}", blocked.EvidenceRefs);
+        Assert.All(
+            blocked.OwnerSteps.Where(step => step.Owner != "BP"),
+            step => Assert.Equal("BLOCKED", step.State)
+        );
+        Assert.Equal(
+            "EMPLOYMENT_COMMAND_TERMINAL",
+            Assert
+                .Throws<EmploymentProtocolException>(() =>
+                    service.UpdateOwnerStep(
+                        tenantId,
+                        relationshipId,
+                        commandId,
+                        "CE",
+                        "COMPLETED",
+                        "ce-ref",
+                        "v1",
+                        "evidence-1"
+                    )
+                )
+                .Code
+        );
+    }
+
+    [Fact]
+    public void ACommandAcceptedUnderTheCurrentEpochIsNotBlocked()
+    {
+        var gate = new MutableGate(5);
+        var service = new ConversationalEmploymentService(gate: gate);
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        service.RegisterWorkspace(Workspace(tenantId, relationshipId));
+        var commandId = service
+            .Submit(tenantId, relationshipId, Guid.NewGuid(), Guid.NewGuid(), ValidConfirmCommand())
+            .Receipt.CommandId;
+
+        Assert.Equal("ACCEPTED", service.GetCommand(tenantId, relationshipId, commandId)!.State);
+    }
+
+    [Fact]
     public void MissingWorkspaceReadsAndCommandsRemainNotAccessible()
     {
         var service = new ConversationalEmploymentService();
@@ -1326,6 +1388,16 @@ public sealed class ConversationalEmploymentServiceTests
             "Owner validation remains pending.",
             DateTimeOffset.UtcNow
         );
+
+    private sealed class MutableGate(long epoch) : IEmploymentProtocolGate
+    {
+        private long _epoch = epoch;
+
+        public void Raise(long next) => _epoch = next;
+
+        public EmploymentProtocolGateSnapshot Snapshot() =>
+            new(EmploymentProtocolOptions.ExpectedGateId, true, _epoch);
+    }
 
     private sealed class RecordingPersistence : IConversationalEmploymentPersistence
     {

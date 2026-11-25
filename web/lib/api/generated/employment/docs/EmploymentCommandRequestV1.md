@@ -19,6 +19,8 @@ Name | Type
 `expectedWbeSourceVersion` | string
 `acknowledgement` | string
 `requestedCalendarCommitment` | [CalendarCommitmentV1](CalendarCommitmentV1.md)
+`expectedArtifactId` | string
+`expectedArtifactDigest` | string
 
 ## Example
 
@@ -40,6 +42,8 @@ const example = {
   "expectedWbeSourceVersion": null,
   "acknowledgement": null,
   "requestedCalendarCommitment": null,
+  "expectedArtifactId": null,
+  "expectedArtifactDigest": null,
 } satisfies EmploymentCommandRequestV1
 
 console.log(example)

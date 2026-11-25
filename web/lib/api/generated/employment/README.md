@@ -67,6 +67,7 @@ All URIs are relative to *https://api.waooaw.com*
 
 ### Models
 
+- [AcceptArtifactVersionCommandV1](docs/AcceptArtifactVersionCommandV1.md)
 - [AcceptPlanVersionCommandV1](docs/AcceptPlanVersionCommandV1.md)
 - [AcknowledgeCorrectiveProposalCommandV1](docs/AcknowledgeCorrectiveProposalCommandV1.md)
 - [AcknowledgeMaterialChangeCommandV1](docs/AcknowledgeMaterialChangeCommandV1.md)
@@ -76,6 +77,7 @@ All URIs are relative to *https://api.waooaw.com*
 - [CalendarCommitmentV1](docs/CalendarCommitmentV1.md)
 - [CalendarTolerancePolicyRefV1](docs/CalendarTolerancePolicyRefV1.md)
 - [ConfirmInductionItemCommandV1](docs/ConfirmInductionItemCommandV1.md)
+- [ConfirmScopeBoundaryCommandV1](docs/ConfirmScopeBoundaryCommandV1.md)
 - [DeferInductionItemCommandV1](docs/DeferInductionItemCommandV1.md)
 - [EmploymentCommandKind](docs/EmploymentCommandKind.md)
 - [EmploymentCommandOutcomeV1](docs/EmploymentCommandOutcomeV1.md)

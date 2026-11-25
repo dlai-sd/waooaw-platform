@@ -23,6 +23,7 @@ using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 using Waooaw.BusinessPlatform.Services.PlatformAccess;
+using Waooaw.BusinessPlatform.Services.RealWork;
 using Waooaw.BusinessPlatform.Services.Spend;
 using Waooaw.BusinessPlatform.Services.Workbench;
 using Waooaw.BusinessPlatform.Workflows;
@@ -961,8 +962,17 @@ builder
     .Bind(builder.Configuration.GetSection("EmploymentProtocol"))
     .ValidateOnStart();
 builder.Services.AddSingleton<IEmploymentProtocolGate, EmploymentProtocolGate>();
+builder.Services.Configure<EmploymentReadinessOptions>(
+    builder.Configuration.GetSection(EmploymentReadinessOptions.SectionName)
+);
+builder.Services.AddHttpClient("employment-readiness");
+builder.Services.AddScoped<IEmploymentReadinessSources, EmploymentReadinessSources>();
+builder.Services.AddScoped<EmploymentReadinessService>();
 builder.Services.AddSingleton<IConversationalEmploymentPersistence>(
-    new PostgresConversationalEmploymentPersistence(employmentRelationshipConn)
+    services => new PostgresConversationalEmploymentPersistence(
+        employmentRelationshipConn,
+        services.GetRequiredService<IEmploymentProtocolGate>()
+    )
 );
 builder.Services.AddSingleton<ConversationalEmploymentService>();
 builder.Services.AddSingleton<PostgresComponentUnitOutbox>(
@@ -1028,6 +1038,14 @@ else
         UnconfiguredEmploymentCommandOwnerGateway
     >();
 builder.Services.AddScoped<IEmploymentCommandCoordinator, EmploymentCommandCoordinator>();
+builder.Services.AddSingleton<IRealWorkLedger>(_ => new PostgresRealWorkLedger(
+    employmentRelationshipConn
+));
+builder.Services.AddSingleton<RealWorkArtifactService>();
+builder.Services.AddSingleton<IDecisionSpaceVersions, WorkspaceDecisionSpaceVersions>();
+builder.Services.AddScoped<RealWorkDecisionService>();
+builder.Services.AddScoped<RealWorkTimelineService>();
+builder.Services.AddScoped<RealWorkOutcomeService>();
 builder.Services.AddSingleton<EmploymentCompatibilityService>();
 
 // ── Common agent workbench — WC-136 C6 ──────────────────────────────────────

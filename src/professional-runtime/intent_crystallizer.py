@@ -4,6 +4,8 @@
 #                       ADR-043 §3 (Intent Crystallizer before any tool call in skill's tool set)
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -13,6 +15,13 @@ from typing import Any, Protocol
 logger = logging.getLogger(__name__)
 
 
+STUB_APPROVAL_SUFFIX = "-approval-stub"
+
+
+class StubApprovalRefused(Exception):  # noqa: N818 - named for the decision it records, like the other refusals
+    """A locked artifact needs genuine CE approval evidence; a stub or empty id never locks anything (DC-2)."""
+
+
 @dataclass
 class LockedArtifact:
     """Customer-approved artifact produced by the Intent Crystallizer.
@@ -20,12 +29,29 @@ class LockedArtifact:
     ADR-043 §3: Persisted in Temporal workflow state — survives session restart.
     Any tool call in a skill's authorized_tools set is blocked until the corresponding
     LockedArtifact exists in session state.
+
+    WC-170: the owner-side version lifecycle (version, digest, status, supersedes) lives beside this record in BP; here
+    the runtime proves the digest it runs under and refuses stub approval evidence.
     """
 
     skill_id: str
     artifact_type: str  # derived from CrystallizerConfig.locked_artifact_schema
     content: dict[str, Any] = field(default_factory=dict)
     approval_evidence_id: str = ""  # CE evidence record ID for the customer's approval (C-023)
+
+    def has_genuine_approval(self) -> bool:
+        evidence = self.approval_evidence_id.strip()
+        return bool(evidence) and not evidence.endswith(STUB_APPROVAL_SUFFIX)
+
+    def content_digest(self) -> str:
+        """Property order and whitespace never change this local digest. BP's stored artifact digest is the authority."""
+        canonical = json.dumps(
+            {"artifactType": self.artifact_type, "content": self.content},
+            separators=(",", ":"),
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class CrystallizerRequiredError(Exception):
@@ -142,7 +168,7 @@ class IntentCrystallizer:
             "ce_client not configured — LockedArtifact has no CE evidence record. C-023 violated in production. skill_id=%s",
             skill_id,
         )
-        return f"evidence-{skill_id}-approval-stub"
+        return f"evidence-{skill_id}{STUB_APPROVAL_SUFFIX}"
 
 
 # Avoid circular import: CrystallizerConfig is defined in skill_resolver but used here

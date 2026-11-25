@@ -147,9 +147,9 @@
   "experience": {
     "contractVersion": "1.0.0",
     "vocabularyRef": {
-      "contractRef": "architecture/reference/agents/digital-marketing-agent.md#3.22",
+      "contractRef": "src/digital-marketing-agent/contracts/domain-vocabulary.v1.json",
       "contractVersion": "3.1",
-      "contractDigest": "703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
+      "contractDigest": "9aba408b2d4e8a25d730e97abe30ce28198f7e6f9d65b5394806705e033da84a"
     },
     "componentCatalogueRef": {
       "contractRef": "src/digital-marketing-agent/contracts/experience-components.v1.json",

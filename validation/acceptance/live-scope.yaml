@@ -15,6 +15,18 @@ requirements:
   - WC149-R008
   - WC149-R009
   - WC149-R010
+  - WC170-R001
+  - WC170-R002
+  - WC170-R003
+  - WC170-R004
+  - WC170-R005
+  - WC170-R006
+  - WC170-R007
+  - WC170-R008
+  - WC170-R009
+  - WC170-R010
+  - WC170-R011
+  - WC170-R012
 stories:
   - AE-01-S02
   - AE-01-S05
@@ -23,6 +35,9 @@ stories:
   - AE-01-S08
   - AE-01-S10
   - AE-02-S01
+  - AE-02-S02
+  - AE-02-S03
+  - AE-02-S04
   - AE-02-S05
 gaps:
   - PG-02
@@ -35,5 +50,12 @@ gaps:
   - PG-12
   - PG-15
   - PG-16
+  - PG-17
+  - PG-18
+  - PG-19
+  - PG-20
+  - PG-21
+  - PG-22
+  - PG-23
 deferred:
   WC107-R019: Needs all five complete Demo journeys on desktop and mobile; the rollup (rollup.v1.yaml) reports it OPEN while Registration cannot be driven by synthetic users

@@ -218,7 +218,7 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-170 | Agent Execution Instructions | accepted when the Founder merges the WC-170 grooming pull request. | #640 |
+| WC-170 | Agent Execution Instructions | accepted when the Founder merges the WC-170 grooming pull request. | #643, #640 |
 | WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #642, #641, #640 |
 | WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #640 |
 | WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #640, #638, #637, #636, #635 |

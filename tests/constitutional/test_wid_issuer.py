@@ -271,7 +271,8 @@ def test_trust_bundle_is_written_before_any_workload_bundle_and_routes_cover_the
         ("business-platform", "billing-engine", "/internal/v1/service-link"),
         ("business-platform", "professional-runtime", "/internal/v1/service-link"),
     }
-    assert {grant["caller"] for grant in grants} == {"business-platform"}
+    # WC-170 adds one PR-to-BP grant (ingestRealWorkEvent); the trust bundle has room for no more (Key Vault size limit).
+    assert {grant["caller"] for grant in grants} == {"business-platform", "professional-runtime"}
 
 
 def test_trust_bundle_signature_binds_the_canonical_document() -> None:

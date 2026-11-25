@@ -99,6 +99,17 @@ public sealed class ConversationalEmploymentService
             ),
             ["REQUEST_REASSESSMENT"] = Fields("expectedPlanVersion"),
             ["ACKNOWLEDGE_CORRECTIVE_PROPOSAL"] = Fields("acknowledgement"),
+            ["ACCEPT_ARTIFACT_VERSION"] = Fields(
+                "expectedArtifactId",
+                "expectedArtifactDigest",
+                "acknowledgement"
+            ),
+            ["CONFIRM_SCOPE_BOUNDARY"] = Fields(
+                "expectedArtifactId",
+                "expectedArtifactDigest",
+                "expectedDecisionSpaceVersion",
+                "acknowledgement"
+            ),
         };
     private static readonly IReadOnlyDictionary<string, string[]> RequiredOwners = new Dictionary<
         string,
@@ -114,6 +125,8 @@ public sealed class ConversationalEmploymentService
         ["RESCHEDULE_WITHIN_TOLERANCE"] = ["DOMAIN_ADAPTER", "CE"],
         ["REQUEST_REASSESSMENT"] = ["DOMAIN_ADAPTER", "CE"],
         ["ACKNOWLEDGE_CORRECTIVE_PROPOSAL"] = ["DOMAIN_ADAPTER", "CE"],
+        ["ACCEPT_ARTIFACT_VERSION"] = ["CE"],
+        ["CONFIRM_SCOPE_BOUNDARY"] = ["CE"],
     };
 
     private readonly Dictionary<
@@ -128,17 +141,71 @@ public sealed class ConversationalEmploymentService
         (Guid TenantId, Guid RelationshipId, Guid CommandId),
         EmploymentCommandOutcome
     > _commands = new();
+    private readonly Dictionary<
+        (Guid TenantId, Guid RelationshipId, Guid CommandId),
+        long
+    > _commandEpochs = new();
     private readonly object _sync = new();
     private readonly IConversationalEmploymentPersistence? _persistence;
     private readonly IComponentUnitCompletionSink _componentUnits;
+    private readonly IEmploymentProtocolGate? _gate;
 
     public ConversationalEmploymentService(
         IConversationalEmploymentPersistence? persistence = null,
-        IComponentUnitCompletionSink? componentUnits = null
+        IComponentUnitCompletionSink? componentUnits = null,
+        IEmploymentProtocolGate? gate = null
     )
     {
         _persistence = persistence;
         _componentUnits = componentUnits ?? new NoopComponentUnitCompletionSink();
+        _gate = gate;
+    }
+
+    /// <summary>
+    /// Raising the rollback epoch resolves every non-terminal command accepted under an earlier epoch to a closed
+    /// BLOCKED outcome. The block is appended as a new event with its own evidence; no earlier event is rewritten.
+    /// </summary>
+    private EmploymentCommandOutcome EnforceRollbackEpoch(
+        (Guid TenantId, Guid RelationshipId, Guid CommandId) key,
+        EmploymentCommandOutcome outcome
+    )
+    {
+        if (_gate is null || outcome.State is "COMPLETED" or "REJECTED" or "CONFLICT" or "BLOCKED")
+            return outcome;
+        var current = _gate.Snapshot().RollbackEpoch;
+        var accepted = _commandEpochs.TryGetValue(key, out var known)
+            ? known
+            : (_persistence as IEmploymentCommandEpochReader)?.LoadRollbackEpoch(
+                key.TenantId,
+                key.RelationshipId,
+                key.CommandId
+            ) ?? 0L;
+        if (accepted >= current)
+            return outcome;
+        var blocked = outcome with
+        {
+            State = "BLOCKED",
+            OwnerSteps = outcome
+                .OwnerSteps.Select(step =>
+                    step.Owner == "BP" || step.State is "COMPLETED" or "COMMITTED"
+                        ? step
+                        : step with
+                        {
+                            State = "BLOCKED",
+                        }
+                )
+                .ToArray(),
+            EvidenceRefs = outcome
+                .EvidenceRefs.Append($"employment-rollback-epoch:{accepted}->{current}")
+                .Distinct()
+                .ToArray(),
+            Limitation =
+                "The employment protocol was rolled back before this command finished; it did not run.",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        _persistence?.AppendCommandOutcome(key.TenantId, key.RelationshipId, blocked);
+        _commands[key] = blocked;
+        return blocked;
     }
 
     public void RegisterWorkspace(EmploymentWorkspaceSnapshot snapshot)
@@ -278,6 +345,10 @@ public sealed class ConversationalEmploymentService
                 outcome = persisted.Outcome;
                 commandId = outcome.CommandId;
                 _commands[(tenantId, relationshipId, commandId)] = outcome;
+                if (!persisted.Replayed && _gate is not null)
+                    _commandEpochs[(tenantId, relationshipId, commandId)] = _gate
+                        .Snapshot()
+                        .RollbackEpoch;
                 _idempotency[replayKey] = (digest, commandId);
                 return new EmploymentCommandSubmission(
                     Receipt(outcome),
@@ -286,6 +357,10 @@ public sealed class ConversationalEmploymentService
                 );
             }
             _commands[(tenantId, relationshipId, commandId)] = outcome;
+            if (_gate is not null)
+                _commandEpochs[(tenantId, relationshipId, commandId)] = _gate
+                    .Snapshot()
+                    .RollbackEpoch;
             _idempotency[replayKey] = (digest, commandId);
             return new EmploymentCommandSubmission(Receipt(outcome), outcome, false);
         }
@@ -300,7 +375,10 @@ public sealed class ConversationalEmploymentService
                 _commands.GetValueOrDefault(key)
                 ?? _persistence?.LoadCommand(tenantId, relationshipId, commandId);
             if (outcome is not null)
+            {
                 _commands[key] = outcome;
+                outcome = EnforceRollbackEpoch(key, outcome);
+            }
             return outcome;
         }
     }
@@ -341,6 +419,7 @@ public sealed class ConversationalEmploymentService
                     is null
             )
                 throw new EmploymentProtocolException("EMPLOYMENT_NOT_ACCESSIBLE");
+            current = EnforceRollbackEpoch(key, current);
             if (current.State is "COMPLETED" or "REJECTED" or "CONFLICT" or "BLOCKED")
                 throw new EmploymentProtocolException("EMPLOYMENT_COMMAND_TERMINAL");
             var index = current
@@ -460,6 +539,13 @@ public sealed class ConversationalEmploymentService
                 "expectedDecisionSpaceVersion" => value.ValueKind == JsonValueKind.Number
                     && value.TryGetInt64(out var version)
                     && version >= 1,
+                "expectedArtifactId" => value.ValueKind == JsonValueKind.String
+                    && Guid.TryParse(value.GetString(), out var artifactId)
+                    && artifactId != Guid.Empty,
+                "expectedArtifactDigest" => value.ValueKind == JsonValueKind.String
+                    && value.GetString() is { Length: 64 } digest
+                    && digest.All(Uri.IsHexDigit)
+                    && digest == digest.ToLowerInvariant(),
                 "candidatePatchRef" => value.ValueKind == JsonValueKind.String
                     && Guid.TryParse(value.GetString(), out _),
                 "blockedSkillRefs" => value.ValueKind == JsonValueKind.Array

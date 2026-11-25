@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
 **State Revision:** 384
-**Last Updated:** 2026-11-25 (repository state through PR #642 merged as eee79848c1; checkpoint text below is hand-maintained)
+**Last Updated:** 2026-11-25 (repository state through PR #643 merged as 843719eb23; checkpoint text below is hand-maintained)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot

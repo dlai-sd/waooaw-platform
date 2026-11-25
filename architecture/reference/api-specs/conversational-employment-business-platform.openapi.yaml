@@ -621,6 +621,8 @@ components:
         - RESCHEDULE_WITHIN_TOLERANCE
         - REQUEST_REASSESSMENT
         - ACKNOWLEDGE_CORRECTIVE_PROPOSAL
+        - ACCEPT_ARTIFACT_VERSION
+        - CONFIRM_SCOPE_BOUNDARY
     EmploymentCommandRequestV1:
       oneOf:
         - $ref: "#/components/schemas/ConfirmInductionItemCommandV1"
@@ -632,6 +634,8 @@ components:
         - $ref: "#/components/schemas/RescheduleWithinToleranceCommandV1"
         - $ref: "#/components/schemas/RequestReassessmentCommandV1"
         - $ref: "#/components/schemas/AcknowledgeCorrectiveProposalCommandV1"
+        - $ref: "#/components/schemas/AcceptArtifactVersionCommandV1"
+        - $ref: "#/components/schemas/ConfirmScopeBoundaryCommandV1"
       discriminator:
         propertyName: kind
         mapping:
@@ -644,6 +648,37 @@ components:
           RESCHEDULE_WITHIN_TOLERANCE: "#/components/schemas/RescheduleWithinToleranceCommandV1"
           REQUEST_REASSESSMENT: "#/components/schemas/RequestReassessmentCommandV1"
           ACKNOWLEDGE_CORRECTIVE_PROPOSAL: "#/components/schemas/AcknowledgeCorrectiveProposalCommandV1"
+          ACCEPT_ARTIFACT_VERSION: "#/components/schemas/AcceptArtifactVersionCommandV1"
+          CONFIRM_SCOPE_BOUNDARY: "#/components/schemas/ConfirmScopeBoundaryCommandV1"
+    AcceptArtifactVersionCommandV1:
+      type: object
+      description: "Approval of one exact locked-artifact version: 'Do you approve this exact version?' Recorded as an APPROVAL bound to the artifact id and digest."
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedArtifactId, expectedArtifactDigest, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: ACCEPT_ARTIFACT_VERSION }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedArtifactId: { type: string, format: uuid }
+        expectedArtifactDigest: { type: string, pattern: "^[0-9a-f]{64}$" }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
+    ConfirmScopeBoundaryCommandV1:
+      type: object
+      description: "A second, separate decision on the approved exact version: 'Is it within what this agent may do for you, and who may do it?' Recorded as a SCOPE_CONFIRMATION bound to the Decision Space version and to the artifact id and digest."
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedArtifactId, expectedArtifactDigest, expectedDecisionSpaceVersion, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: CONFIRM_SCOPE_BOUNDARY }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedArtifactId: { type: string, format: uuid }
+        expectedArtifactDigest: { type: string, pattern: "^[0-9a-f]{64}$" }
+        expectedDecisionSpaceVersion: { type: integer, minimum: 1 }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
     ConfirmInductionItemCommandV1:
       type: object
       additionalProperties: false
