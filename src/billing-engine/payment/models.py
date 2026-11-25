@@ -127,6 +127,7 @@ class PaymentCapturedEvent:
     payment_consent_evidence_id: UUID | None = None
     payment_evidence_id: UUID | None = None
     checkout_intent_id: UUID | None = None
+    amount_paise: int | None = None  # the provider's captured amount, which the tax invoice states
 
 
 @dataclass(frozen=True)

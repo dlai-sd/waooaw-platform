@@ -79,6 +79,48 @@ class IssuanceError(Exception):
     """Raised with a one-line message that never contains key material."""
 
 
+GROUPED_GRANTS_FORMAT = "grouped-v1"
+
+
+def group_route_grants(grants: list[dict[str, Any]]) -> dict[str, Any]:
+    """Publish route grants grouped by caller and target, with POST and contract major 1 implied (WC-172 B10).
+
+    The trust bundle must fit one Key Vault secret (25 KiB). Repeating the caller, target, method and contract major
+    on every grant filled it; grouping keeps every grant and halves their size. Consumers accept this form and the
+    plain list of grant objects.
+    """
+    pairs: dict[str, list[list[Any]]] = {}
+    for grant in grants:
+        item: list[Any] = [grant["route"], grant["operation"]]
+        if grant["method"] != "POST" or int(grant["contract_major"]) != 1:
+            item += [grant["method"], int(grant["contract_major"])]
+        pairs.setdefault(f"{grant['caller']}>{grant['target']}", []).append(item)
+    return {"format": GROUPED_GRANTS_FORMAT, "pairs": pairs}
+
+
+def expand_route_grants(value: Any) -> list[dict[str, Any]]:
+    """The plain list of grant objects, from either published form."""
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict) or value.get("format") != GROUPED_GRANTS_FORMAT or not isinstance(value.get("pairs"), dict):
+        raise IssuanceError("The route grants are in an unknown form")
+    grants: list[dict[str, Any]] = []
+    for pair, items in value["pairs"].items():
+        caller, target = pair.split(">", 1)
+        for item in items:
+            grants.append(
+                {
+                    "caller": caller,
+                    "target": target,
+                    "method": item[2] if len(item) > 2 else "POST",
+                    "route": item[0],
+                    "operation": item[1],
+                    "contract_major": item[3] if len(item) > 3 else 1,
+                }
+            )
+    return grants
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -787,9 +829,9 @@ def _trust_body(
             "environment": environment,
             "trust_domain": trust_domain,
             "workloads": workloads,
-            "route_grants": [
-                grant for grant in registry["route_grants"] if grant["caller"] in workloads and grant["target"] in workloads
-            ],
+            "route_grants": group_route_grants(
+                [grant for grant in registry["route_grants"] if grant["caller"] in workloads and grant["target"] in workloads]
+            ),
         },
     }
     if state.get("previous_root_pem"):

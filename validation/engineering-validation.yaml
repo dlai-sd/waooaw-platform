@@ -49,7 +49,7 @@ commands:
   test-professional-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime"}
   test-digital-marketing-agent: {shell: "sh scripts/validation_control/run_python_test_gate.sh digital-marketing-agent src/digital-marketing-agent/digital_marketing /workspace/src/digital-marketing-agent:/workspace/src/agent-adapters:/workspace/src/professional-runtime src/digital-marketing-agent/tests"}
   test-ai-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh ai-runtime src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer tests/ai-runtime tests/trust-layer"}
-  test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
+  test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py tests/pipeline/test_wc172_money_and_identity_guards.py -q"}
   test-web: {shell: "sh scripts/validation_control/run_web_test_gate.sh"}
   spec-lint: {shell: "sh scripts/validation_control/run_spec_lint_gate.sh"}
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
@@ -292,7 +292,7 @@ components:
     service_context: .
     service_dockerfile: src/billing-engine/Dockerfile
     generated_artifacts: []
-    paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
+    paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py, tests/pipeline/test_wc172_money_and_identity_guards.py]
     gates: [build:billing-engine, test-python:billing-engine, sast:python, "dep-scan:python", release-qualification]
     reverse_dependencies: []
   agent-runtime-adapter-digital-marketing:

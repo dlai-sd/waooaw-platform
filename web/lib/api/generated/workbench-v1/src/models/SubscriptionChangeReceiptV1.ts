@@ -56,11 +56,23 @@ export interface SubscriptionChangeReceiptV1 {
      */
     proratedFeeDifferencePaise?: number;
     /**
-     * Pause and terminate only; a billing adjustment, never a wallet refund.
+     * Terminate only, and only for a documented service failure; a billing adjustment, never a wallet refund.
      * @type {number}
      * @memberof SubscriptionChangeReceiptV1
      */
     refundFeePaise?: number;
+    /**
+     * Pause only: the unused days (at most 30) credited to the next renewal, never refunded to the card.
+     * @type {number}
+     * @memberof SubscriptionChangeReceiptV1
+     */
+    creditFeePaise?: number;
+    /**
+     * Terminate only: the evidence export stays downloadable until this instant (90 days after service ends).
+     * @type {Date}
+     * @memberof SubscriptionChangeReceiptV1
+     */
+    exportAvailableUntil?: Date;
     /**
      *
      * @type {string}
@@ -153,6 +165,8 @@ export function SubscriptionChangeReceiptV1FromJSONTyped(json: any, ignoreDiscri
         'effectiveAt': (new Date(json['effectiveAt'])),
         'proratedFeeDifferencePaise': json['proratedFeeDifferencePaise'] == null ? undefined : json['proratedFeeDifferencePaise'],
         'refundFeePaise': json['refundFeePaise'] == null ? undefined : json['refundFeePaise'],
+        'creditFeePaise': json['creditFeePaise'] == null ? undefined : json['creditFeePaise'],
+        'exportAvailableUntil': json['exportAvailableUntil'] == null ? undefined : (new Date(json['exportAvailableUntil'])),
         'taxTreatment': json['taxTreatment'],
         'blockedReason': json['blockedReason'] == null ? undefined : json['blockedReason'],
         'correlationId': json['correlationId'],
@@ -177,6 +191,8 @@ export function SubscriptionChangeReceiptV1ToJSONTyped(value?: SubscriptionChang
         'effectiveAt': value['effectiveAt'].toISOString(),
         'proratedFeeDifferencePaise': value['proratedFeeDifferencePaise'],
         'refundFeePaise': value['refundFeePaise'],
+        'creditFeePaise': value['creditFeePaise'],
+        'exportAvailableUntil': value['exportAvailableUntil'] == null ? value['exportAvailableUntil'] : value['exportAvailableUntil'].toISOString(),
         'taxTreatment': value['taxTreatment'],
         'blockedReason': value['blockedReason'],
         'correlationId': value['correlationId'],

@@ -55,7 +55,7 @@
 | Placeholder | Closure |
 |---|---|
 | G5-TRIAL-POLICY-01 | D-05 defines trial duration, inclusion, price/credit, ownership, expiry, conversion, cancellation/refund, qualifying customer, and proof threshold; blocks D-06 finalization |
-| OP-LIFECYCLE-COMM-01 | D-05/D-06 closes pause and termination commercial edge handling |
+| OP-LIFECYCLE-COMM-01 | CLOSED by the Founder's decisions D1 to D5 of 2026-11-25, recorded in [lifecycle-commercial-policy.md](./lifecycle-commercial-policy.md) and implemented in `src/billing-engine/payment/lifecycle_policy.py` (WC-172). Trial, price and refund rules for a trial remain with G5-TRIAL-POLICY-01 |
 | OP-CHANNEL-ASSURANCE-01 | D-04 defines channel authentication and handoff assurance without redefining D-03 identity |
 
 ## 5. Foundation Conformance

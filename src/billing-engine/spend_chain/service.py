@@ -20,6 +20,7 @@ from sqlalchemy import DateTime, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
+from spend_chain.evidence import EvidenceOwner
 from wallet.entity_models import ReservationIdentity, WalletAccount, WalletError, as_utc
 from wallet.ledger import WalletLedger
 
@@ -95,9 +96,11 @@ class SpendChain:
         *,
         tolerance_paise: int = 0,
         now: Callable[[], datetime] | None = None,
+        evidence: EvidenceOwner | None = None,
     ) -> None:
         if tolerance_paise < 0:
             raise SpendError("SPEND_AMOUNT_INVALID")
+        self._evidence = evidence
         self._session = session
         self._ledger = ledger
         self._tolerance = tolerance_paise
@@ -148,6 +151,13 @@ class SpendChain:
             if not same:
                 raise SpendError("SPEND_IDEMPOTENCY_CONFLICT")
             return SpendAuthorization(**{**existing.__dict__, "replayed": True})
+        # The caller is signed, but the evidence it names is verified at its owner (WC-170 B5).
+        if self._evidence is None:
+            raise SpendError("SPEND_EVIDENCE_OWNER_UNAVAILABLE")
+        if not await self._evidence.confirm_authorization(
+            tenant_id, relationship_id, artifact_id, artifact_digest, approval_evidence_id, scope_evidence_id
+        ):
+            raise SpendError("SPEND_EVIDENCE_NOT_CONFIRMED")
         authorization_id = uuid5(NAMESPACE_URL, f"spend-authorization:{tenant_id}:{idempotency_key}")
         now = self._now()
         await self._session.execute(
@@ -315,6 +325,13 @@ class SpendChain:
             return SpendItem(**{**item.__dict__, "replayed": True})
         if item.state not in ("RESERVED", "UNCERTAIN"):
             raise SpendError("SPEND_ITEM_NOT_CHARGEABLE")
+        if self._evidence is None:
+            raise SpendError("SPEND_EVIDENCE_OWNER_UNAVAILABLE")
+        authorization = await self._authorization(tenant_id, authorization_id)
+        if not await self._evidence.confirm_provider_proof(
+            tenant_id, authorization.relationship_id, work_item_id, provider_reference, evidence_id
+        ):
+            raise SpendError("SPEND_EVIDENCE_NOT_CONFIRMED")
         await self._record_observation(tenant_id, authorization_id, work_item_id, observed_paise, provider_reference)
         await self._ledger.settle(tenant_id, item.reservation_id, observed_paise, evidence_id)
         await self._session.execute(

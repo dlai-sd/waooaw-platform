@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-172
 contract_path: work-contracts/WC-172-safe-to-charge-real-customers.md
-contract_digest: 6f5d544e5e9ada361f80ce7c9b24ccdf75d1f73cf9ed253918905ded4074346f
+contract_digest: f3115dcff48c5131ac71e001b7079479deaa682715be1dd96259a5820cc03e0d
 implementation_scope: true
 result: PLANNED
 

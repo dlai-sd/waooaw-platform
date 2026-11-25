@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session_factory
 from config import Settings
+from invoicing.hooks import issue_invoice_safely, payer_of
 from markup.package_engine import SqlPackageReferenceData
 from payment.lifecycle import BillingAdjustments, LifecycleError, LifecycleService
 from payment.models import (
@@ -961,6 +962,7 @@ async def confirm_razorpay_checkout(
             payment_consent_evidence_id=UUID(str(row.payment_consent_evidence_id)),
             payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{body.razorpay_payment_id}"),
             checkout_intent_id=checkout_intent_id,
+            amount_paise=_amount_of(provider_payment),
         )
         redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
         try:
@@ -1154,6 +1156,10 @@ async def razorpay_webhook(request: Request) -> dict:
                 )
             )
             await db.commit()
+            await issue_invoice_safely(
+                db, _settings, payment_reference=payment_id, amount_paise=_amount_of(payment),
+                payer_customer_id=customer_id,
+            )
         return {
             "status": "CAPTURED",
             "payment_reference": payment_id,
@@ -1176,6 +1182,7 @@ async def razorpay_webhook(request: Request) -> dict:
         payment_consent_evidence_id=_optional_uuid(notes.get("payment_consent_evidence_id")),
         payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{payment.get('id', '')}"),
         checkout_intent_id=_optional_uuid(notes.get("checkout_intent_id")),
+        amount_paise=_amount_of(payment),
     )
 
     session_factory = get_session_factory()
@@ -1214,6 +1221,13 @@ async def _capture_upgrade_fee(payment: dict, notes: dict) -> dict:
             await db.rollback()
             raise HTTPException(status_code=409, detail={"code": error.code}) from None
         await db.commit()
+        tenant_id = _optional_uuid(notes.get("tenant_id"))
+        relationship_id = _optional_uuid(notes.get("relationship_id"))
+        await issue_invoice_safely(
+            db, _settings, payment_reference=payment_id, amount_paise=_amount_of(payment),
+            payer_customer_id=await payer_of(db, tenant_id, relationship_id) if tenant_id and relationship_id else None,
+            tenant_id=tenant_id, relationship_id=relationship_id,
+        )
     return {"status": "COLLECTED" if recorded else "REPLAYED", "payment_reference": payment_id}
 
 
@@ -1240,11 +1254,20 @@ async def _capture_renewal(payment: dict, notes: dict, customer_id: UUID) -> dic
             await db.rollback()
             raise HTTPException(status_code=409, detail={"code": error.code}) from None
         await db.commit()
+        await issue_invoice_safely(
+            db, _settings, payment_reference=payment_id, amount_paise=_amount_of(payment),
+            payer_customer_id=customer_id, tenant_id=tenant_id, relationship_id=relationship_id,
+        )
     return {
         "status": "RENEWED" if period is not None else "NOT_APPLICABLE",
         "payment_reference": payment_id,
         "period_start": period.period_start.isoformat() if period is not None else None,
     }
+
+def _amount_of(payment: dict) -> int | None:
+    amount = payment.get("amount")
+    return amount if isinstance(amount, int) and not isinstance(amount, bool) and amount > 0 else None
+
 
 def _optional_uuid(value: object) -> UUID | None:
     if value in (None, ""):

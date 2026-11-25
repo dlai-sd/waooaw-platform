@@ -205,6 +205,71 @@ paths:
         "409": { $ref: "#/components/responses/Refused" }
         "422": { $ref: "#/components/responses/Refused" }
 
+  /internal/v1/tax-documents:
+    get:
+      tags: [Wallet Private]
+      operationId: wbeListTaxDocuments
+      x-internal: true
+      summary: List the GST tax invoices and credit notes of one tenant
+      description: |
+        Implements WC-172 R006. A customer reads only the documents of the tenant the signed delegated context names
+        (the context tenant must equal the `tenantId` query). Documents are immutable; a correction is a new document.
+      parameters:
+        - { name: tenantId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: relationshipId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Tax documents, newest first
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true, required: [schemaVersion, documents], properties: { schemaVersion: { type: string, enum: ["1.0"] }, documents: { type: array, items: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /internal/v1/tax-documents/{documentId}:
+    get:
+      tags: [Wallet Private]
+      operationId: wbeGetTaxDocument
+      x-internal: true
+      summary: Read one tax document of the signed tenant
+      description: Implements WC-172 R006. Another tenant's document answers 404.
+      parameters:
+        - { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: tenantId, in: query, required: true, schema: { type: string, format: uuid } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: The tax document
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true, required: [schemaVersion, document], properties: { schemaVersion: { type: string, enum: ["1.0"] }, document: { type: object, additionalProperties: true } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/Refused" }
+  /internal/v1/real-work/spend/authorize:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeAuthorizeSpend
+      x-internal: true
+      summary: Authorize sandbox spend for one exact approved and scope-confirmed artifact version
+      description: |
+        Implements WC-170 DC-6 and WC-172 R008. The evidence the caller names (the locked artifact at its digest, the
+        approval decision and the scope-confirmation decision) is verified at its owner, the Business Platform's
+        real-work record store; evidence the owner cannot confirm is refused with 422 `SPEND_EVIDENCE_NOT_CONFIRMED`
+        and nothing is written. Reserve, charge and reconcile are called by the Professional Runtime and are described
+        in real-work.openapi.yaml.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Authorization, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
   /internal/v1/marketplace/agents/{agentType}/versions/{agentVersion}/packages:
     get:
       tags: [Wallet Private]

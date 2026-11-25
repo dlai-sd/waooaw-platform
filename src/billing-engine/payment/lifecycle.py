@@ -1,7 +1,8 @@
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
+# Implements: work-contracts/WC-172-safe-to-charge-real-customers.md WC172-R002, WC172-R003, WC172-R004, WC172-R005
 # Constitutional basis: C-059, C-038, C-088, C-089, C-090, C-091, C-063
-"""Period credit and lifecycle of a relationship's package (WC-136 C4-10).
+"""Period credit and lifecycle of a relationship's package (WC-136 C4-10, WC-172 D1 to D5).
 
 Hire and renewal credit a PERIOD_CREDIT lot sized from the package recipes at the pinned thread rates and
 open the period's component units. Pause, terminate, upgrade and downgrade follow the effective POLICY
@@ -11,6 +12,11 @@ the unspent credit of a terminated period lapses. An immediate upgrade records i
 as an UPGRADE_FEE billing adjustment that the sweep turns into a provider order. A captured renewal payment
 credits the next period's lot (``LifecycleService.renew_paid``); components paused in a period come back with
 the next period's whole-package renewal. Services work in the caller's session and never commit.
+
+WC-172 (Founder decisions D1 to D5, ``payment.lifecycle_policy``): a pause is a FEE_CREDIT applied to the next
+renewal, never a card refund, and lasts at most 30 days; a termination ends service at the paid period end with
+no mid-period refund unless a documented service failure is cited; a renewal keeps the pinned (locked) price and
+a catalogue price change reaches it only after notice and acknowledgement (``payment.price_protection``).
 """
 
 from __future__ import annotations
@@ -29,6 +35,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from markup.package_engine import ThreadRate, parse_package_body, project_package
 from markup.package_models import PackageBody
 from meter.component_units import ComponentUnitService
+from payment.lifecycle_policy import export_available_until, paused_fee_credit_paise, pause_window_end, service_ends_at
+from payment.price_protection import PriceProtection
 from payment.prorata import (
     prorated_component_quantity,
     refund_fee_paise,
@@ -58,6 +66,8 @@ RENEWAL_AMOUNT_MISMATCH: Final = "RENEWAL_AMOUNT_MISMATCH"
 CHARGE_MISMATCH: Final = "CHARGE_MISMATCH"
 UPGRADE_FEE: Final = "UPGRADE_FEE"
 FEE_REFUND: Final = "FEE_REFUND"
+FEE_CREDIT: Final = "FEE_CREDIT"
+RELATIONSHIP_TERMINATING: Final = "RELATIONSHIP_TERMINATING"
 _RENEWABLE_STATUSES: Final = frozenset({"ACTIVE", "PAUSED", "SUSPENDED", "LAPSED"})
 
 
@@ -129,6 +139,17 @@ class LifecycleOutcome:
     prorated_fee_difference_paise: int | None = None
     refund_fee_paise: int | None = None
     blocked_reason: str | None = None
+    credit_fee_paise: int | None = None
+    export_available_until: datetime | None = None
+
+
+@dataclass(frozen=True)
+class RenewalQuote:
+    package_version_id: UUID
+    starts_at: datetime
+    price_paise: int
+    credit_paise: int
+    amount_due_paise: int
 
 
 class PackageResolver:
@@ -350,6 +371,114 @@ class PeriodStore:
         )
 
 
+class PeriodMarks:
+    """A pause end and a termination date kept beside the period they belong to (D1, D2)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def set(
+        self,
+        period: RelationshipPeriod,
+        at: datetime,
+        *,
+        pause_ends_at: datetime | None = None,
+        terminates_at: datetime | None = None,
+        service_failure_evidence_id: UUID | None = None,
+    ) -> None:
+        current = await self.get(period)
+        pause = pause_ends_at or current.get("pause_ends_at")
+        terminates = terminates_at or current.get("terminates_at")
+        evidence = service_failure_evidence_id or current.get("service_failure_evidence_id")
+        await self._session.execute(
+            _stmt(
+                """
+                INSERT INTO business.relationship_period_marks
+                (tenant_id, relationship_id, period_start, pause_ends_at, terminates_at,
+                 service_failure_evidence_id, updated_at)
+                VALUES (:tenant, :relationship, :start, :pause, :terminates, :evidence, :at)
+                ON CONFLICT (tenant_id, relationship_id, period_start) DO UPDATE SET
+                    pause_ends_at = excluded.pause_ends_at, terminates_at = excluded.terminates_at,
+                    service_failure_evidence_id = excluded.service_failure_evidence_id,
+                    updated_at = excluded.updated_at
+                """,
+                "start",
+                "pause",
+                "terminates",
+                "at",
+            ),
+            {
+                "tenant": str(period.tenant_id),
+                "relationship": str(period.relationship_id),
+                "start": as_utc(period.period_start),
+                "pause": None if pause is None else as_utc(pause),
+                "terminates": None if terminates is None else as_utc(terminates),
+                "evidence": None if evidence is None else str(evidence),
+                "at": as_utc(at),
+            },
+        )
+
+    async def get(self, period: RelationshipPeriod) -> dict[str, object]:
+        rows = (
+            await self._session.execute(
+                _stmt(
+                    """
+                    SELECT pause_ends_at, terminates_at, service_failure_evidence_id
+                    FROM business.relationship_period_marks
+                    WHERE tenant_id = :tenant AND relationship_id = :relationship AND period_start = :start
+                    """,
+                    "start",
+                ),
+                {
+                    "tenant": str(period.tenant_id),
+                    "relationship": str(period.relationship_id),
+                    "start": as_utc(period.period_start),
+                },
+            )
+        ).mappings().all()
+        return dict(rows[0]) if rows else {}
+
+    async def terminates_at(self, period: RelationshipPeriod) -> datetime | None:
+        value = (await self.get(period)).get("terminates_at")
+        return None if value is None else as_utc(value)
+
+    async def clear_pause(self, period: RelationshipPeriod, at: datetime) -> None:
+        await self._session.execute(
+            _stmt(
+                """
+                UPDATE business.relationship_period_marks SET pause_ends_at = NULL, updated_at = :at
+                WHERE tenant_id = :tenant AND relationship_id = :relationship AND period_start = :start
+                """,
+                "start",
+                "at",
+            ),
+            {
+                "tenant": str(period.tenant_id),
+                "relationship": str(period.relationship_id),
+                "start": as_utc(period.period_start),
+                "at": as_utc(at),
+            },
+        )
+
+    async def due(self, column: str, at: datetime) -> list[tuple[UUID, UUID, datetime]]:
+        """(tenant, relationship, period_start) whose pause end or termination date has been reached."""
+        if column not in {"pause_ends_at", "terminates_at"}:
+            raise ValueError(column)
+        rows = (
+            await self._session.execute(
+                _stmt(
+                    f"""
+                    SELECT tenant_id, relationship_id, period_start FROM business.relationship_period_marks
+                    WHERE {column} IS NOT NULL AND {column} <= :at
+                    """,
+                    "at",
+                ),
+                {"at": as_utc(at)},
+            )
+        ).mappings().all()
+        return [(UUID(str(r["tenant_id"])), UUID(str(r["relationship_id"])), as_utc(r["period_start"])) for r in rows]
+
+
 class BillingAdjustments:
     """Fee refunds are billing adjustments dispatched to the payment provider, never wallet entries."""
 
@@ -432,6 +561,98 @@ class BillingAdjustments:
             },
         )
         return adjustment_id
+
+    async def record_fee_credit(
+        self, tenant_id: UUID, relationship_id: UUID, command_id: UUID, amount_paise: int
+    ) -> UUID | None:
+        """The unused days of a pause, credited to the next renewal and never refunded to the card (D1)."""
+        if amount_paise <= 0:
+            return None
+        adjustment_id = uuid5(NAMESPACE_URL, f"fee-credit:{command_id}")
+        now = self._now()
+        await self._session.execute(
+            _stmt(
+                """
+                INSERT INTO business.billing_adjustments
+                (adjustment_id, tenant_id, relationship_id, command_id, adjustment_kind, amount_paise,
+                 remaining_paise, payment_reference, status, created_at, updated_at)
+                VALUES (:id, :tenant, :relationship, :command, 'FEE_CREDIT', :amount, :amount, NULL, 'AVAILABLE',
+                        :now, :now)
+                ON CONFLICT DO NOTHING
+                """,
+                "now",
+            ),
+            {
+                "id": str(adjustment_id),
+                "tenant": str(tenant_id),
+                "relationship": str(relationship_id),
+                "command": str(command_id),
+                "amount": amount_paise,
+                "now": now,
+            },
+        )
+        return adjustment_id
+
+    async def available_credit_paise(self, tenant_id: UUID, relationship_id: UUID) -> int:
+        row = (
+            await self._session.execute(
+                text(
+                    """
+                    SELECT COALESCE(SUM(remaining_paise), 0) FROM business.billing_adjustments
+                    WHERE tenant_id = :tenant AND relationship_id = :relationship
+                      AND adjustment_kind = 'FEE_CREDIT' AND status = 'AVAILABLE'
+                    """
+                ),
+                {"tenant": str(tenant_id), "relationship": str(relationship_id)},
+            )
+        ).first()
+        return int(row[0] or 0)
+
+    async def apply_credit(
+        self, tenant_id: UUID, relationship_id: UUID, amount_paise: int, payment_reference: str
+    ) -> int:
+        """Use available credit, oldest first, against a renewal; returns the paise applied."""
+        if amount_paise <= 0:
+            return 0
+        rows = (
+            await self._session.execute(
+                text(
+                    """
+                    SELECT adjustment_id, remaining_paise FROM business.billing_adjustments
+                    WHERE tenant_id = :tenant AND relationship_id = :relationship
+                      AND adjustment_kind = 'FEE_CREDIT' AND status = 'AVAILABLE'
+                    ORDER BY created_at, adjustment_id
+                    """
+                ),
+                {"tenant": str(tenant_id), "relationship": str(relationship_id)},
+            )
+        ).mappings().all()
+        left = amount_paise
+        for row in rows:
+            if left <= 0:
+                break
+            take = min(left, int(row["remaining_paise"]))
+            remaining = int(row["remaining_paise"]) - take
+            await self._session.execute(
+                _stmt(
+                    """
+                    UPDATE business.billing_adjustments
+                    SET remaining_paise = :remaining, status = :status,
+                        payment_reference = COALESCE(:reference, payment_reference), updated_at = :now
+                    WHERE adjustment_id = :id
+                    """,
+                    "now",
+                ),
+                {
+                    "remaining": remaining,
+                    "status": "APPLIED" if remaining == 0 else "AVAILABLE",
+                    "reference": payment_reference if remaining == 0 else None,
+                    "now": self._now(),
+                    "id": str(row["adjustment_id"]),
+                },
+            )
+            left -= take
+        return amount_paise - left
 
     async def collect_pending(self, client: OrderClient, limit: int) -> int:
         """Open a provider order for each upgrade fee not yet collected; a failure stays retryable."""
@@ -636,6 +857,8 @@ class LifecycleService:
         self._packages = packages or PackageResolver(session)
         self._policy = policy or (lambda at: effective_policy(session, at))
         self._adjustments = BillingAdjustments(session, now=self._now)
+        self._marks = PeriodMarks(session)
+        self._protection = PriceProtection(session, now=self._now)
         self._ledger = WalletLedger(session, overrun_tolerance_paise=overrun_tolerance_paise, now=self._now)
         self._units = ComponentUnitService(session, now=self._now)
 
@@ -648,6 +871,7 @@ class LifecycleService:
         *,
         component_ids: Sequence[str] | None = None,
         target_package_code: str | None = None,
+        service_failure_evidence_id: UUID | None = None,
     ) -> LifecycleOutcome:
         at = self._now()
         policy = await self._policy(at)
@@ -662,7 +886,7 @@ class LifecycleService:
             if command_kind == "RESUME_RELATIONSHIP":
                 return await self._resume(period, component_ids, at)
             if command_kind == "TERMINATE_RELATIONSHIP":
-                return await self._terminate(period, command_id, at)
+                return await self._terminate(period, command_id, at, service_failure_evidence_id)
             if command_kind == "RENEW_RELATIONSHIP":
                 return await self._renew_command(period)
             if command_kind in {"UPGRADE_PACKAGE", "DOWNGRADE_PACKAGE"}:
@@ -699,6 +923,98 @@ class LifecycleService:
                 await self._ledger.expire(account, period.period_end)
         return len(due)
 
+    async def _renewal_terms(
+        self, period: RelationshipPeriod, policy: PolicyBody, at: datetime
+    ) -> tuple[ResolvedPackage, datetime]:
+        """The package a renewal uses and when its period starts. The package is the one scheduled at renewal (a
+        downgrade) or else the locked one; a catalogue price change applies only once noticed and acknowledged."""
+        in_grace = period.status in {"ACTIVE", "PAUSED"} and at <= period.period_end + timedelta(
+            days=policy.payment_grace_days
+        )
+        start = as_utc(period.period_end if in_grace else at)
+        version_id = period.scheduled_package_version_id
+        if version_id is None:
+            version_id = await self._protection.applicable_version(
+                period.tenant_id, period.relationship_id, period.package_version_id, start
+            )
+        package = await self._packages.by_version(version_id or period.package_version_id)
+        if package is None:
+            raise LifecycleError(PACKAGE_UNKNOWN)
+        return package, start
+
+    async def renewal_quote(self, tenant_id: UUID, relationship_id: UUID) -> RenewalQuote:
+        """What the next renewal costs: the locked price less any pause credit (D1, D3). Nothing is written."""
+        at = self._now()
+        policy = await self._policy(at)
+        if policy is None:
+            raise LifecycleError(POLICY_ABSENT)
+        period = await self._periods.current(tenant_id, relationship_id, at)
+        if period is None:
+            raise LifecycleError(NO_ACTIVE_PERIOD)
+        if period.status == "TERMINATED":
+            raise LifecycleError(RELATIONSHIP_TERMINATED)
+        if await self._marks.terminates_at(period) is not None:
+            raise LifecycleError(RELATIONSHIP_TERMINATING)
+        package, start = await self._renewal_terms(period, policy, at)
+        price = package.body.price_incl_gst_paise
+        credit = min(price, await self._adjustments.available_credit_paise(tenant_id, relationship_id))
+        return RenewalQuote(package.version_id, start, price, credit, price - credit)
+
+    async def renew_from_credit(
+        self, tenant_id: UUID, relationship_id: UUID, customer_id: UUID, *, authority: str
+    ) -> RelationshipPeriod | None:
+        """A renewal the pause credit pays in full needs no provider payment; it is recorded under a reference
+        derived from the period so a replay renews nothing twice."""
+        current = await self._periods.current(tenant_id, relationship_id, self._now())
+        if current is not None and (current.payment_reference or "").startswith(f"credit:{relationship_id}:"):
+            return current
+        quote = await self.renewal_quote(tenant_id, relationship_id)
+        if quote.amount_due_paise != 0:
+            raise LifecycleError(RENEWAL_AMOUNT_MISMATCH)
+        reference = f"credit:{relationship_id}:{quote.starts_at.isoformat()}"
+        return await self.renew_paid(
+            tenant_id,
+            relationship_id,
+            customer_id,
+            payment_reference=reference,
+            fee_paid_paise=0,
+            evidence_id=uuid5(NAMESPACE_URL, f"waooaw:credit-renewal:{reference}"),
+            authority=authority,
+        )
+
+    async def resume_expired_pauses(self) -> int:
+        """A pause lasts at most 30 days: the paused components come back when its window ends (D1)."""
+        at = self._now()
+        resumed = 0
+        for tenant_id, relationship_id, period_start in await self._marks.due("pause_ends_at", at):
+            period = await self._periods.starting_at(tenant_id, relationship_id, period_start)
+            if period is None:
+                continue
+            await self._marks.clear_pause(period, at)
+            if period.paused_component_ids and period.status in {"ACTIVE", "PAUSED"}:
+                await self._periods.update(
+                    period, at, status="ACTIVE" if period.status == "PAUSED" else None, paused_component_ids=[]
+                )
+                resumed += 1
+        return resumed
+
+    async def finalize_terminations(self) -> int:
+        """Service ends at the paid period end: a termination reaching its date becomes TERMINATED (D2)."""
+        at = self._now()
+        ended = 0
+        for tenant_id, relationship_id, period_start in await self._marks.due("terminates_at", at):
+            period = await self._periods.starting_at(tenant_id, relationship_id, period_start)
+            if period is None or period.status == "TERMINATED":
+                continue
+            await self._periods.update(period, at, status="TERMINATED", clear_scheduled=True, clear_grace=True)
+            account = await self._ledger.find_account(
+                period.tenant_id, "SUBSCRIPTION", relationship_id=period.relationship_id
+            )
+            if account is not None:
+                await self._ledger.expire(account, period.period_end)
+            ended += 1
+        return ended
+
     async def _package(self, period: RelationshipPeriod) -> ResolvedPackage:
         package = await self._packages.by_version(period.package_version_id)
         if package is None:
@@ -716,10 +1032,12 @@ class LifecycleService:
         if chosen - every:
             raise LifecycleError(COMPONENT_NOT_IN_PACKAGE)
         fresh = chosen - set(period.paused_component_ids)
-        refund = 0
+        credit = 0
         if fresh:
-            refund = min(
-                refund_fee_paise(package.body, period.fee_paid_paise, fresh, period.period_start, period.period_end, at),
+            credit = min(
+                paused_fee_credit_paise(
+                    package.body, period.fee_paid_paise, fresh, period.period_start, period.period_end, at
+                ),
                 period.fee_paid_paise - period.refunded_fee_paise,
             )
         paused = sorted(set(period.paused_component_ids) | chosen)
@@ -728,10 +1046,12 @@ class LifecycleService:
             at,
             status="PAUSED" if set(paused) == every else None,
             paused_component_ids=paused,
-            refunded_fee_paise=period.refunded_fee_paise + refund,
+            refunded_fee_paise=period.refunded_fee_paise + credit,
         )
-        await self._adjustments.record_fee_refund(period.tenant_id, period.relationship_id, command_id, refund)
-        return LifecycleOutcome("COMPLETED", effective_at=at, refund_fee_paise=refund)
+        pause_ends_at = pause_window_end(period.period_end, at)
+        await self._marks.set(period, at, pause_ends_at=pause_ends_at)
+        await self._adjustments.record_fee_credit(period.tenant_id, period.relationship_id, command_id, credit)
+        return LifecycleOutcome("COMPLETED", effective_at=at, credit_fee_paise=credit)
 
     async def _renew_command(self, period: RelationshipPeriod) -> LifecycleOutcome:
         """A renewal takes effect when the next period's payment is captured (``renew_paid``).
@@ -741,6 +1061,8 @@ class LifecycleService:
         """
         if period.status == "TERMINATED":
             raise LifecycleError(RELATIONSHIP_TERMINATED)
+        if await self._marks.terminates_at(period) is not None:
+            raise LifecycleError(RELATIONSHIP_TERMINATING)
         upcoming = await self._periods.starting_at(period.tenant_id, period.relationship_id, period.period_end)
         if upcoming is not None:
             return LifecycleOutcome("COMPLETED", effective_at=upcoming.period_start)
@@ -783,13 +1105,9 @@ class LifecycleService:
             raise LifecycleError(RELATIONSHIP_TERMINATED)
         if period.status not in _RENEWABLE_STATUSES:
             raise LifecycleError(NO_ACTIVE_PERIOD)
-        package = await self._packages.by_version(period.scheduled_package_version_id or period.package_version_id)
-        if package is None:
-            raise LifecycleError(PACKAGE_UNKNOWN)
-        in_grace = period.status in {"ACTIVE", "PAUSED"} and at <= period.period_end + timedelta(
-            days=policy.payment_grace_days
-        )
-        start = as_utc(period.period_end if in_grace else at)
+        if await self._marks.terminates_at(period) is not None:
+            raise LifecycleError(RELATIONSHIP_TERMINATING)
+        package, start = await self._renewal_terms(period, policy, at)
         price = package.body.price_incl_gst_paise
         if coupon_code:
             try:
@@ -809,8 +1127,10 @@ class LifecycleService:
             except CouponError as error:
                 raise LifecycleError(error.code) from error
             price = redemption.quote.discounted_price_paise
-        if fee_paid_paise != price:
+        credit = min(price, await self._adjustments.available_credit_paise(tenant_id, relationship_id))
+        if fee_paid_paise != price - credit:
             raise LifecycleError(RENEWAL_AMOUNT_MISMATCH)
+        await self._adjustments.apply_credit(tenant_id, relationship_id, credit, payment_reference)
         renewed = await PeriodCreditService(
             self._session, rates=self._rates, now=self._now
         ).start_period(
@@ -826,27 +1146,50 @@ class LifecycleService:
     ) -> LifecycleOutcome:
         if not period.paused_component_ids and period.status != "PAUSED":
             return LifecycleOutcome("COMPLETED", effective_at=at)
-        # The paused share of this period's fee was refunded, so the components come back with the next
-        # period (a renewal bills the whole package again).
-        return LifecycleOutcome("PENDING", effective_at=period.period_end)
+        # The paused days were credited when the pause began, so the components come back when the pause window
+        # ends (at most 30 days, or the period end) and a renewal bills the whole package again.
+        marked = (await self._marks.get(period)).get("pause_ends_at")
+        return LifecycleOutcome("PENDING", effective_at=as_utc(marked) if marked else period.period_end)
 
-    async def _terminate(self, period: RelationshipPeriod, command_id: UUID, at: datetime) -> LifecycleOutcome:
+    async def _terminate(
+        self,
+        period: RelationshipPeriod,
+        command_id: UUID,
+        at: datetime,
+        service_failure_evidence_id: UUID | None = None,
+    ) -> LifecycleOutcome:
+        """Service ends at the paid period end with no mid-period refund (D2). A documented service failure, cited
+        by its evidence id, ends service now and refunds the unused fee pro rata."""
         if period.status == "TERMINATED":
             return LifecycleOutcome("COMPLETED", effective_at=at, refund_fee_paise=0)
-        package = await self._package(period)
-        owed = refund_fee_paise(package.body, period.fee_paid_paise, None, period.period_start, period.period_end, at)
-        refund = max(0, min(owed - period.refunded_fee_paise, period.fee_paid_paise - period.refunded_fee_paise))
-        await self._periods.update(
-            period, at, status="TERMINATED", refunded_fee_paise=period.refunded_fee_paise + refund,
-            clear_scheduled=True, clear_grace=True,
+        if service_failure_evidence_id is not None and service_failure_evidence_id != UUID(int=0):
+            package = await self._package(period)
+            owed = refund_fee_paise(
+                package.body, period.fee_paid_paise, None, period.period_start, period.period_end, at
+            )
+            refund = max(0, min(owed - period.refunded_fee_paise, period.fee_paid_paise - period.refunded_fee_paise))
+            await self._periods.update(
+                period, at, status="TERMINATED", refunded_fee_paise=period.refunded_fee_paise + refund,
+                clear_scheduled=True, clear_grace=True,
+            )
+            await self._marks.set(
+                period, at, terminates_at=at, service_failure_evidence_id=service_failure_evidence_id
+            )
+            await self._adjustments.record_fee_refund(period.tenant_id, period.relationship_id, command_id, refund)
+            account = await self._ledger.find_account(
+                period.tenant_id, "SUBSCRIPTION", relationship_id=period.relationship_id
+            )
+            if account is not None:
+                await self._ledger.expire(account, period.period_end)
+            return LifecycleOutcome(
+                "COMPLETED", effective_at=at, refund_fee_paise=refund, export_available_until=export_available_until(at)
+            )
+        ends_at = service_ends_at(period.period_end)
+        await self._marks.set(period, at, terminates_at=ends_at)
+        await self._periods.update(period, at, clear_scheduled=True, clear_grace=True)
+        return LifecycleOutcome(
+            "PENDING", effective_at=ends_at, refund_fee_paise=0, export_available_until=export_available_until(ends_at)
         )
-        await self._adjustments.record_fee_refund(period.tenant_id, period.relationship_id, command_id, refund)
-        account = await self._ledger.find_account(
-            period.tenant_id, "SUBSCRIPTION", relationship_id=period.relationship_id
-        )
-        if account is not None:
-            await self._ledger.expire(account, period.period_end)
-        return LifecycleOutcome("COMPLETED", effective_at=at, refund_fee_paise=refund)
 
     async def _change_package(
         self,

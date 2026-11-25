@@ -413,7 +413,11 @@ public sealed record SubscriptionChangeReceipt(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? RefundFeePaise,
     string TaxTreatment,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? BlockedReason,
-    string CorrelationId
+    string CorrelationId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        long? CreditFeePaise = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        DateTimeOffset? ExportAvailableUntil = null
 );
 
 public sealed record CreateWorkbenchGoalRequest(

@@ -146,6 +146,18 @@ route_grants:
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/live-margin", operation: wbeGetPricingLiveMargin, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/dashboard/funding", operation: wbeGetPricingFundingDashboard, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/dashboard/margin", operation: wbeGetPricingMarginDashboard, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/money/tax-documents", operation: wbeFounderListTaxDocuments, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/money/tax-documents/{documentId}", operation: wbeFounderGetTaxDocument, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/money/gate", operation: wbeGetMoneyGate, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/money/gate", operation: wbeSetMoneyGate, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/money/discrepancies", operation: wbeListMoneyDiscrepancies, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/money/discrepancies/{discrepancyId}/resolve", operation: wbeResolveMoneyDiscrepancy, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/tax-documents", operation: wbeListTaxDocuments, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/tax-documents/{documentId}", operation: wbeGetTaxDocument, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/real-work/spend/authorize", operation: wbeAuthorizeSpend, contract_major: 1 }
+  - { caller: professional-runtime, target: billing-engine, method: POST, route: "/internal/v1/real-work/spend/reserve", operation: wbeReserveSpend, contract_major: 1 }
+  - { caller: professional-runtime, target: billing-engine, method: POST, route: "/internal/v1/real-work/spend/charge", operation: wbeChargeSpend, contract_major: 1 }
+  - { caller: professional-runtime, target: billing-engine, method: POST, route: "/internal/v1/real-work/spend/reconcile", operation: wbeReconcileSpend, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-execution", operation: getRelationshipExecutionProjection, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/evaluation-trial", operation: startRelationshipTrial, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls", operation: submitRelationshipExecutionControl, contract_major: 1 }

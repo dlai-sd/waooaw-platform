@@ -856,7 +856,7 @@ public sealed class WorkbenchCommandServiceSubscriptionTests
             fixture,
             Answer(
                 "COMPLETED",
-                """{"effectiveAt":"2030-01-05T00:00:00Z","refundFeePaise":2500,"proratedFeeDifferencePaise":99}"""
+                """{"effectiveAt":"2030-01-05T00:00:00Z","refundFeePaise":2500,"creditFeePaise":1800,"exportAvailableUntil":"2030-04-05T00:00:00Z","proratedFeeDifferencePaise":99}"""
             )
         );
 
@@ -879,7 +879,12 @@ public sealed class WorkbenchCommandServiceSubscriptionTests
             result.Body.EffectiveAt
         );
         Assert.Null(result.Body.ProratedFeeDifferencePaise);
-        Assert.Equal(kind == "RESUME" ? null : 2500L, result.Body.RefundFeePaise);
+        Assert.Equal(kind == "TERMINATE" ? 2500L : null, result.Body.RefundFeePaise);
+        Assert.Equal(kind == "PAUSE" ? 1800L : null, result.Body.CreditFeePaise);
+        Assert.Equal(
+            kind == "TERMINATE" ? new DateTimeOffset(2030, 4, 5, 0, 0, 0, TimeSpan.Zero) : null,
+            result.Body.ExportAvailableUntil
+        );
         Assert.Equal("GST_INCLUSIVE", result.Body.TaxTreatment);
     }
 

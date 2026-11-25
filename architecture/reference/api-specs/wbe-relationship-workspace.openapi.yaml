@@ -556,9 +556,11 @@ components:
         relationshipId: { type: string, format: uuid }
         outcomeVersion: { type: string, minLength: 1, maxLength: 64 }
         resolvedAt: { type: string, format: date-time }
-        effectiveAt: { type: string, format: date-time, description: "When a PENDING command takes effect; for RENEW and RESUME the end of the current period." }
+        effectiveAt: { type: string, format: date-time, description: "When a PENDING command takes effect; for RENEW the end of the current period, for RESUME the end of the pause window (at most 30 days), for TERMINATE the paid period end." }
         proratedFeeDifferencePaise: { type: integer, format: int64, minimum: 0, description: "Fee difference of an immediate upgrade, GST-inclusive; collected through a provider order." }
-        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Unelapsed monthly fee returned to the payment instrument on pause or termination; wallet credit is never refunded." }
+        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Unelapsed monthly fee returned to the payment instrument; only on a termination that cites a documented service failure (WC-172 D2). A pause is credited (creditFeePaise), never refunded; wallet credit is never refunded." }
+        creditFeePaise: { type: integer, format: int64, minimum: 0, description: "PAUSE only: the unused days of the pause (at most 30) credited to the next renewal invoice and never refunded to the card (WC-172 D1)." }
+        exportAvailableUntil: { type: string, format: date-time, description: "TERMINATE only: the evidence export stays downloadable until this instant, 90 days after service ends (WC-172 D2)." }
         blockedReason: { type: string, maxLength: 64 }
 
     WbeCommercialProblemCodeV1:

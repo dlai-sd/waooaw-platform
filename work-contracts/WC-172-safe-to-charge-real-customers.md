@@ -9,7 +9,7 @@
 | Initiative | IB-172 |
 | Roadmap | [ROADMAP.md](../ROADMAP.md), Iteration 5 of 6, milestone M5 |
 | Founder assignment | 2026-11-25: groom WC-172 as "safe to charge real customers (M5: Founder approval to take real money)" with PG-26 lifecycle, UAT promotion, real money, and the carry-ins WC-170 B5 and B10, WC-169 R013 price-change policy, Meta App Review, and production secrets with the ADR-046 shared-token rules |
-| Status | **GROOMED. Not authorized to build.** The Founder accepts the stories by merging this pull request; the build needs his explicit authorization in the session that starts it (BOOTSTRAP implementation gate). **Taking real money needs a separate written Founder go-live approval (Epic G); no pull request, deployment or ledger row grants it.** Every ledger row is PLANNED |
+| Status | **BUILT (application stories of Epics L, T and M and the code parts of U and G), pending the single Docker validation pass result in the PR body and Founder review.** The Founder authorized the build in the session that built it (2026-11-25: authorize=true) and accepted D1 to D5, D7 and D8 as proposed; D6 (GST identity) is not yet supplied. **Taking real money still needs the separate written Founder go-live approval (Epic G, row G-23); no pull request, deployment or ledger row grants it.** Ledger rows stay PLANNED until the Demo read-backs |
 | Depends on | WC-171 merged and deployed on Demo (alert, oversight and spend read routes are needed to run money safely); WC-170 B1 closed |
 | Controlling documents | [agent-employment-experience-contract.md](../architecture/reference/product/agent-employment-experience-contract.md) (AEEC-06 to AEEC-09, OP-LIFECYCLE-COMM-01), [ADR-022](../adr/ADR-022-payment-processing-razorpay-india.md), [ADR-034](../adr/ADR-034-waooaw-billing-engine.md), [ADR-046](../adr/ADR-046-workload-identity-and-service-authentication.md), [ADR-047](../adr/ADR-047-private-ephemeral-deployment-runners.md), [C-088](../knowledge/claims/C-088.md), [C-089](../knowledge/claims/C-089.md), [PG-26](../architecture/reference/product/waooaw-product-gap-register.md), [CB-021](../blockers/CB-021-inst010-wc134-adr046-cloud-workload-credentials-2026-11-16.md), [WC-170](./WC-170-real-agent-work-end-to-end.md) gaps B5 and B10 |
 | Agent instructions | [WC-170-agent-execution-instructions.md](./WC-170-agent-execution-instructions.md) apply unchanged, plus the stop conditions below |
@@ -218,3 +218,50 @@ Build pull request: every application requirement has a ledger row with executab
 ## Implementation Record
 
 Groomed 2026-11-25 on branch `ib/171/groomed-alerts-menus-and-real-money` from `origin/main` at `1519cc8a` (PR #644 merged). Facts above were read from the repository by a read-only pass; no Demo or Azure read and no code was done. Not yet built.
+
+## Implementation Record (build session 2026-11-25)
+
+Built on branch `ib/172/safe-to-charge-real-customers` from `origin/main` at `d7d67ca9` (PR #646 merged). One pull request; all application stories were built first and validated in one Docker pass.
+
+### Founder decisions recorded
+
+| Id | Decision | Where it is code |
+|---|---|---|
+| D1 | Pause credits the unused days to the next invoice, at most 30 days, Emergency Stop never bills | `payment/lifecycle_policy.py`, `LifecycleService._pause`, `renew_paid` |
+| D2 | Terminate ends at the paid period end, no refund except a documented service failure, export 90 days | `LifecycleService._terminate`, `finalize_terminations` |
+| D3 | Locked price renews; a catalogue change needs 30 days' notice and acknowledgement | `payment/price_protection.py` |
+| D4 | Upgrade pro rata now, downgrade next period | `LifecycleService._change_package`; `decisions_match` |
+| D5 | Payer is the signed-in holder; a funder needs acceptance and a billing profile | `invoicing/service.py`, tables `billing_profiles`, `funder_acceptances` |
+| D6 | GST identity | **Not supplied.** The code issues documents only when `GST_LEGAL_NAME`, `GST_GSTIN`, `GST_ADDRESS`, `GST_STATE_CODE` are set and the GSTIN passes its check character; until then payments succeed and the daily reconciliation reports each as a payment without an invoice. T2 is built, not proved |
+| D7 | Closed beta of named customers added as Meta app Testers | recorded in the go-live checklist row G-12 |
+| D8 | Acceptance vault: WC-164 vault, sandbox values only, Demo and UAT; production never reachable | `tests/pipeline/test_wc172_money_and_identity_guards.py` |
+
+Policy record: [lifecycle-commercial-policy.md](../architecture/reference/product/lifecycle-commercial-policy.md) closes OP-LIFECYCLE-COMM-01.
+
+### Built, by requirement
+
+| Req | Built | Evidence |
+|---|---|---|
+| R001 to R004 | Lifecycle policy, pause credit, terminate at period end with service-failure refund, upgrade and downgrade, export window | `tests/billing-engine/test_lifecycle_commands.py`, `test_wc172_lifecycle_policy.py`, `test_relationship_workspace.py` |
+| R005 | Price protection and notice, credit-paid renewals | same; BP receipt carries `creditFeePaise` and `exportAvailableUntil` |
+| R006, R007 | `invoicing/` tax invoices and credit notes, gap-free numbering, exact paise, immutability trigger, payer and funder, retrieval routes | `test_wc172_tax_documents.py`; real Postgres smoke run of the migration and services |
+| R008 | Evidence verified at the owner through two `SECURITY DEFINER` functions (`99zzzzzzzz-wc172-02-evidence-owner.sql`) | `test_wc170_spend_chain.py` (forged, missing, no owner); real Postgres run of the functions |
+| R009 | Trust bundle publishes grouped grants (19.7 KiB to about 17 KiB with four workloads, 4 KiB of headroom proved); the four spend routes and the new routes have grants; every reader accepts both forms | `tests/constitutional/test_wid_issuer.py`, `test_wc172_grouped_grants.py` in three services, C# `HasRouteGrant` |
+| R010 | `payment/money_mode.py` startup guard before the database opens; `payment/money_gate.py` gate, audit, step-up; charge guard in the Razorpay client | `test_wc172_money_guard.py` |
+| R011 | `payment/money_reconciliation.py` daily provider-to-invoice reconciliation, discrepancies block new charges, Founder resolves with evidence | `test_wc172_money_guard.py`; operations console screen is not built (see gaps) |
+| R012 to R014 | Not code: UAT provisioning, promotion and the UAT run are Founder-run deployments | go-live checklist rows G-16 to G-20 |
+| R013 | Shared-token uses enumerated by a test; no new route uses one | `tests/pipeline/test_wc172_money_and_identity_guards.py` |
+| R015 | Go-live checklist and hosted-runner vault guard | `architecture/reference/runbooks/go-live-checklist.md` |
+| R016, R017 | Founder acts | checklist rows G-10, G-23, G-24 |
+
+### Gaps recorded (not hidden)
+
+| Id | Gap | Owner |
+|---|---|---|
+| I1 | No customer or Founder screens for the credit, export date, invoices, the gate or discrepancies; the BP routes for the Founder money controls exist as a private billing-engine contract (`wbe-money-controls.openapi.yaml`) with grants, but the Business Platform controllers that call them are not built | Platform IT Expert, next iteration or a repair PR |
+| I2 | A service-failure termination is requested by an operator citing an evidence id; there is no customer flow | Founder decision |
+| I3 | The customer-facing price-change notice and acknowledgement have billing-engine services but no route or screen | Platform IT Expert |
+| I4 | A hire created before the quote lock is refused at renewal (`NO_ACTIVE_PERIOD`), not migrated | recorded rule in the policy |
+| I5 | `RAZORPAY_PAYMENT_MODE` and `GST_*` are not yet wired into Terraform per environment; the default is TEST and no GST identity, so nothing breaks on Demo. Production must set LIVE before it can start with a live key | Platform IT Expert, before UAT |
+| I6 | Eleven (now seven) billing-engine tests that failed on `main` before this work still fail; none touch this change. The lifecycle command tests that failed on `main` are fixed because the module was rewritten | Platform IT Expert |
+| I7 | `csharpier` reports `src/shared/InferenceWorkloadValidator.cs` line 14; the same finding exists on `main` | Platform IT Expert |

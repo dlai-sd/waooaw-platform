@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import text
+from sqlalchemy import DateTime, bindparam, text
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -24,10 +24,13 @@ from payment.lifecycle import (  # noqa: E402
     PeriodStore,
     credit_paid_period,
 )
+from payment.price_protection import PriceProtection, PriceProtectionError  # noqa: E402
 from promotions.coupon_versions import CouponError  # noqa: E402
 from wallet.ledger import WalletLedger  # noqa: E402
 from wc136_commercial_ddl import install  # noqa: E402
 from wc136_commercial_fakes import (  # noqa: E402
+    PRO_ID,
+    STARTER_ID,
     FakePackages,
     FakeRates,
     policy_body,
@@ -41,6 +44,7 @@ TENANT = UUID("11111111-1111-4111-8111-111111111111")
 CUSTOMER = UUID("22222222-2222-4222-8222-222222222222")
 RELATIONSHIP = UUID("44444444-4444-4444-8444-444444444444")
 PERIOD_CREDIT_PAISE = 4 * 2 * 50
+HIRE_EVIDENCE = UUID("77777777-7777-4777-8777-777777777777")
 
 
 class _Clock:
@@ -69,7 +73,7 @@ async def env(wallet_db):
         await install(session)
         clock = _Clock(START)
         await PeriodCreditService(session, rates=FakeRates(), now=clock).start_period(
-            TENANT, RELATIONSHIP, CUSTOMER, starter(), START, 30_000, uuid4()
+            TENANT, RELATIONSHIP, CUSTOMER, starter(), START, 30_000, HIRE_EVIDENCE
         )
         yield SimpleNamespace(session=session, clock=clock)
 
@@ -78,6 +82,16 @@ def _service(env, policy=None, *, with_policy: bool = True) -> LifecycleService:
     body = (policy or policy_body()) if with_policy else None
     return LifecycleService(
         env.session, rates=FakeRates(), packages=FakePackages(starter(), pro()), policy=policy_source(body), now=env.clock
+    )
+
+
+async def _activate_payment(env, reference: str) -> None:
+    statement = text(
+        "INSERT INTO payment_intents (razorpay_payment_id, tenant_id, relationship_id, status, activated_at) "
+        "VALUES (:reference, :tenant, :relationship, 'ACTIVATED', :at)"
+    ).bindparams(bindparam("at", type_=DateTime(timezone=True)))
+    await env.session.execute(
+        statement, {"reference": reference, "tenant": str(TENANT), "relationship": str(RELATIONSHIP), "at": START}
     )
 
 
@@ -101,7 +115,7 @@ async def _adjustments(env):
 async def test_hire_credit_is_sized_from_the_recipes_and_replay_credits_nothing_twice(env) -> None:
     assert (await _balance(env)).credited_paise == PERIOD_CREDIT_PAISE
     await PeriodCreditService(env.session, rates=FakeRates(), now=env.clock).start_period(
-        TENANT, RELATIONSHIP, CUSTOMER, starter(), START, 30_000, uuid4()
+        TENANT, RELATIONSHIP, CUSTOMER, starter(), START, 30_000, HIRE_EVIDENCE
     )
     assert (await _balance(env)).credited_paise == PERIOD_CREDIT_PAISE
     assert (await _period(env)).status == "ACTIVE"
@@ -117,17 +131,57 @@ async def test_renewal_lapses_the_unspent_credit_instead_of_rolling_it_over(env)
     assert balance.credited_paise == PERIOD_CREDIT_PAISE and balance.available_paise == PERIOD_CREDIT_PAISE
 
 
+FAILURE_EVIDENCE = UUID("99999999-9999-4999-8999-999999999999")
+
+
 @pytest.mark.asyncio
-async def test_terminate_on_day_twelve_refunds_the_fee_share_and_never_the_wallet(env) -> None:
+async def test_terminate_ends_service_at_the_paid_period_end_with_no_refund_and_a_90_day_export(env) -> None:
     env.clock.at = START + timedelta(days=12)
     outcome = await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    period_end = START + timedelta(days=30)
+    assert (outcome.status, outcome.effective_at, outcome.refund_fee_paise) == ("PENDING", period_end, 0)
+    assert outcome.export_available_until == period_end + timedelta(days=90)
+    assert (await _period(env)).status == "ACTIVE"
+    assert await _adjustments(env) == []
+    assert (await _balance(env)).available_paise == PERIOD_CREDIT_PAISE
+
+
+@pytest.mark.asyncio
+async def test_a_termination_becomes_final_only_when_its_date_is_reached_and_nothing_is_deleted(env) -> None:
+    env.clock.at = START + timedelta(days=12)
+    await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    assert await _service(env).finalize_terminations() == 0
+    env.clock.at = START + timedelta(days=30)
+    assert await _service(env).finalize_terminations() == 1
+    assert (await _period(env)).status == "TERMINATED"
+    assert (await _balance(env)).available_paise == 0
+    lots = (await env.session.execute(text("SELECT COUNT(*) FROM business.wallet_lots"))).scalar_one()
+    assert lots == 1
+
+
+@pytest.mark.asyncio
+async def test_a_terminating_relationship_cannot_renew(env) -> None:
+    env.clock.at = START + timedelta(days=12)
+    await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    outcome = await _service(env).execute("RENEW_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    assert (outcome.status, outcome.blocked_reason) == ("REJECTED", "RELATIONSHIP_TERMINATING")
+    env.clock.at = START + timedelta(days=30)
+    with pytest.raises(LifecycleError) as refused:
+        await _renew(env)
+    assert refused.value.code == "RELATIONSHIP_TERMINATING"
+
+
+@pytest.mark.asyncio
+async def test_a_documented_service_failure_ends_service_now_and_refunds_the_unused_fee_to_the_card(env) -> None:
+    env.clock.at = START + timedelta(days=12)
+    outcome = await _service(env).execute(
+        "TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), service_failure_evidence_id=FAILURE_EVIDENCE
+    )
     assert (outcome.status, outcome.refund_fee_paise) == ("COMPLETED", 18_000)
     assert (await _period(env)).status == "TERMINATED"
     assert [(row[0], row[1]) for row in await _adjustments(env)] == [(18_000, "NOT_PAYABLE")]
     balance = await _balance(env)
     assert balance.available_paise == 0 and balance.expired_paise == PERIOD_CREDIT_PAISE
-    lots = (await env.session.execute(text("SELECT COUNT(*) FROM business.wallet_lots"))).scalar_one()
-    assert lots == 1
 
 
 @pytest.mark.asyncio
@@ -147,15 +201,11 @@ async def test_renew_is_pending_until_the_end_of_the_period(env) -> None:
 
 @pytest.mark.asyncio
 async def test_refund_goes_to_the_provider_against_the_activation_payment(env) -> None:
-    await env.session.execute(
-        text(
-            "INSERT INTO payment_intents (razorpay_payment_id, tenant_id, relationship_id, status, activated_at) "
-            "VALUES ('pay_77', :tenant, :relationship, 'ACTIVATED', :at)"
-        ),
-        {"tenant": str(TENANT), "relationship": str(RELATIONSHIP), "at": START},
-    )
+    await _activate_payment(env, "pay_77")
     env.clock.at = START + timedelta(days=15)
-    await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    await _service(env).execute(
+        "TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), service_failure_evidence_id=FAILURE_EVIDENCE
+    )
     provider = _Provider()
     adjustments = BillingAdjustments(env.session, now=env.clock)
     assert await adjustments.dispatch_pending(provider, 10) == 1
@@ -166,14 +216,10 @@ async def test_refund_goes_to_the_provider_against_the_activation_payment(env) -
 
 @pytest.mark.asyncio
 async def test_provider_failure_leaves_the_refund_retryable(env) -> None:
-    await env.session.execute(
-        text(
-            "INSERT INTO payment_intents (razorpay_payment_id, tenant_id, relationship_id, status, activated_at) "
-            "VALUES ('pay_78', :tenant, :relationship, 'ACTIVATED', :at)"
-        ),
-        {"tenant": str(TENANT), "relationship": str(RELATIONSHIP), "at": START},
+    await _activate_payment(env, "pay_78")
+    await _service(env).execute(
+        "TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), service_failure_evidence_id=FAILURE_EVIDENCE
     )
-    await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
     adjustments = BillingAdjustments(env.session, now=env.clock)
     assert await adjustments.dispatch_pending(_Provider(fail=True), 10) == 0
     assert [row[1] for row in await _adjustments(env)] == ["FAILED_RETRYABLE"]
@@ -181,25 +227,36 @@ async def test_provider_failure_leaves_the_refund_retryable(env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_pausing_every_component_pauses_the_period_and_replay_refunds_once(env) -> None:
+async def test_pausing_every_component_pauses_the_period_and_credits_the_unused_days_once(env) -> None:
     env.clock.at = START + timedelta(days=15)
     command = uuid4()
     first = await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, command)
     again = await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, command)
-    assert first.refund_fee_paise == 15_000
-    assert again.status in {"COMPLETED", "REJECTED"} and not again.refund_fee_paise
+    assert (first.credit_fee_paise, first.refund_fee_paise) == (15_000, None)
+    assert again.status in {"COMPLETED", "REJECTED"} and not again.credit_fee_paise
     assert (await _period(env)).status == "PAUSED"
-    assert [row[0] for row in await _adjustments(env)] == [15_000]
+    assert [(row[0], row[1]) for row in await _adjustments(env)] == [(15_000, "AVAILABLE")]
+    assert await BillingAdjustments(env.session).available_credit_paise(TENANT, RELATIONSHIP) == 15_000
 
 
 @pytest.mark.asyncio
-async def test_pausing_one_component_refunds_its_share_and_keeps_the_period_active(env) -> None:
+async def test_a_pause_is_never_sent_to_the_provider_as_a_card_refund(env) -> None:
+    await _activate_payment(env, "pay_79")
+    env.clock.at = START + timedelta(days=15)
+    await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    provider = _Provider()
+    assert await BillingAdjustments(env.session, now=env.clock).dispatch_pending(provider, 10) == 0
+    assert provider.calls == []
+
+
+@pytest.mark.asyncio
+async def test_pausing_one_component_credits_its_share_and_keeps_the_period_active(env) -> None:
     env.clock.at = START + timedelta(days=12)
     outcome = await _service(env).execute(
         "PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), component_ids=["POSTS"]
     )
     period = await _period(env)
-    assert outcome.refund_fee_paise == 12_000
+    assert outcome.credit_fee_paise == 12_000
     assert period.status == "ACTIVE" and period.paused_component_ids == ("POSTS",)
     unknown = await _service(env).execute(
         "PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), component_ids=["GHOST"]
@@ -208,10 +265,15 @@ async def test_pausing_one_component_refunds_its_share_and_keeps_the_period_acti
 
 
 @pytest.mark.asyncio
-async def test_resume_takes_effect_with_the_next_period(env) -> None:
+async def test_a_pause_ends_after_thirty_days_and_its_components_come_back(env) -> None:
+    env.clock.at = START + timedelta(days=2)
     await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
-    outcome = await _service(env).execute("RESUME_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
-    assert (outcome.status, outcome.effective_at) == ("PENDING", START + timedelta(days=30))
+    resume = await _service(env).execute("RESUME_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    assert (resume.status, resume.effective_at) == ("PENDING", START + timedelta(days=30))
+    assert await _service(env).resume_expired_pauses() == 0
+    env.clock.at = START + timedelta(days=30)
+    assert await _service(env).resume_expired_pauses() == 1
+    assert await _service(env).resume_expired_pauses() == 0
 
 
 class _Orders:
@@ -259,6 +321,7 @@ async def test_paid_renewal_credits_a_new_lot_lapses_the_old_period_and_replays_
     lots = (await env.session.execute(text("SELECT COUNT(*) FROM business.wallet_lots"))).scalar_one()
     assert lots == 2
     assert (await PeriodStore(env.session).starting_at(TENANT, RELATIONSHIP, START)).status == "LAPSED"
+    env.clock.at = START + timedelta(days=10)
     outcome = await _service(env).execute("RENEW_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
     assert (outcome.status, outcome.effective_at) == ("COMPLETED", renewed.period_start)
 
@@ -297,7 +360,9 @@ async def test_paid_renewal_refuses_a_wrong_amount_a_missing_policy_and_a_termin
             evidence_id=uuid4(), authority="WALLET",
         )
     assert policy.value.code == "POLICY_ABSENT"
-    await _service(env).execute("TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    await _service(env).execute(
+        "TERMINATE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4(), service_failure_evidence_id=FAILURE_EVIDENCE
+    )
     with pytest.raises(LifecycleError) as terminated:
         await _renew(env, reference="pay_y")
     assert terminated.value.code == "RELATIONSHIP_TERMINATED"
@@ -463,3 +528,63 @@ async def test_legacy_authority_credits_no_period(env) -> None:
         is None
     )
     assert await PeriodStore(env.session).current(TENANT, other, START) is None
+
+
+@pytest.mark.asyncio
+async def test_a_pause_credit_reduces_the_next_renewal_and_is_used_up(env) -> None:
+    env.clock.at = START + timedelta(days=15)
+    await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    env.clock.at = START + timedelta(days=30)
+    quote = await _service(env).renewal_quote(TENANT, RELATIONSHIP)
+    assert (quote.price_paise, quote.credit_paise, quote.amount_due_paise) == (30_000, 15_000, 15_000)
+    with pytest.raises(LifecycleError) as refused:
+        await _renew(env, fee=30_000)
+    assert refused.value.code == "RENEWAL_AMOUNT_MISMATCH"
+    renewed = await _renew(env, fee=15_000)
+    assert renewed.fee_paid_paise == 15_000
+    assert await BillingAdjustments(env.session).available_credit_paise(TENANT, RELATIONSHIP) == 0
+    assert [(row[0], row[1]) for row in await _adjustments(env)] == [(15_000, "APPLIED")]
+
+
+@pytest.mark.asyncio
+async def test_a_credit_that_pays_the_whole_renewal_needs_no_provider_payment_and_renews_once(env) -> None:
+    env.clock.at = START
+    await _service(env).execute("PAUSE_RELATIONSHIP", TENANT, RELATIONSHIP, uuid4())
+    env.clock.at = START + timedelta(days=30)
+    first = await _service(env).renew_from_credit(TENANT, RELATIONSHIP, CUSTOMER, authority="WALLET")
+    again = await _service(env).renew_from_credit(TENANT, RELATIONSHIP, CUSTOMER, authority="WALLET")
+    assert first.period_start == START + timedelta(days=30) and first.fee_paid_paise == 0
+    assert again.period_start == first.period_start
+
+
+@pytest.mark.asyncio
+async def test_a_hire_keeps_its_locked_price_until_the_notice_is_acknowledged_and_thirty_days_have_run(env) -> None:
+    env.clock.at = START + timedelta(days=5)
+    protection = PriceProtection(env.session, now=env.clock)
+    notice = await protection.notify(TENANT, RELATIONSHIP, STARTER_ID, PRO_ID, 30_000, 60_000, uuid4())
+    with pytest.raises(PriceProtectionError) as unacknowledged:
+        await protection.require_change_allowed(TENANT, RELATIONSHIP, notice)
+    assert unacknowledged.value.code == "PRICE_CHANGE_NOT_ACKNOWLEDGED"
+    env.clock.at = START + timedelta(days=30)
+    assert (await _service(env).renewal_quote(TENANT, RELATIONSHIP)).price_paise == 30_000
+    await protection.acknowledge(TENANT, RELATIONSHIP, notice, "customer-1")
+    assert (await _service(env).renewal_quote(TENANT, RELATIONSHIP)).price_paise == 30_000
+
+    env.clock.at = START + timedelta(days=36)
+    await protection.require_change_allowed(TENANT, RELATIONSHIP, notice)
+    assert (await _service(env).renewal_quote(TENANT, RELATIONSHIP)).price_paise == 60_000
+
+
+@pytest.mark.asyncio
+async def test_an_acknowledged_notice_still_waits_for_its_thirty_days(env) -> None:
+    protection = PriceProtection(env.session, now=env.clock)
+    notice = await protection.notify(TENANT, RELATIONSHIP, STARTER_ID, PRO_ID, 30_000, 60_000, uuid4())
+    await protection.acknowledge(TENANT, RELATIONSHIP, notice, "customer-1")
+    env.clock.at = START + timedelta(days=29)
+    with pytest.raises(PriceProtectionError) as early:
+        await protection.require_change_allowed(TENANT, RELATIONSHIP, notice)
+    assert early.value.code == "PRICE_CHANGE_NOTICE_PENDING"
+    with pytest.raises(PriceProtectionError) as no_evidence:
+        await protection.notify(TENANT, RELATIONSHIP, STARTER_ID, PRO_ID, 30_000, 60_000, UUID(int=0))
+    assert no_evidence.value.code == "PRICE_CHANGE_EVIDENCE_REQUIRED"
+    assert await protection.notify(TENANT, RELATIONSHIP, STARTER_ID, PRO_ID, 30_000, 60_000, uuid4()) == notice
