@@ -47,20 +47,33 @@ function renderShell(snapshot = snapshotFixture()) {
 
 function openTool(name: string) {
   fireEvent.click(
-    within(screen.getByRole('navigation', { name: copy.toolsLabel })).getByRole('button', { name: new RegExp(name) })
+    within(screen.getByRole('navigation', { name: copy.agentMenuLabel })).getByRole('button', {
+      name: new RegExp(name),
+    })
   );
 }
 
 describe('WorkbenchShell', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it('names its landmarks, lists the tools and always offers Stop', () => {
+  it('names its landmarks, lists the fixed surfaces in order and always offers Stop', () => {
     renderShell();
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: copy.title })).toBeInTheDocument();
-    const rail = within(screen.getByRole('navigation', { name: copy.toolsLabel }));
+    const menu = screen.getByRole('navigation', { name: copy.agentMenuLabel });
+    const rail = within(menu);
     expect(rail.getByRole('button', { name: copy.toolOverview })).toHaveAttribute('aria-current', 'page');
     expect(rail.getByRole('button', { name: new RegExp(`${copy.toolDecisions} \\(1\\)`) })).toBeInTheDocument();
+    expect(rail.getAllByRole('button').map((button) => button.getAttribute('data-surface'))).toEqual([
+      'overview',
+      'plan',
+      'decisions',
+      'work',
+      'results',
+      'usage',
+      'alerts',
+      'rights',
+    ]);
     expect(screen.getByRole('button', { name: copy.stop })).toBeEnabled();
     expect(screen.getByText('One decision is waiting.')).toBeInTheDocument();
   });
@@ -79,19 +92,19 @@ describe('WorkbenchShell', () => {
     expect(screen.getByRole('button', { name: copy.pauseWork })).toBeDisabled();
   });
 
-  it('hides the allowance tool from a beneficiary', () => {
+  it('hides the budget surface from a beneficiary', () => {
     const snapshot = snapshotFixture();
     snapshot.projection.audience = 'beneficiary';
     snapshot.wallet = null;
     renderShell(snapshot);
-    const rail = within(screen.getByRole('navigation', { name: copy.toolsLabel }));
-    expect(rail.queryByRole('button', { name: copy.toolWallet })).not.toBeInTheDocument();
-    expect(rail.getByRole('button', { name: copy.toolEvidence })).toBeInTheDocument();
+    const rail = within(screen.getByRole('navigation', { name: copy.agentMenuLabel }));
+    expect(rail.queryByRole('button', { name: copy.surfaceUsage })).not.toBeInTheDocument();
+    expect(rail.getByRole('button', { name: copy.surfaceRights })).toBeInTheDocument();
   });
 
-  it('moves focus to the panel when the tool changes and supports arrow keys in the rail', () => {
+  it('moves focus to the panel when the surface changes and supports arrow keys in the menu', () => {
     renderShell();
-    openTool(copy.toolMonitor);
+    openTool(copy.surfaceResults);
     expect(screen.getByRole('heading', { name: copy.monitor })).toBeInTheDocument();
     expect(screen.getByText('Reach this week')).toBeInTheDocument();
     expect(screen.getByText('Draft the weekly post', { exact: false })).toBeInTheDocument();
@@ -99,7 +112,7 @@ describe('WorkbenchShell', () => {
     const overview = screen.getByRole('button', { name: copy.toolOverview });
     overview.focus();
     fireEvent.keyDown(overview, { key: 'ArrowDown' });
-    expect(screen.getByRole('button', { name: copy.toolGoals })).toHaveFocus();
+    expect(screen.getByRole('button', { name: copy.toolPlan })).toHaveFocus();
   });
 
   it('starts a goal from the declared form with a fresh idempotency key and refreshes', async () => {
@@ -162,7 +175,7 @@ describe('WorkbenchShell', () => {
   it('enables an available capability and disables an unavailable one with its limitation', async () => {
     const calls = installFetch(() => fakeResponse(200, { schemaVersion: '1.0', status: 'ACCEPTED' }));
     renderShell();
-    openTool(copy.toolCapabilities);
+    openTool(copy.surfaceUsage);
     expect(screen.getByText('Reports are not available on this package.')).toBeInTheDocument();
     const buttons = screen.getAllByRole('button', { name: new RegExp(`^${copy.enable}`) });
     expect(buttons[1]).toBeDisabled();
@@ -189,7 +202,7 @@ describe('WorkbenchShell', () => {
       })
     );
     renderShell();
-    openTool(copy.toolWallet);
+    openTool(copy.surfaceUsage);
     expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(copy.topUpQuantity), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: copy.topUp }));
@@ -201,7 +214,7 @@ describe('WorkbenchShell', () => {
     const snapshot = snapshotFixture();
     snapshot.wallet = { ...present(snapshot.wallet), askAccountOwner: true, topUpAvailable: false };
     renderShell(snapshot);
-    openTool(copy.toolWallet);
+    openTool(copy.surfaceUsage);
     expect(screen.getByText(copy.askAccountOwner)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: copy.topUp })).not.toBeInTheDocument();
   });
@@ -209,7 +222,7 @@ describe('WorkbenchShell', () => {
   it('requests an evidence export for the relationship', async () => {
     const calls = installFetch(() => fakeResponse(202, { schemaVersion: '1.0', status: 'ACCEPTED' }));
     renderShell();
-    openTool(copy.toolEvidence);
+    openTool(copy.surfaceRights);
     expect(screen.getByText(/Weekly post published/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: `${copy.exportEvidence} (PDF)` }));
     await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
@@ -261,7 +274,7 @@ describe('WorkbenchShell', () => {
     );
 
     expect(await screen.findByText('Publish the weekly update')).toBeInTheDocument();
-    const rail = within(screen.getByRole('navigation', { name: copy.toolsLabel }));
+    const rail = within(screen.getByRole('navigation', { name: copy.agentMenuLabel }));
     expect(rail.getByRole('button', { name: new RegExp(copy.toolDecisions) })).toHaveAttribute('aria-current', 'page');
     const consume = calls.filter((call) => call.path === '/handoffs/consume');
     expect(consume).toHaveLength(1);
@@ -281,7 +294,7 @@ describe('WorkbenchShell', () => {
     );
 
     expect(await screen.findByText(copy.handoffInvalid)).toBeInTheDocument();
-    const rail = within(screen.getByRole('navigation', { name: copy.toolsLabel }));
+    const rail = within(screen.getByRole('navigation', { name: copy.agentMenuLabel }));
     expect(rail.getByRole('button', { name: copy.toolOverview })).toHaveAttribute('aria-current', 'page');
   });
 

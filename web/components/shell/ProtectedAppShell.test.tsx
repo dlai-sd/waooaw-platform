@@ -30,13 +30,20 @@ function requiredDetails(control: HTMLElement): HTMLDetailsElement {
 }
 
 describe('ProtectedAppShell account menu', () => {
-  it('offers Staff access to every signed-in person from the account menu', () => {
-    render(
+  it('offers Staff access only to a person with a staff grant', () => {
+    const { unmount } = render(
       <ProtectedAppShell locale="en" messages={getMessages('en')} variant="customer">
         <p>Page</p>
       </ProtectedAppShell>
     );
+    expect(screen.queryByRole('link', { name: 'Staff access', hidden: true })).not.toBeInTheDocument();
+    unmount();
 
+    render(
+      <ProtectedAppShell locale="en" messages={getMessages('en')} showAccess variant="customer">
+        <p>Page</p>
+      </ProtectedAppShell>
+    );
     expect(screen.getByRole('link', { name: 'Staff access', hidden: true })).toHaveAttribute('href', '/access');
   });
 

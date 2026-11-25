@@ -467,6 +467,51 @@ components:
           type: array
           minItems: 1
           items: { type: string, minLength: 1 }
+        navigation:
+          description: |
+            WC-171. Optional entries the agent adds after the platform's fixed surfaces in its context menu: data only
+            (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate
+            ids and entries that open nothing. A manifest without it shows only the fixed surfaces.
+          type: array
+          maxItems: 12
+          items: { $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1" }
+    EmploymentExperienceNavigationEntryV1:
+      type: object
+      additionalProperties: false
+      required: [entryId, labelKey, label, icon, order, surface, audiences, availabilityGate]
+      properties:
+        entryId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        icon:
+          type: string
+          enum: [profile, calendar, accounts, results, plan, work, insights, documents]
+        order: { type: integer, minimum: 0, maximum: 999 }
+        surface: { $ref: "#/components/schemas/EmploymentExperienceNavigationSurfaceV1" }
+        audiences:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/EmploymentExperienceAudienceV1" }
+        availabilityGate:
+          type: string
+          enum: [ALWAYS, AFTER_FIRST_APPROVAL, NEEDS_CONNECTED_ACCOUNTS]
+    EmploymentExperienceNavigationSurfaceV1:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [KERNEL_VIEW, BLOCK_COMPOSITION, DOMAIN_BLOCK]
+        target: { type: string, minLength: 1, maxLength: 160 }
+        blocks:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TEXT, CHOICES, LIST, LINK, STATUS, METRIC, PLAN, DECISION, FORM, EVIDENCE]
     ImmutableContractReferenceV1:
       type: object
       additionalProperties: false

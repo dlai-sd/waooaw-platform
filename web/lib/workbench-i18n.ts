@@ -19,6 +19,14 @@ export type WorkbenchMessages = {
   toolWork: string;
   toolWallet: string;
   toolEvidence: string;
+  surfaceResults: string;
+  surfaceUsage: string;
+  surfaceAlerts: string;
+  surfaceRights: string;
+  agentMenuLabel: string;
+  declaredMenuLabel: string;
+  declaredNothingYet: string;
+  declaredNotAvailable: string;
   nextStep: string;
   nothingNeeded: string;
   readiness: string;
@@ -121,6 +129,14 @@ const en: WorkbenchMessages = {
   toolWork: 'Work',
   toolWallet: 'Allowance',
   toolEvidence: 'Evidence',
+  surfaceResults: 'Results',
+  surfaceUsage: 'Usage and budget',
+  surfaceAlerts: 'Alerts for this agent',
+  surfaceRights: 'Rights and control',
+  agentMenuLabel: 'This agent',
+  declaredMenuLabel: 'From this agent',
+  declaredNothingYet: 'There is nothing to show here yet.',
+  declaredNotAvailable: 'This opens after your first approval.',
   nextStep: 'Recommended next step',
   nothingNeeded: 'Nothing needs your attention.',
   readiness: 'Readiness',
@@ -288,6 +304,14 @@ const hi: WorkbenchMessages = {
   toolWork: 'काम',
   toolWallet: 'सीमा',
   toolEvidence: 'प्रमाण',
+  surfaceResults: 'परिणाम',
+  surfaceUsage: 'उपयोग और बजट',
+  surfaceAlerts: 'इस एजेंट के अलर्ट',
+  surfaceRights: 'अधिकार और नियंत्रण',
+  agentMenuLabel: 'यह एजेंट',
+  declaredMenuLabel: 'इस एजेंट से',
+  declaredNothingYet: 'यहाँ अभी दिखाने के लिए कुछ नहीं है।',
+  declaredNotAvailable: 'यह आपकी पहली मंज़ूरी के बाद खुलेगा।',
   nextStep: 'सुझाया गया अगला कदम',
   nothingNeeded: 'आपके ध्यान की कोई ज़रूरत नहीं है।',
   readiness: 'तैयारी',

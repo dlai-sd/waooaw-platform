@@ -17,7 +17,7 @@ import httpx
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
-from execution_timeline import TimelineEvent
+from execution_timeline import BlindRetryRefused, TimelineEvent
 from workload_identity import DelegatedContext, DelegationPrivateKey, sign_delegated_context
 
 ROUTE = "/internal/v1/real-work/events"
@@ -28,6 +28,14 @@ ACTOR_SOURCE = "PR_RUNTIME"
 
 class RealWorkDeliveryError(Exception):
     """BP refused or could not take the event. The caller reconciles; it does not assume delivery."""
+
+
+def _refusal_code(response: httpx.Response) -> str | None:
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    return body.get("code") if isinstance(body, dict) else None
 
 
 def _artifact_payload(proposal: dict[str, Any]) -> dict[str, Any]:
@@ -159,6 +167,10 @@ class BusinessPlatformRealWorkGateway:
         except httpx.HTTPError as error:
             raise RealWorkDeliveryError("business platform unreachable") from error
         if response.status_code >= 400:
+            # BP keeps the durable record of an unknown outcome and refuses a second run of it; that refusal is the
+            # runtime's own blind-retry rule surviving a restart or a second replica.
+            if response.status_code == 409 and _refusal_code(response) == "REAL_WORK_BLIND_RETRY":
+                raise BlindRetryRefused("business platform holds an unknown outcome for this step")
             raise RealWorkDeliveryError(f"business platform refused with {response.status_code}")
         return response
 

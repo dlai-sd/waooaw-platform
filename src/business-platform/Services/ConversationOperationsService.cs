@@ -50,13 +50,26 @@ public sealed class ConversationOperationsService(
         var oldestUnknownAt = await queue
             .Where(value => value.State == "UNRESOLVED")
             .MinAsync(value => (DateTimeOffset?)value.UpdatedAt, cancellationToken);
-        var oldestBlockedAt = await queue
-            .Where(value => value.State == "BLOCKED" && value.BlockedReason != suppressed)
-            .MinAsync(value => (DateTimeOffset?)value.UpdatedAt, cancellationToken);
-        var blockedCount = await queue.CountAsync(
-            value => value.State == "BLOCKED" && value.BlockedReason != suppressed,
+        // A blocked message an operator has closed or marked undeliverable is resolved, not a dead letter; the row stays.
+        var openBlocked = db
+            .ConversationOutbox.AsNoTracking()
+            .Where(value => value.Environment == environment)
+            .Where(value =>
+                value.State == "BLOCKED"
+                && value.BlockedReason != suppressed
+                && !db.OutboxResolutions.Any(resolution =>
+                    resolution.OutboxId == value.OutboxId
+                    && (
+                        resolution.Action == "CLOSE_WITH_REASON"
+                        || resolution.Action == "MARK_UNDELIVERABLE"
+                    )
+                )
+            );
+        var oldestBlockedAt = await openBlocked.MinAsync(
+            value => (DateTimeOffset?)value.UpdatedAt,
             cancellationToken
         );
+        var blockedCount = await openBlocked.CountAsync(cancellationToken);
         var unresolvedCount = await queue.CountAsync(
             value => value.State == "UNRESOLVED",
             cancellationToken
@@ -235,8 +248,25 @@ public sealed class WhatsAppOperationsHostedService(
                 snapshot.Alerts.Count,
                 Observation(authority, observedAt, "HEARTBEAT", null)
             );
+            var pageService = scope.ServiceProvider.GetService<Operations.OperatorPageService>();
             foreach (var alert in snapshot.Alerts)
             {
+                // An acknowledged PAGE stops the repeat paging for its window; the signal itself stays open and visible.
+                var acknowledged =
+                    alert.Severity == "PAGE"
+                    && pageService is not null
+                    && await pageService.IsAcknowledgedAsync(alert.Code, cancellationToken);
+                if (alert.Severity == "PAGE" && pageService is not null)
+                    await pageService.RecordAsync(alert.Code, acknowledged, cancellationToken);
+                if (acknowledged)
+                {
+                    logger.LogInformation(
+                        "WhatsApp operations alert acknowledged by an operator: Environment={Environment} Code={Code}",
+                        snapshot.Environment,
+                        alert.Code
+                    );
+                    continue;
+                }
                 logger.LogWarning(
                     "WhatsApp operations alert: Environment={Environment} Code={Code} Severity={Severity} TriggeredAt={TriggeredAt} ResponseDeadlineSeconds={ResponseDeadlineSeconds} WC134_OBSERVATION={ObservationJson}",
                     snapshot.Environment,

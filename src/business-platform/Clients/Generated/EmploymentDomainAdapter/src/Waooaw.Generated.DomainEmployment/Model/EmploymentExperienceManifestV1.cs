@@ -75,7 +75,8 @@ namespace Waooaw.Generated.DomainEmployment.Model
         /// <param name="modalities">modalities (required).</param>
         /// <param name="channelSupport">channelSupport (required).</param>
         /// <param name="conformanceScenarios">conformanceScenarios (required).</param>
-        public EmploymentExperienceManifestV1(string contractVersion = default, ImmutableContractReferenceV1 vocabularyRef = default, ImmutableContractReferenceV1 componentCatalogueRef = default, List<EmploymentExperienceGoalTypeV1> goalTypes = default, EmploymentExperienceManifestV1Plan plan = default, EmploymentExperienceManifestV1Operate operate = default, EmploymentExperienceManifestV1Monitor monitor = default, List<EmploymentExperienceManifestV1DomainBlocksInner> domainBlocks = default, List<EmploymentExperienceComponentV1> components = default, List<EmploymentExperienceAudienceV1> audiences = default, List<ModalitiesEnum> modalities = default, EmploymentExperienceManifestV1ChannelSupport channelSupport = default, List<string> conformanceScenarios = default)
+        /// <param name="navigation">WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. .</param>
+        public EmploymentExperienceManifestV1(string contractVersion = default, ImmutableContractReferenceV1 vocabularyRef = default, ImmutableContractReferenceV1 componentCatalogueRef = default, List<EmploymentExperienceGoalTypeV1> goalTypes = default, EmploymentExperienceManifestV1Plan plan = default, EmploymentExperienceManifestV1Operate operate = default, EmploymentExperienceManifestV1Monitor monitor = default, List<EmploymentExperienceManifestV1DomainBlocksInner> domainBlocks = default, List<EmploymentExperienceComponentV1> components = default, List<EmploymentExperienceAudienceV1> audiences = default, List<ModalitiesEnum> modalities = default, EmploymentExperienceManifestV1ChannelSupport channelSupport = default, List<string> conformanceScenarios = default, List<EmploymentExperienceNavigationEntryV1> navigation = default)
         {
             // to ensure "contractVersion" is required (not null)
             if (contractVersion == null)
@@ -150,6 +151,7 @@ namespace Waooaw.Generated.DomainEmployment.Model
             }
             this.ConformanceScenarios = conformanceScenarios;
             this.ComponentCatalogueRef = componentCatalogueRef;
+            this.Navigation = navigation;
             this.AdditionalProperties = new Dictionary<string, object>();
         }
 
@@ -232,6 +234,13 @@ namespace Waooaw.Generated.DomainEmployment.Model
         public List<string> ConformanceScenarios { get; set; }
 
         /// <summary>
+        /// WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. 
+        /// </summary>
+        /// <value>WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. </value>
+        [DataMember(Name = "navigation", EmitDefaultValue = false)]
+        public List<EmploymentExperienceNavigationEntryV1> Navigation { get; set; }
+
+        /// <summary>
         /// Gets or Sets additional properties
         /// </summary>
         [JsonExtensionData]
@@ -258,6 +267,7 @@ namespace Waooaw.Generated.DomainEmployment.Model
             sb.Append("  Modalities: ").Append(Modalities).Append("\n");
             sb.Append("  ChannelSupport: ").Append(ChannelSupport).Append("\n");
             sb.Append("  ConformanceScenarios: ").Append(ConformanceScenarios).Append("\n");
+            sb.Append("  Navigation: ").Append(Navigation).Append("\n");
             sb.Append("  AdditionalProperties: ").Append(AdditionalProperties).Append("\n");
             sb.Append("}\n");
             return sb.ToString();

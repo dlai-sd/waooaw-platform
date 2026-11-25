@@ -46,6 +46,8 @@ src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1Operat
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1OperateCadenceInner.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1Plan.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceMeasureV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceNavigationEntryV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceNavigationSurfaceV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentGovernanceReferencesV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentInductionManifestV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentInterfaceManifestV1.cs

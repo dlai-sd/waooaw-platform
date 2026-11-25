@@ -143,6 +143,41 @@ class GrpcConversationConstitutionalGateway:
             return ConstitutionalDecision.STALE
         return ConstitutionalDecision.DENY
 
+    async def validate_action(
+        self,
+        *,
+        contract_id: str,
+        tenant_id: str,
+        action_type: str,
+        parameters: dict[str, str],
+        decision_space_version: int,
+    ) -> ConstitutionalDecision:
+        """One CE ValidateAction for a named action. Anything but a basis-carrying ALLOW is not permission."""
+        try:
+            protobuf, stub = self._load_contract()
+            response = await stub.ValidateAction(
+                protobuf.ValidateActionRequest(
+                    contract_id=contract_id,
+                    action_type=action_type,
+                    action_parameters=json.dumps(parameters, separators=(",", ":"), sort_keys=True),
+                    decision_space_version=decision_space_version,
+                    approval_type=protobuf.APPROVAL_TYPE_PRE_AUTHORIZED,
+                ),
+                metadata=(("x-tenant-id", tenant_id),),
+                timeout=self._timeout_seconds,
+            )
+        except Exception as error:
+            raise ConstitutionalGatewayUnavailableError from error
+        decision_name = protobuf.ValidationDecision.Name(response.decision).removeprefix("VALIDATION_DECISION_")
+        reason = str(response.reason).upper()
+        if decision_name == "ALLOW" and str(response.constitutional_basis).strip():
+            return ConstitutionalDecision.ALLOW
+        if "STOP" in reason:
+            return ConstitutionalDecision.STOPPED
+        if "STALE" in reason or "DECISION_SPACE" in reason:
+            return ConstitutionalDecision.STALE
+        return ConstitutionalDecision.DENY
+
     async def trigger_emergency_stop(
         self,
         *,

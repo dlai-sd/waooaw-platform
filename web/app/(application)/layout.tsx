@@ -76,6 +76,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       workspaceLayout={workspaceLayout}
       showAccess={platformAccess.administrator}
       showKeyVaultAdmin={platformAccess.founder && keyVaultTarget() !== undefined}
+      showOperations={platformAccess.founder || platformAccess.administrator}
       showPricingAdmin={platformAccess.administrator}
       showProviderAdmin={platformAccess.founder}
       variant="customer"

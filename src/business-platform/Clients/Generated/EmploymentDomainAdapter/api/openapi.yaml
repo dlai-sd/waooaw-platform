@@ -513,6 +513,82 @@ components:
             - constraints
             - constraints
           contractVersion: contractVersion
+          navigation:
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
           operate:
             workItemTypes:
             - workItemTypes
@@ -910,6 +986,82 @@ components:
           - constraints
           - constraints
         contractVersion: contractVersion
+        navigation:
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
         operate:
           workItemTypes:
           - workItemTypes
@@ -999,6 +1151,15 @@ components:
             type: string
           minItems: 1
           type: array
+        navigation:
+          description: |
+            WC-171. Optional entries the agent adds after the platform's fixed surfaces in its context menu: data only
+            (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate
+            ids and entries that open nothing. A manifest without it shows only the fixed surfaces.
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1"
+          maxItems: 12
+          type: array
       required:
       - audiences
       - channelSupport
@@ -1012,6 +1173,112 @@ components:
       - operate
       - plan
       - vocabularyRef
+    EmploymentExperienceNavigationEntryV1:
+      additionalProperties: false
+      example:
+        surface:
+          kind: KERNEL_VIEW
+          blocks:
+          - TEXT
+          - TEXT
+          target: target
+        availabilityGate: ALWAYS
+        icon: profile
+        audiences:
+        - null
+        - null
+        label: label
+        labelKey: labelKey
+        entryId: entryId
+        order: 563
+      properties:
+        entryId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        icon:
+          enum:
+          - profile
+          - calendar
+          - accounts
+          - results
+          - plan
+          - work
+          - insights
+          - documents
+          type: string
+        order:
+          maximum: 999
+          minimum: 0
+          type: integer
+        surface:
+          $ref: "#/components/schemas/EmploymentExperienceNavigationSurfaceV1"
+        audiences:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceAudienceV1"
+          minItems: 1
+          type: array
+          uniqueItems: true
+        availabilityGate:
+          enum:
+          - ALWAYS
+          - AFTER_FIRST_APPROVAL
+          - NEEDS_CONNECTED_ACCOUNTS
+          type: string
+      required:
+      - audiences
+      - availabilityGate
+      - entryId
+      - icon
+      - label
+      - labelKey
+      - order
+      - surface
+    EmploymentExperienceNavigationSurfaceV1:
+      additionalProperties: false
+      example:
+        kind: KERNEL_VIEW
+        blocks:
+        - TEXT
+        - TEXT
+        target: target
+      properties:
+        kind:
+          enum:
+          - KERNEL_VIEW
+          - BLOCK_COMPOSITION
+          - DOMAIN_BLOCK
+          type: string
+        target:
+          maxLength: 160
+          minLength: 1
+          type: string
+        blocks:
+          items:
+            enum:
+            - TEXT
+            - CHOICES
+            - LIST
+            - LINK
+            - STATUS
+            - METRIC
+            - PLAN
+            - DECISION
+            - FORM
+            - EVIDENCE
+            type: string
+          minItems: 1
+          type: array
+          uniqueItems: true
+      required:
+      - kind
     ImmutableContractReferenceV1:
       additionalProperties: false
       example:

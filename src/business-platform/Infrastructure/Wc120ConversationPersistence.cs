@@ -229,6 +229,23 @@ public sealed class ConversationOperationalSignal
     public DateTimeOffset? ResolvedAt { get; set; }
 }
 
+/// <summary>
+/// An operator's decision about one blocked outbound message. Append-only: the outbox row is never deleted or rewritten
+/// to hide the symptom, and a closed message leaves the page because a resolution exists for it.
+/// </summary>
+public sealed class ConversationOutboxResolution
+{
+    public Guid ResolutionId { get; init; } = Guid.NewGuid();
+    public Guid OutboxId { get; init; }
+    public Guid TenantId { get; init; }
+    public string Environment { get; init; } = string.Empty;
+    public string Action { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
+    public string ResolvedBy { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public DateTimeOffset ResolvedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public static class Wc120ConversationModelConfiguration
 {
     public static void ConfigureWc120Conversation(this ModelBuilder modelBuilder)
@@ -243,6 +260,7 @@ public static class Wc120ConversationModelConfiguration
         ConfigureMigration(modelBuilder);
         ConfigureEmergencyStopLatch(modelBuilder);
         ConfigureOperationalSignal(modelBuilder);
+        ConfigureOutboxResolution(modelBuilder);
         ConfigureTrafficReservation(modelBuilder);
         MapColumns<ConversationOutboxRecord>(modelBuilder);
         MapColumns<ProviderEventClaim>(modelBuilder);
@@ -254,7 +272,21 @@ public static class Wc120ConversationModelConfiguration
         MapColumns<ConversationMigrationWatermark>(modelBuilder);
         MapColumns<RelationshipEmergencyStopLatch>(modelBuilder);
         MapColumns<ConversationOperationalSignal>(modelBuilder);
+        MapColumns<ConversationOutboxResolution>(modelBuilder);
         MapColumns<WhatsAppTrafficReservation>(modelBuilder);
+    }
+
+    private static void ConfigureOutboxResolution(ModelBuilder modelBuilder)
+    {
+        var entity = modelBuilder.Entity<ConversationOutboxResolution>();
+        entity.ToTable("conversation_outbox_resolutions", "business");
+        entity.HasKey(value => value.ResolutionId);
+        entity.HasIndex(value => value.IdempotencyKey).IsUnique();
+        entity.HasIndex(value => new { value.OutboxId, value.ResolvedAt });
+        entity.Property(value => value.Environment).HasMaxLength(32);
+        entity.Property(value => value.Action).HasMaxLength(24);
+        entity.Property(value => value.Reason).HasMaxLength(240);
+        entity.Property(value => value.ResolvedBy).HasMaxLength(128);
     }
 
     private static void ConfigureTrafficReservation(ModelBuilder modelBuilder)

@@ -176,6 +176,25 @@ class ExperienceChannelSupport(EmploymentModel):
     mobile: tuple[ExperienceBlockType, ...]
 
 
+class ExperienceNavigationSurface(EmploymentModel):
+    kind: Literal["KERNEL_VIEW", "BLOCK_COMPOSITION", "DOMAIN_BLOCK"]
+    target: str | None = Field(default=None, min_length=1, max_length=160)
+    blocks: tuple[
+        Literal["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE"], ...
+    ] | None = Field(default=None, min_length=1)
+
+
+class ExperienceNavigationEntry(EmploymentModel):
+    entry_id: str = Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")
+    label_key: str = Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")
+    label: str = Field(min_length=1, max_length=40, pattern=r"^[^<>&{}\[\]`\\]+$")
+    icon: Literal["profile", "calendar", "accounts", "results", "plan", "work", "insights", "documents"]
+    order: int = Field(ge=0, le=999)
+    surface: ExperienceNavigationSurface
+    audiences: tuple[Literal["customer_owner", "delegate", "beneficiary", "steward"], ...] = Field(min_length=1)
+    availability_gate: Literal["ALWAYS", "AFTER_FIRST_APPROVAL", "NEEDS_CONNECTED_ACCOUNTS"]
+
+
 class ExperienceManifest(EmploymentModel):
     contract_version: str = Field(min_length=1, max_length=64)
     vocabulary_ref: ImmutableContractReference
@@ -190,6 +209,7 @@ class ExperienceManifest(EmploymentModel):
     modalities: tuple[Literal["text", "voice"], ...] = Field(min_length=1)
     channel_support: ExperienceChannelSupport
     conformance_scenarios: tuple[str, ...] = Field(min_length=1)
+    navigation: tuple[ExperienceNavigationEntry, ...] | None = Field(default=None, max_length=12)
 
     @model_validator(mode="after")
     def _components_are_unique_and_bound_to_declared_skills(self) -> ExperienceManifest:

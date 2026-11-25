@@ -6,7 +6,7 @@ import { AppleSignInCommand } from '@/components/auth/AppleSignInCommand';
 import { SignInCommand } from '@/components/auth/SignInCommand';
 import { StateView } from '@/components/system/StateView';
 import { messages } from '@/lib/i18n';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { AppShell } from './AppShell';
@@ -102,16 +102,88 @@ describe('F1 shell primitives', () => {
     );
   });
 
-  it('shows Connections to every customer, without any admin flag, only in the desktop navigation', () => {
+  it('keeps Connections out of the global menu: it lives inside an agent and under Settings', () => {
     render(
       <ProtectedAppShell messages={messages.en} variant="customer">
         <p>Customer content</p>
       </ProtectedAppShell>
     );
-    expect(screen.getByRole('link', { name: 'Connections' })).toHaveAttribute('href', '/connections');
-    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
-      'Connections'
+    expect(screen.queryByRole('link', { name: 'Connections' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: messages.en.settings })).toHaveAttribute('href', '/settings');
+  });
+
+  it('shows the same four platform links to a customer and none of the staff tools', () => {
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Customer content</p>
+      </ProtectedAppShell>
     );
+    const side = within(screen.getByRole('navigation', { name: messages.en.customerNavigation }));
+    expect(side.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/professionals/mine',
+      '/marketplace',
+      '/alerts',
+      '/settings',
+    ]);
+    expect(screen.queryByRole('navigation', { name: 'Operations' })).not.toBeInTheDocument();
+  });
+
+  it('puts every staff tool in a separate Operations group shown by grant, never in the customer list', () => {
+    render(
+      <ProtectedAppShell
+        messages={messages.en}
+        showAccess
+        showKeyVaultAdmin
+        showOperations
+        showPricingAdmin
+        showProviderAdmin
+        variant="customer"
+      >
+        <p>Staff content</p>
+      </ProtectedAppShell>
+    );
+    const customer = within(screen.getByRole('navigation', { name: messages.en.customerNavigation }));
+    expect(customer.queryByRole('link', { name: 'Pricing' })).not.toBeInTheDocument();
+    const operations = within(screen.getByRole('navigation', { name: 'Operations' }));
+    expect(operations.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/admin/operations',
+      '/admin/pricing',
+      '/admin/providers',
+      '/admin/azure-key-vault',
+      '/access',
+    ]);
+  });
+
+  it('gives the Founder shell only its own links and never the customer list', () => {
+    render(
+      <ProtectedAppShell messages={messages.en} variant="founder">
+        <p>Founder content</p>
+      </ProtectedAppShell>
+    );
+    const founder = within(screen.getAllByRole('navigation', { name: messages.en.founderNavigation })[0]);
+    expect(founder.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/founder',
+      '/founder/access',
+    ]);
+    expect(screen.queryByRole('link', { name: 'Marketplace' })).not.toBeInTheDocument();
+  });
+
+  it('has mobile parity: three platform links and a Menu button that opens the same global menu', () => {
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Customer content</p>
+      </ProtectedAppShell>
+    );
+    const mobile = within(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation }));
+    expect(mobile.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/professionals/mine',
+      '/marketplace',
+      '/alerts',
+    ]);
+    const menu = mobile.getByRole('button', { name: 'Menu' });
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(menu);
+    expect(mobile.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('shows the provider registry only with the Founder flag and only in the desktop navigation', () => {

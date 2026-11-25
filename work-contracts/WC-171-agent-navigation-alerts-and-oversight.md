@@ -9,7 +9,7 @@
 | Initiative | IB-171 |
 | Roadmap | [ROADMAP.md](../ROADMAP.md), Iteration 4 of 6, milestone M4 |
 | Founder assignment | 2026-11-25: customers get a main menu after login and then context menus for the selected agent; DMA has its own menus and screens and so does every other agent; the current common menus (marketplace, my agents, settings, alerts) stay common; "Blend this now and i will like this to go in WC171 which any ways work on alerts, along with carry-ins from earlier PRs." |
-| Status | **GROOMED. Not authorized to build.** The Founder accepts the stories by merging this pull request; the build needs his explicit authorization in the session that starts it (BOOTSTRAP implementation gate). Every ledger row is PLANNED |
+| Status | **BUILT, pending the single Docker validation pass and Founder review.** The Founder authorized the build in the session that built it (2026-11-25: "authorize=true", one pull request regardless of size). Grooming merged as #645. Ledger rows stay PLANNED until the Demo read-backs after the Environment Deployment |
 | Depends on | WC-170 merged (#644). The WC-170 Demo deployment and its read-back come first, because the WC-170 proof reports BLOCKED-BY-FLAG on gap B1 until this contract wires it |
 | Controlling documents | [agent-experience-platform-architecture.md](../architecture/reference/agent-experience-platform-architecture.md) (sections 6.2, 6.4, 6.5: the agent declares, the server sends semantics and never layout), [hybrid-application-shell.md](../architecture/reference/ux/hybrid-application-shell.md), [hybrid-ui-acceptance-contract.md](../architecture/reference/ux/hybrid-ui-acceptance-contract.md), [PG-24 in the gap register](../architecture/reference/product/waooaw-product-gap-register.md), [WC-170](./WC-170-real-agent-work-end-to-end.md) gaps B1 to B10 |
 | Agent instructions | [WC-170-agent-execution-instructions.md](./WC-170-agent-execution-instructions.md) apply unchanged (gate, plan first, technical decisions by the author, one Docker pass at the end, no sub-agent implementation) |
@@ -214,4 +214,37 @@ Build pull request: every requirement has a ledger row with executable evidence;
 
 ## Implementation Record
 
-Groomed 2026-11-25 on branch `ib/171/groomed-alerts-menus-and-real-money` from `origin/main` at `1519cc8a` (PR #644 merged). Facts above were read from the repository by a read-only pass; no Demo read and no code was done. Not yet built.
+Groomed 2026-11-25 on branch `ib/171/groomed-alerts-menus-and-real-money` from `origin/main` at `1519cc8a` (PR #644 merged). Facts above were read from the repository by a read-only pass; no Demo read and no code was done.
+
+### Build record (branch `ib/171/navigation-alerts-oversight`, from `origin/main` at `1256d260`)
+
+Authorized by the Founder in the build session; one pull request regardless of size. All stories were built first, then validated in one Docker pass.
+
+**Technical decisions (author)**
+
+| Area | Decision |
+|---|---|
+| Durable stop barrier (C2) | The Constitutional Engine already is the durable stop owner (a stopped contract answers STOP to `ValidateAction`). `ExecutionTimeline` now asks a `StopBarrier` before every dispatch and again after the provider answers; an answer it cannot get is a refusal before the call and is ignored after it (BP still rewrites a late success after a recorded stop). An unknown outcome is made durable by BP, which refuses a second `EXECUTING` as `REAL_WORK_BLIND_RETRY`; the BP gateway maps that refusal to `BlindRetryRefused`. No new owner |
+| Spend hook (C1) | `SpendHook` reserves before the provider call and charges only on the provider's own proof; a step that costs money with no spend chain wired does not run; a charge that fails after the provider acted is recorded as `spend-charge-pending`, never hidden. `WbeSpendClient` is a signed mTLS client of the four existing WBE spend routes |
+| Ingest tenant check (C3, B6) | `PlatformWorkloadContext` now carries the signed envelope's tenant and relationship; ingest refuses a body that names others (403 `REAL_WORK_AUTHORITY_DENIED`) |
+| Billing faults (C4, G14) | Causes read from the code: `audit_evidence_log` had no DDL in any init file (added in `institutional`, append-only grants); `get_meter_service` was a placeholder that always answered 503 and was never composed (now composed in the lifespan); the scheduler built `//meter/daily-scan` when the base URL ended in a slash (now stripped) |
+| Navigation declaration | Additive optional `navigation` on the experience contract (max 12 entries): id, label key, plain label (no markup), closed icon set, order, surface kind (`KERNEL_VIEW` only `connections`, `BLOCK_COMPOSITION` over existing blocks, `DOMAIN_BLOCK` declared in `domainBlocks`; an embedded surface is refused), audiences, availability gate. Specification, adapter OpenAPI, workbench projection OpenAPI and the Python runtime model change together; clients are regenerated |
+| Alert policy | One pure policy (`AlertPolicy`) and one entry (`AlertPolicyService.RaiseAsync`); contract document [alert-policy-contract.md](../architecture/reference/product/alert-policy-contract.md). Classes FLOOR, ACTION_REQUIRED, AT_RISK, INFORMATION, OPERATIONS. Admission refuses an alert declaration whose channel the class does not allow |
+| Alert controls | New routes under `/api/v1/alert-controls` (hand-written web client, own specification `alerts-oversight.openapi.yaml`); the existing `/api/v1/notifications/alerts` routes and generated client are unchanged |
+| Operations console | New `/api/v1/operations` staff routes: Founder and `operations_authority` read; only the Founder writes, with step-up. Blocked messages are listed without recipient or body; a resolution is an append-only row and the outbox row is never changed except RETRY re-queuing it; closed or undeliverable messages leave the PAGE because a resolution exists |
+| Page outcomes (O4) | A page handed to the log pipeline is recorded as EMITTED, which proves the platform raised it and not that a person received it; an acknowledgement suppresses repeat paging for 30 minutes and never closes the signal |
+| Menus | `ProtectedAppShell` uses `navigation-model.ts`: global menu of four platform links, a separate Operations group by grant, a Menu button on the phone; Connections left the global menu (decision N2) and stays reachable inside the agent and from Settings; Staff access shows only with a staff grant (N3) |
+| Context menu | Eight fixed surfaces in one order (Overview, Plan, Decisions, Work, Results, Usage and budget, Alerts for this agent, Rights and control), then declared entries; every old tab maps to one fixed surface; a deep link is `?surface=` |
+
+**Deviations and gaps with an owner**
+
+| Id | Gap | Owner |
+|---|---|---|
+| I1 | The Professional Runtime has no running tool-dispatch path that calls `SessionExecutor` (the PAAS ACT activity is a stub). The composition (`real_work_runtime.timeline_for_run`, gateway and spend client in the lifespan, `SessionExecutor.execute_work_item`) is built and tested, but a Demo run produces timeline events only when the agent session runner calls it. Slice 4 S17 read-back decides whether a repair is needed | Platform IT Expert, after the Demo read-back |
+| I2 | The billing engine spend-chain read and discrepancy-resolve routes need a route grant that the workload trust bundle cannot carry (WC-170 B10). The BP console answers `SPEND_CHAIN_READ_UNAVAILABLE`; S26 reports NOT-COVERED | Platform IT Expert, WC-172 |
+| I3 | Producers are not yet wired to `AlertPolicyService.RaiseAsync` (billing threshold alerts in the billing engine, spend discrepancy, Emergency Stop confirmation, DMA declared alerts into the workbench projection). Policy, classification, deduplication, delivery decision and tests exist for each source. S23 reports BLOCKED-BY-FLAG | Platform IT Expert, WC-171 follow-up |
+| I4 | Proactive WhatsApp sending stays closed: the sender and the allowance adapter are the closed defaults until the Founder authorizes `whatsapp_template_utility` on Pricing and a template is approved | Founder |
+| I5 | DMA entry wording (Profile and maturity, Campaigns and calendar, Platform accounts, Business results) and the alert class wording and ladders are the author's proposals for the Founder's single confirmation. Re-admission of the DMA version is needed on Demo because its manifest changed | Founder |
+| I6 | Cause of G14 was read from code. The Demo log read-back needs the Azure device-code sign-in after deployment | Author, after deployment |
+| I7 | Deployment settings not set by this change: Professional Runtime `BP_REAL_WORK_BASE_URL` and `WBE_SPEND_BASE_URL`; Business Platform `AlertDelivery__ProactiveWhatsAppEnabled` (default false) | Founder deploys |
+| I8 | Slice 5 S25 and S27 need an operator sign-in the harness does not have; S23 and S24 depend on I3 and I4 | Founder reads back |

@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-171
 contract_path: work-contracts/WC-171-agent-navigation-alerts-and-oversight.md
-contract_digest: ea4b0ec75a0942f52c6a3b3bd9d04c6499277b563db0acaf2abdb4c681e61710
+contract_digest: cfb55bdc7a9fead3b438ff21682c44d5a29246db3c5d652a735b2fb3db40587f
 implementation_scope: true
 result: PLANNED
 
@@ -19,86 +19,86 @@ requirements:
     requirement_id: WC171-R001
     source: WC-171 Canonical Requirement Index, R001
     observable_outcome: The global customer menu is the same for every agent, carries only platform concerns and no staff link, has mobile parity, and staff and Founder tools sit in a separate Operations group shown by grant.
-    test_path_or_plan: Jest tests of the shell menus for a customer, a staff member and the Founder; Playwright UX-SHELL-03 and redirect checks for old URLs; the WC-167 R006 layers.
+    test_path_or_plan: web/lib/navigation-model.test.ts, web/components/shell/F1Shell.test.tsx and ProtectedAppShell.test.tsx (a customer, a staff member and the Founder each see exactly their own set; mobile parity; no staff link in the customer list), web/tests/e2e/wc167-access.spec.ts (UX-SHELL-03); slice 5 step S21 on Demo.
 
   - <<: *defaults
     requirement_id: WC171-R002
     source: WC-171 Canonical Requirement Index, R002
     observable_outcome: Choosing an agent opens a context menu with fixed platform surfaces followed by the agent's declared entries, chosen per relationship, with deep links and no lost workbench function.
-    test_path_or_plan: Jest and Playwright tests of the context menu and deep links; a mapping test from every existing workbench tab to a fixed surface.
+    test_path_or_plan: web/components/workbench/AgentContext.test.tsx and WorkbenchShell.test.tsx (fixed surfaces in one order, declared entries after them, deep link, every old tab maps to a fixed surface in web/lib/navigation-model.test.ts); slice 5 step S22 on Demo.
 
   - <<: *defaults
     requirement_id: WC171-R003
     source: WC-171 Canonical Requirement Index, R003
     observable_outcome: The Agent Experience Contract has an additive optional navigation field with admission validation, and a legacy declaration without it still admits and shows only the fixed surfaces.
-    test_path_or_plan: Business Platform admission tests (unknown kinds, markup, duplicate ids, empty targets, legacy declaration); contract tests and the regenerated client digest.
+    test_path_or_plan: tests/business-platform.Tests/Workbench/ExperienceNavigationAdmissionTests.cs (unknown kinds, markup, duplicates, empty targets, legacy declaration, 12-entry limit), tests/contract/test_wc171_navigation_alerts_oversight.py (schema, adapter specification and runtime model agree), tests/contract/test_wc136_generated_clients.py (regenerated client digest).
 
   - <<: *defaults
     requirement_id: WC171-R004
     source: WC-171 Canonical Requirement Index, R004
     observable_outcome: DMA declares its entries and a declaration-only fixture agent of another profession declares different entries through the same code, with no agent name in shared navigation code.
-    test_path_or_plan: Jest rendering tests for both declarations; a grep guard test over shared web and Business Platform navigation code.
+    test_path_or_plan: ExperienceNavigationAdmissionTests.cs (DMA and a second profession through one scanner), web/components/workbench/AgentContext.test.tsx (two professions through one component), tests/contract/test_wc171_navigation_alerts_oversight.py (grep guard, no agent name in shared navigation or alert code).
 
   - <<: *defaults
     requirement_id: WC171-R005
     source: WC-171 Canonical Requirement Index, R005
     observable_outcome: One alert policy classifies every alert source and decides channel, deduplication and escalation, so one material event produces one primary message, and an agent cannot declare a class or channel the policy forbids.
-    test_path_or_plan: Business Platform policy tests per source and scenario; admission test for a forbidden class or channel; a deduplication test across sources and channels.
+    test_path_or_plan: tests/business-platform.Tests/AlertPolicyTests.cs (every source classified, one alert for a spend discrepancy and its billing threshold, escalation only to a more material class, ladders), ExperienceNavigationAdmissionTests.cs (a forbidden channel or class is refused at admission; each of DMA's three alerts classified and routed); policy contract architecture/reference/product/alert-policy-contract.md. Producer wiring is gap I3.
 
   - <<: *defaults
     requirement_id: WC171-R006
     source: WC-171 Canonical Requirement Index, R006
     observable_outcome: Delivery follows the policy; the 30 proactive messages a month are consumed on send, idempotently, with portal fallback when exhausted; sending is behind a Founder gate to sandbox recipients on Demo and only after the rate is authorized and a template is approved; STOP is respected.
-    test_path_or_plan: Billing engine and Business Platform tests (allowance, idempotency, exhaustion, uncounted classes, gate off by default, STOP); slice 5 step S24 on Demo.
+    test_path_or_plan: AlertPolicyTests.cs (gate closed gives portal only, STOP and missing consent respected, quiet hours, floor alerts uncounted); the sender and allowance adapter are the closed defaults until the rate is authorized (gap I4); slice 5 step S24 on Demo.
     initial_state: Founder-reserved
 
   - <<: *defaults
     requirement_id: WC171-R007
     source: WC-171 Canonical Requirement Index, R007
     observable_outcome: A customer has one alert inbox across agents with a per-agent filter, acknowledge, snooze and per-category mute, and floor alerts can never be muted.
-    test_path_or_plan: Business Platform controller and service tests; Jest and Playwright tests of the inbox and the agent filter; a test that a floor alert refuses mute.
+    test_path_or_plan: AlertPolicyTests.cs (floor categories reserved, only routine classes mutable), web/components/portal/AlertInbox.test.tsx (agent filter, snooze, floor never offered or refused), web/lib/oversight-proxy.test.ts; slice 5 step S23 on Demo.
 
   - <<: *defaults
     requirement_id: WC171-R008
     source: WC-171 Canonical Requirement Index, R008
     observable_outcome: An Operations console for the Founder and administrators shows open signals, queue and blocked counts with ages, alert delivery outcomes and service readiness, with separate grants, tenant scoping and no database access.
-    test_path_or_plan: Business Platform authorization and scoping tests; Jest and Playwright tests of the console; Demo read-back through slice 5 step S27.
+    test_path_or_plan: web/components/admin/operations/OperationsConsole.test.tsx (read view for an administrator, no recipient or body), web/lib/oversight-proxy.test.ts (allow-listed routes only); BP roles in OperationsController (Founder and operations_authority read, Founder writes); Demo read-back through slice 5 step S27.
 
   - <<: *defaults
     requirement_id: WC171-R009
     source: WC-171 Canonical Requirement Index, R009
     observable_outcome: A governed route reads and resolves blocked outbound WhatsApp messages (retry, close with reason, mark undeliverable), audited, idempotent, step-up protected and never deleting, and resolving the Demo message stops the repeating page without muting it.
-    test_path_or_plan: Real-database Business Platform tests (each action, replay, refused delete, scope); Demo read-back that the DEAD_LETTER_AGE_BREACH page stops after resolution; slice 5 step S25.
+    test_path_or_plan: OperationsConsole.test.tsx (resolve with reason and idempotency key, step-up prompt, reason required, administrator read only); OperationsConsoleService (append-only resolution, RETRY re-queues, closed leaves the page, never deleted) with the SQL in infrastructure/postgres/init/99zzzzzzzz-wc171-02-alerts-and-oversight.sql; Demo read-back that the DEAD_LETTER_AGE_BREACH page stops after resolution; slice 5 step S25.
 
   - <<: *defaults
     requirement_id: WC171-R010
     source: WC-171 Canonical Requirement Index, R010
     observable_outcome: The Founder and administrators read a relationship's work timeline and spend chain and resolve a discrepancy with evidence through read routes and screens (WC-170 B7).
-    test_path_or_plan: Billing engine and Business Platform tests for the read routes and discrepancy resolution; Jest tests of the screens; slice 5 step S26.
+    test_path_or_plan: tests/business-platform.Tests/RealWorkControllerTests.cs and the work timeline read route; OperationsConsole.test.tsx (work and spend lookup, honest unavailable message); the billing engine read and resolve routes need a route grant (gap I2, WC-172); slice 5 step S26 reports NOT-COVERED.
 
   - <<: *defaults
     requirement_id: WC171-R011
     source: WC-171 Canonical Requirement Index, R011
     observable_outcome: The running Professional Runtime dispatch calls the execution stream, step gate and spend client so a Demo run produces timeline events; ingest compares the signed tenant; stop fences survive a restart and a second replica; the controllers have unit tests (WC-170 B1, B2, B6, B8).
-    test_path_or_plan: Professional Runtime tests of the dispatch path, restart and two-replica fence tests, Business Platform ingest tenant-mismatch and controller tests; slice 4 step S17 re-run on Demo.
+    test_path_or_plan: tests/professional-runtime/test_wc171_real_work_runtime.py (durable barrier obeyed by a fresh replica, barrier unavailable refuses, late result halted, spend reserve before and charge on proof, executor runs through the stream, BP blind-retry refusal), tests/business-platform.Tests/RealWorkControllerTests.cs (ingest tenant mismatch refused, controller tests); the running caller is gap I1; slice 4 step S17 re-run on Demo.
 
   - <<: *defaults
     requirement_id: WC171-R012
     source: WC-171 Canonical Requirement Index, R012
     observable_outcome: The audit_evidence_log insert fault and the scheduler's meter daily-scan 503 (WC-169 G14) are investigated from Demo logs and fixed, or recorded with an owner.
-    test_path_or_plan: Billing engine tests for the fix; Log Analytics read-back after deployment showing no recurrence; or a recorded owner and date.
+    test_path_or_plan: tests/billing-engine/test_wc171_g14.py (meter service composed, no double slash, the audit log DDL matches what the reconciliation binds and is append-only); Log Analytics read-back after deployment showing no recurrence (gap I6).
 
   - <<: *defaults
     requirement_id: WC171-R013
     source: WC-171 Canonical Requirement Index, R013
     observable_outcome: Every changed page or component passes the WC-167 R006 layers, UX-SHELL-03 and UX-RESP-03 pass for the new menus, and the older navigation text in the UX vocabulary is reconciled with the shell.
-    test_path_or_plan: Jest, Playwright at 360, 768 and 1440 in light and dark, axe, lint, strict types, production build and changed-line coverage; document diff of the vocabulary navigation section.
+    test_path_or_plan: the single Docker pass (biome format and lint, strict types, the full Jest suite, production build, changed-line coverage), rendered at 1440 and 390 in Chromium; document diff of the vocabulary navigation section 6.2; Playwright layers at 360, 768 and 1440 run in CI.
 
   - <<: *defaults
     requirement_id: WC171-R014
     source: WC-171 Canonical Requirement Index, R014
     observable_outcome: Acceptance slice 5 runs on Demo for a synthetic customer and an operator and produces one calibration report with an owner for every NOT-WITNESSED or FAIL item; the coverage ratchet rises and never falls.
-    test_path_or_plan: validation/acceptance/plans slice 5 plan and specs, coverage ratchet test, calibration report attached to this ledger after the Demo deployment.
+    test_path_or_plan: validation/acceptance/plans/slice-5-navigation-alerts-oversight.v1.yaml with tests/journey-acceptance/specs/s21-navigation-alerts-oversight.spec.ts (S21 and S22 exercised, S23 to S27 report their blocker and owner), scripts/acceptance_static_gates.py ratchet (WC171-R001, R002, R004 added to the live scope and covered baseline); calibration report attached after the Demo deployment.
     initial_state: Founder-reserved
 
   - <<: *defaults

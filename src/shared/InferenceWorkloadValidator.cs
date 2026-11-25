@@ -14,7 +14,8 @@ public sealed class InferenceWorkloadRejectedException : Exception;
 public sealed record InferenceWorkloadContext(Guid TenantId, Guid RelationshipId, Guid ActorId, string Role,
     Guid ContributionId, Guid ExecutionId, Guid IdempotencyKey, IReadOnlyDictionary<string, string> ExpectedVersions);
 
-public sealed record PlatformWorkloadContext(string ActorSubject, string Role);
+public sealed record PlatformWorkloadContext(string ActorSubject, string Role, string? TenantId = null,
+    string? RelationshipId = null);
 
 /// <summary>
 /// Trust material for inbound workload calls when credentials are delivered through Key Vault rather than a directory:
@@ -54,7 +55,9 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
         string purpose, string route, string operation, string digest, CancellationToken ct, string actorSource = "BP_SESSION") =>
         RequireCoreAsync(http, callerName, targetName, purpose, route, operation, digest, ct,
             value => new PlatformWorkloadContext(value.GetProperty("actor_subject").GetString() ?? string.Empty,
-                value.GetProperty("effective_role").GetString() ?? string.Empty),
+                value.GetProperty("effective_role").GetString() ?? string.Empty,
+                value.TryGetProperty("tenant_id", out var tenant) ? tenant.GetString() : null,
+                value.TryGetProperty("relationship_id", out var relationship) ? relationship.GetString() : null),
             context => context.ActorSubject.Length is > 0 and <= 128 && context.Role.Length is > 0 and <= 64, actorSource);
 
     private static InferenceWorkloadContext ReadConversationContext(JsonElement value) =>

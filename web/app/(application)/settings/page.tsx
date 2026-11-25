@@ -2,7 +2,8 @@ import { logServerFailure } from '@/lib/server-failure';
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Navigation Contract
 // Constitutional basis: C-042 (Localization), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { Bell, Globe2, MoonStar, ShieldCheck } from 'lucide-react';
+import { Bell, Globe2, Link2, MoonStar, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import { SessionManager } from '@/components/auth/SessionManager';
 import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
@@ -96,8 +97,19 @@ export default async function SettingsPage() {
             </p>
           </section>
           <section className="settings-wide">
+            <Link2 aria-hidden="true" />
+            <h2>Connected accounts</h2>
+            <p>
+              The accounts your agents work through are managed under each agent.{' '}
+              <Link href="/connections">See all connected accounts</Link>
+            </p>
+          </section>
+          <section className="settings-wide">
             <Bell aria-hidden="true" />
             <h2>Notifications</h2>
+            <p>
+              <Link href="/alerts">Choose which alerts reach your phone</Link>
+            </p>
             <dl className="detail-list">
               {notificationRows.map(([label, channels]) => (
                 <div key={label}>

@@ -57,6 +57,7 @@ public sealed class RealWorkIngestController(
         CancellationToken cancellationToken
     )
     {
+        PlatformWorkloadContext envelope;
         try
         {
             RuntimeEventStreamReader.ValidateUniqueProperties(body);
@@ -65,7 +66,7 @@ public sealed class RealWorkIngestController(
                     Encoding.UTF8.GetBytes(AgentAdmissionCanonicalizer.Canonicalize(body))
                 )
             );
-            await validator.RequirePlatformAsync(
+            envelope = await validator.RequirePlatformAsync(
                 HttpContext,
                 "professional-runtime",
                 "business-platform",
@@ -87,6 +88,15 @@ public sealed class RealWorkIngestController(
             var request =
                 body.Deserialize<RealWorkIngestRequest>(Json)
                 ?? throw new RealWorkConflictException("REAL_WORK_INVALID_REQUEST");
+            // The signed envelope names the tenant and relationship the runtime is acting for. The body must name the
+            // same ones, so a runtime fault can never write into another tenant's stream (WC171-R011, closes B6).
+            if (
+                !Guid.TryParse(envelope.TenantId, out var signedTenant)
+                || !Guid.TryParse(envelope.RelationshipId, out var signedRelationship)
+                || signedTenant != request.TenantId
+                || signedRelationship != request.RelationshipId
+            )
+                return StatusCode(403, new { code = "REAL_WORK_AUTHORITY_DENIED" });
             switch (request.Type)
             {
                 case "TIMELINE_EVENT" when request.Event is not null:

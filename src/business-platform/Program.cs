@@ -478,6 +478,31 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<RelationshipEmergencyStopService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
 builder.Services.AddScoped<CustomerAlertService>();
+
+// WC-171: the one alert policy. The proactive WhatsApp gate is off by default and the sender and allowance stay
+// closed until the Founder authorizes the thread rate and a template is approved.
+builder
+    .Services.AddOptions<Waooaw.BusinessPlatform.Services.Alerts.AlertDeliveryOptions>()
+    .Bind(
+        builder.Configuration.GetSection(
+            Waooaw.BusinessPlatform.Services.Alerts.AlertDeliveryOptions.SectionName
+        )
+    );
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.Alerts.IProactiveAllowance,
+    Waooaw.BusinessPlatform.Services.Alerts.UnavailableProactiveAllowance
+>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.Alerts.IAlertWhatsAppSender,
+    Waooaw.BusinessPlatform.Services.Alerts.ClosedAlertWhatsAppSender
+>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Alerts.AlertPolicyService>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperationsConsoleService>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperatorPageService>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.Operations.ISpendChainReader,
+    Waooaw.BusinessPlatform.Services.Operations.UnavailableSpendChainReader
+>();
 builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
 builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();

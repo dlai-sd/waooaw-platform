@@ -1094,6 +1094,29 @@ components:
           maxItems: 6
           description: Blocks negotiated through `X-Experience-Capabilities`.
           items: { $ref: "#/components/schemas/ExperienceBlockV2" }
+        navigation:
+          type: array
+          maxItems: 12
+          description: >-
+            WC-171. The agent's declared context-menu entries for this audience, after the platform's fixed surfaces.
+            Omitted when the agent declares none.
+          items: { $ref: "#/components/schemas/WorkbenchNavigationEntryV1" }
+    WorkbenchNavigationEntryV1:
+      type: object
+      additionalProperties: false
+      required: [entryId, labelKey, label, icon, order, surfaceKind, blocks, available]
+      properties:
+        entryId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40 }
+        icon: { type: string, enum: [profile, calendar, accounts, results, plan, work, insights, documents] }
+        order: { type: integer, minimum: 0, maximum: 999 }
+        surfaceKind: { type: string, enum: [KERNEL_VIEW, BLOCK_COMPOSITION, DOMAIN_BLOCK] }
+        target: { type: string, minLength: 1, maxLength: 160 }
+        blocks:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 32 }
+        available: { type: boolean }
     WorkbenchCommandReceiptV1:
       type: object
       additionalProperties: false

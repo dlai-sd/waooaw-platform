@@ -6,7 +6,7 @@ import logging
 from uuid import UUID
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from skeleton.wbe_interfaces import IMeterService, UsageStatus, DailyScanResult
 
@@ -15,23 +15,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/meter", tags=["meter"])
 
 
-async def get_meter_service() -> IMeterService:
+async def get_meter_service(request: Request) -> IMeterService:
     """
     Dependency injection for IMeterService.
-    In production, this resolves the singleton MeterService instance from DI container.
-    
+    The service is composed once in the application lifespan (main.py) and read from application state here.
+
     Returns:
-        IMeterService: The injected meter service instance.
-    
+        IMeterService: The meter service instance.
+
     Raises:
-        HTTPException: 503 if MeterService not initialized.
+        HTTPException: 503 if MeterService was not composed (WC-171 C4: it never was, so the scheduler's daily scan
+        always answered 503).
     """
-    # TODO: Inject from DI container (lifespan scope).
-    # For now, placeholder - actual implementation in main.py lifespan.
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="MeterService not initialized",
-    )
+    service = getattr(request.app.state, "meter_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MeterService not initialized",
+        )
+    return service
 
 
 @router.get(

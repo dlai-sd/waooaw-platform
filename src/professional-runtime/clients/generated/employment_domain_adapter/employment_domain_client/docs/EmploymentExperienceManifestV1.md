@@ -19,6 +19,7 @@ Name | Type | Description | Notes
 **modalities** | **List[str]** |  | 
 **channel_support** | [**EmploymentExperienceManifestV1ChannelSupport**](EmploymentExperienceManifestV1ChannelSupport.md) |  | 
 **conformance_scenarios** | **List[str]** |  | 
+**navigation** | [**List[EmploymentExperienceNavigationEntryV1]**](EmploymentExperienceNavigationEntryV1.md) | WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces.  | [optional] 
 
 ## Example
 

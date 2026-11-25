@@ -2,6 +2,7 @@
 // Constitutional basis: C-001, C-059, C-063, ADR-051
 
 using System.Text.Json;
+using Waooaw.BusinessPlatform.Services.Alerts;
 
 namespace Waooaw.BusinessPlatform.Services.Workbench;
 
@@ -51,6 +52,97 @@ public sealed record ExperienceDomainBlock(
     IReadOnlyList<string> FallbackBlocks
 );
 
+/// <summary>What a navigation entry opens: a platform view, a composition of existing blocks, or a registered domain block.</summary>
+public sealed record ExperienceNavigationSurface(
+    string Kind,
+    string? Target,
+    IReadOnlyList<string> Blocks
+);
+
+/// <summary>One entry an agent adds to its context menu (WC171-R003): data only, rendered by the platform.</summary>
+public sealed record ExperienceNavigationEntry(
+    string EntryId,
+    string LabelKey,
+    string Label,
+    string Icon,
+    int Order,
+    ExperienceNavigationSurface Surface,
+    IReadOnlyList<string> Audiences,
+    string AvailabilityGate
+);
+
+public static class ExperienceNavigationRules
+{
+    public const int MaximumEntries = 12;
+
+    public static readonly IReadOnlySet<string> SurfaceKinds = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "KERNEL_VIEW",
+        "BLOCK_COMPOSITION",
+        "DOMAIN_BLOCK",
+    };
+
+    /// <summary>The platform views a declared entry may open besides the fixed surfaces; the agent cannot name a new one.</summary>
+    public static readonly IReadOnlySet<string> KernelViews = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "connections",
+    };
+
+    public static readonly IReadOnlySet<string> Icons = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "profile",
+        "calendar",
+        "accounts",
+        "results",
+        "plan",
+        "work",
+        "insights",
+        "documents",
+    };
+
+    public static readonly IReadOnlySet<string> Gates = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "ALWAYS",
+        "AFTER_FIRST_APPROVAL",
+        "NEEDS_CONNECTED_ACCOUNTS",
+    };
+
+    public static readonly IReadOnlySet<string> CompositionBlocks = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "TEXT",
+        "CHOICES",
+        "LIST",
+        "LINK",
+        "STATUS",
+        "METRIC",
+        "PLAN",
+        "DECISION",
+        "FORM",
+        "EVIDENCE",
+    };
+
+    private static readonly char[] Markup = ['<', '>', '&', '{', '}', '[', ']', '`', '\\'];
+
+    public static bool IsIdentifier(string value) =>
+        value.Length is >= 3 and <= 64
+        && char.IsAsciiLetterUpper(value[0])
+        && value.All(character =>
+            char.IsAsciiLetterUpper(character) || char.IsAsciiDigit(character) || character == '_'
+        );
+
+    /// <summary>A label is plain words: no markup, no template tokens, no control characters.</summary>
+    public static bool IsPlainLabel(string value) =>
+        value.Length is >= 1 and <= 40
+        && value.IndexOfAny(Markup) < 0
+        && !value.Any(char.IsControl);
+}
+
 public sealed record ExperienceComponent(
     string ComponentId,
     string Label,
@@ -79,6 +171,9 @@ public sealed record ExperienceDeclaration(
     IReadOnlyDictionary<string, IReadOnlyList<string>> ChannelSupport
 )
 {
+    /// <summary>Optional entries after the fixed surfaces; a declaration without them shows only the fixed surfaces.</summary>
+    public IReadOnlyList<ExperienceNavigationEntry> Navigation { get; init; } = [];
+
     public ExperienceGoalType? GoalTypeForMeasure(string measureId) =>
         GoalTypes.FirstOrDefault(type =>
             type.Measures.Any(measure => measure.MeasureId == measureId)
@@ -266,6 +361,21 @@ public static class ExperienceManifestScanner
             foreach (var channel in channelSupport.EnumerateObject())
                 support[channel.Name] = Strings(channelSupport, channel.Name);
         var audiences = Strings(section, "audiences");
+        var navigation = ReadNavigation(
+            section,
+            domainBlocks,
+            audiences,
+            reasons,
+            out var navigationMalformed
+        );
+        if (navigationMalformed)
+            reasons.Add("EXPERIENCE_NAVIGATION_INVALID");
+        if (
+            alerts.Any(alert =>
+                AlertPolicy.ValidateDeclaration(alert.Severity, alert.Channels).Count > 0
+            )
+        )
+            reasons.Add("EXPERIENCE_ALERT_POLICY_VIOLATION");
 
         if (
             goalTypes.Length == 0
@@ -348,12 +458,129 @@ public static class ExperienceManifestScanner
             components,
             audiences,
             support
-        );
+        )
+        {
+            Navigation = navigation,
+        };
         return new ExperienceScanResult(
             ExperienceScanResult.Compatible,
             ["COMPATIBLE"],
             declaration
         );
+    }
+
+    /// <summary>
+    /// Reads the optional navigation entries and refuses what the contract forbids: an unknown surface kind (an embedded
+    /// surface is not available), markup in a label, a duplicate id, and an entry that opens nothing.
+    /// </summary>
+    private static IReadOnlyList<ExperienceNavigationEntry> ReadNavigation(
+        JsonElement section,
+        IReadOnlyList<ExperienceDomainBlock> domainBlocks,
+        IReadOnlyList<string> audiences,
+        SortedSet<string> reasons,
+        out bool malformed
+    )
+    {
+        malformed = false;
+        if (
+            !section.TryGetProperty("navigation", out var raw)
+            || raw.ValueKind == JsonValueKind.Null
+        )
+            return [];
+        if (
+            raw.ValueKind != JsonValueKind.Array
+            || raw.GetArrayLength() > ExperienceNavigationRules.MaximumEntries
+        )
+        {
+            malformed = true;
+            return [];
+        }
+        var entries = new List<ExperienceNavigationEntry>();
+        foreach (var item in raw.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                malformed = true;
+                continue;
+            }
+            var surface = Object(item, "surface");
+            var kind = surface is null ? null : Text(surface.Value, "kind");
+            var target = surface is null ? null : Text(surface.Value, "target");
+            var blocks = surface is null ? [] : Strings(surface.Value, "blocks");
+            var entryId = Text(item, "entryId");
+            var labelKey = Text(item, "labelKey");
+            var label = Text(item, "label");
+            var icon = Text(item, "icon");
+            var gate = Text(item, "availabilityGate");
+            var entryAudiences = Strings(item, "audiences");
+            if (
+                entryId is null
+                || !ExperienceNavigationRules.IsIdentifier(entryId)
+                || labelKey is null
+                || !ExperienceNavigationRules.IsIdentifier(labelKey)
+                || label is null
+                || !ExperienceNavigationRules.IsPlainLabel(label)
+                || icon is null
+                || !ExperienceNavigationRules.Icons.Contains(icon)
+                || gate is null
+                || !ExperienceNavigationRules.Gates.Contains(gate)
+                || !item.TryGetProperty("order", out var orderValue)
+                || orderValue.ValueKind != JsonValueKind.Number
+                || !orderValue.TryGetInt32(out var order)
+                || order is < 0 or > 999
+                || entryAudiences.Count == 0
+                || entryAudiences.Any(audience => !WorkbenchAudiences.All.Contains(audience))
+                || surface is null
+            )
+            {
+                malformed = true;
+                continue;
+            }
+            // An entry for an audience this agent does not serve is simply never shown to anyone it does not serve.
+            var served = entryAudiences.Where(audiences.Contains).ToArray();
+            if (served.Length == 0)
+                continue;
+            if (kind is null || !ExperienceNavigationRules.SurfaceKinds.Contains(kind))
+            {
+                reasons.Add("EXPERIENCE_NAVIGATION_SURFACE_UNSUPPORTED");
+                continue;
+            }
+            var opensSomething = kind switch
+            {
+                "KERNEL_VIEW" => target is not null
+                    && ExperienceNavigationRules.KernelViews.Contains(target),
+                "DOMAIN_BLOCK" => target is not null
+                    && domainBlocks.Any(block => block.BlockId == target),
+                _ => blocks.Count > 0
+                    && blocks.All(ExperienceNavigationRules.CompositionBlocks.Contains),
+            };
+            if (!opensSomething)
+            {
+                reasons.Add("EXPERIENCE_NAVIGATION_TARGET_UNRESOLVED");
+                continue;
+            }
+            entries.Add(
+                new ExperienceNavigationEntry(
+                    entryId,
+                    labelKey,
+                    label,
+                    icon,
+                    order,
+                    new ExperienceNavigationSurface(kind, target, blocks),
+                    served,
+                    gate
+                )
+            );
+        }
+        if (
+            entries.Select(entry => entry.EntryId).Distinct().Count() != entries.Count
+            || entries.Select(entry => entry.LabelKey).Distinct().Count() != entries.Count
+        )
+            reasons.Add("EXPERIENCE_NAVIGATION_DUPLICATE");
+        return entries
+            .OrderBy(entry => entry.Order)
+            .ThenBy(entry => entry.EntryId, StringComparer.Ordinal)
+            .ToArray();
     }
 
     private static ExperienceScanResult Incompatible(IReadOnlyList<string> reasons) =>

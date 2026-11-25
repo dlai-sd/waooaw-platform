@@ -223,6 +223,35 @@ public sealed class CustomerAlert
     public string DestinationSurface { get; init; } = "ALERTS";
     public string? DestinationSubjectId { get; init; }
     public string AvailableAction { get; init; } = "NONE";
+    public string Category { get; init; } = "GENERAL";
+    public string AlertClass { get; init; } = "INFORMATION";
+    public DateTimeOffset? SnoozedUntil { get; set; }
+    public string? DedupKey { get; init; }
+    public string? WhatsAppDecision { get; set; }
+}
+
+/// <summary>A customer's per-category choice to stop proactive messages. Floor alerts have no such row: they cannot be muted.</summary>
+public sealed class AlertCategoryMute
+{
+    public Guid TenantId { get; init; }
+    public string Category { get; init; } = string.Empty;
+    public bool Muted { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string UpdatedBy { get; set; } = string.Empty;
+}
+
+/// <summary>What happened when an alert was delivered or paged: delivered, failed, acknowledged or suppressed, with the reason.</summary>
+public sealed class AlertDelivery
+{
+    public Guid DeliveryId { get; init; } = Guid.NewGuid();
+    public Guid? TenantId { get; init; }
+    public Guid? AlertId { get; init; }
+    public string Signal { get; init; } = string.Empty;
+    public string AlertClass { get; init; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
+    public string Outcome { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public DateTimeOffset RecordedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class CustomerAlertIdempotency
@@ -696,6 +725,8 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<CustomerEngagementAdmissionOperation> CustomerEngagementAdmissionOperations =>
         Set<CustomerEngagementAdmissionOperation>();
     public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
+    public DbSet<AlertCategoryMute> AlertCategoryMutes => Set<AlertCategoryMute>();
+    public DbSet<AlertDelivery> AlertDeliveries => Set<AlertDelivery>();
     public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency =>
         Set<CustomerAlertIdempotency>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations =>
@@ -1257,6 +1288,51 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .Property(value => value.AvailableAction)
                 .HasColumnName("available_action")
                 .HasMaxLength(16);
+            entity.Property(value => value.Category).HasColumnName("category").HasMaxLength(40);
+            entity
+                .Property(value => value.AlertClass)
+                .HasColumnName("alert_class")
+                .HasMaxLength(24);
+            entity.Property(value => value.SnoozedUntil).HasColumnName("snoozed_until");
+            entity.Property(value => value.DedupKey).HasColumnName("dedup_key").HasMaxLength(200);
+            entity
+                .Property(value => value.WhatsAppDecision)
+                .HasColumnName("whatsapp_decision")
+                .HasMaxLength(48);
+            entity
+                .HasIndex(value => new { value.TenantId, value.DedupKey })
+                .IsUnique()
+                .HasFilter("dedup_key IS NOT NULL");
+        });
+
+        modelBuilder.Entity<AlertCategoryMute>(entity =>
+        {
+            entity.ToTable("alert_category_mutes", "business");
+            entity.HasKey(value => new { value.TenantId, value.Category });
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.Category).HasColumnName("category").HasMaxLength(40);
+            entity.Property(value => value.Muted).HasColumnName("muted");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(value => value.UpdatedBy).HasColumnName("updated_by").HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<AlertDelivery>(entity =>
+        {
+            entity.ToTable("alert_deliveries", "business");
+            entity.HasKey(value => value.DeliveryId);
+            entity.HasIndex(value => value.RecordedAt);
+            entity.Property(value => value.DeliveryId).HasColumnName("delivery_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.AlertId).HasColumnName("alert_id");
+            entity.Property(value => value.Signal).HasColumnName("signal").HasMaxLength(160);
+            entity
+                .Property(value => value.AlertClass)
+                .HasColumnName("alert_class")
+                .HasMaxLength(24);
+            entity.Property(value => value.Channel).HasColumnName("channel").HasMaxLength(24);
+            entity.Property(value => value.Outcome).HasColumnName("outcome").HasMaxLength(24);
+            entity.Property(value => value.Reason).HasColumnName("reason").HasMaxLength(120);
+            entity.Property(value => value.RecordedAt).HasColumnName("recorded_at");
         });
 
         modelBuilder.Entity<CustomerAlertIdempotency>(entity =>

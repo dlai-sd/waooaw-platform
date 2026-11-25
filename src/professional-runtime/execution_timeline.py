@@ -3,6 +3,7 @@
 # Implements: architecture/reference/product/ae02-real-work-solution-contract.md DC-2 Execution binding, DC-4 Execution status and action timeline
 # Constitutional basis: C-001, C-005, C-023, C-049, C-059, C-063
 # IB: IB-170
+# Implements: work-contracts/WC-171-agent-navigation-alerts-and-oversight.md WC171-R011 (durable stop barrier, spend hook)
 
 from __future__ import annotations
 
@@ -52,6 +53,20 @@ class ArtifactBindingRefused(Exception):  # noqa: N818 - named for the refusal i
     """The step is not bound to one locked, approved and scope-confirmed artifact version."""
 
 
+class StepBlocked(Exception):  # noqa: N818 - named for the refusal it records
+    """The durable barrier could not confirm that this step may run, so it did not run."""
+
+
+class SpendRefused(Exception):  # noqa: N818 - named for the refusal it records
+    """The step needs spend that the spend chain did not reserve, so it did not run."""
+
+
+class BarrierDecision(StrEnum):
+    CLEAR = "CLEAR"
+    STOPPED = "STOPPED"
+    BLOCKED = "BLOCKED"
+
+
 @dataclass(frozen=True)
 class ArtifactBinding:
     artifact_id: UUID
@@ -80,6 +95,7 @@ class WorkItem:
     binding: ArtifactBinding | None = None
     produces_artifact: bool = False
     requires_provider_proof: bool = False
+    spend_paise: int | None = None
 
     def __post_init__(self) -> None:
         # The artifact-creating exemption is for non-consequential bootstrap steps only (DC-2).
@@ -146,22 +162,58 @@ class ConstitutionalStepGate(Protocol):
     async def validate(self, action_type: str, parameters: dict[str, str]) -> None: ...
 
 
+class StopBarrier(Protocol):
+    """The durable stop owner (Constitutional Engine). It outlives this process, so a restart or a second replica agrees."""
+
+    async def decide(self, tenant_id: UUID, relationship_id: UUID) -> BarrierDecision: ...
+
+
+class SpendHook(Protocol):
+    """The spend chain: reserve before a step that costs money, charge after the provider's own proof."""
+
+    async def reserve(self, item: WorkItem) -> None: ...
+
+    async def charge(self, item: WorkItem, result: ProviderResult) -> None: ...
+
+
 @dataclass
 class ExecutionTimeline:
     """One append-only stream per relationship. BP owns the customer projection; this class owns what is reported.
 
     The stop fence is checked at dispatch, before any provider call, and again when the call returns, so a provider
-    result that arrives after Emergency Stop is recorded as halted evidence and never as success.
+    result that arrives after Emergency Stop is recorded as halted evidence and never as success. The in-process set
+    is only a cache of the durable barrier: when a barrier is wired it is asked every time, and an answer it cannot
+    give is a refusal, never permission. An unknown outcome is made durable by BP, which refuses a blind retry.
     """
 
     sink: TimelineSink
     gate: ConstitutionalStepGate
     clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    barrier: StopBarrier | None = None
+    spend: SpendHook | None = None
     _stopped: set[tuple[UUID, UUID]] = field(default_factory=set)
     _unknown: set[UUID] = field(default_factory=set)
 
     def is_stopped(self, item: WorkItem) -> bool:
         return (item.tenant_id, item.relationship_id) in self._stopped
+
+    async def _fenced(self, item: WorkItem) -> bool:
+        if self.is_stopped(item):
+            return True
+        if self.barrier is None:
+            return False
+        try:
+            decision = await self.barrier.decide(item.tenant_id, item.relationship_id)
+        except Exception as error:
+            await self._emit(item, WorkItemState.FAILED, reason=ReasonCode.POLICY_BLOCKED)
+            raise StepBlocked("stop barrier unavailable") from error
+        if decision is BarrierDecision.BLOCKED:
+            await self._emit(item, WorkItemState.FAILED, reason=ReasonCode.POLICY_BLOCKED)
+            raise StepBlocked("stop barrier did not allow the step")
+        if decision is BarrierDecision.STOPPED:
+            self._stopped.add((item.tenant_id, item.relationship_id))
+            return True
+        return False
 
     async def propose(self, item: WorkItem) -> TimelineEvent:
         return await self._emit(item, WorkItemState.PROPOSED)
@@ -175,15 +227,16 @@ class ExecutionTimeline:
     async def dispatch(self, item: WorkItem, call: Callable[[], Awaitable[ProviderResult]]) -> TimelineEvent:
         if item.work_item_id in self._unknown:
             raise BlindRetryRefused(str(item.work_item_id))
-        if self.is_stopped(item):
+        if await self._fenced(item):
             return await self._emit(item, WorkItemState.HALTED, reason=ReasonCode.EMERGENCY_STOP)
         if not item.produces_artifact:
             await self._require_binding(item)
+        await self._reserve_spend(item)
         await self._emit(item, WorkItemState.APPROVED)
         await self._emit(item, WorkItemState.EXECUTING)
-        # Nothing awaits between this last check and the provider call starting, so a stop recorded at any earlier
-        # point is seen here and no provider is called after it (checked at dispatch, bounded by one attempt).
-        if self.is_stopped(item):
+        # The barrier is asked once more after the announcements, and nothing but the barrier's own answer awaits
+        # between it and the provider call, so a stop recorded at any earlier point is seen here (bounded by one attempt).
+        if await self._fenced(item):
             return await self._emit(item, WorkItemState.HALTED, reason=ReasonCode.EMERGENCY_STOP)
         try:
             result = await call()
@@ -196,7 +249,7 @@ class ExecutionTimeline:
     async def reconcile(self, item: WorkItem, result: ProviderResult) -> TimelineEvent:
         """Append the reconciled truth for an unknown outcome. History is never rewritten."""
         self._unknown.discard(item.work_item_id)
-        if self.is_stopped(item):
+        if await self._fenced_after(item):
             return await self._emit(item, WorkItemState.HALTED, reason=ReasonCode.EMERGENCY_STOP, evidence=_late(result))
         if result.status is ProviderStatus.CONFIRMED and result.provider_reference:
             return await self._emit(
@@ -208,8 +261,36 @@ class ExecutionTimeline:
             )
         return await self._emit(item, WorkItemState.FAILED, reason=ReasonCode.RECONCILED, evidence=result.evidence_refs)
 
-    async def _settle(self, item: WorkItem, result: ProviderResult) -> TimelineEvent:
+    async def _fenced_after(self, item: WorkItem) -> bool:
+        """After the provider has answered a barrier that cannot answer must not turn real work into a failure: BP still
+        rewrites a late success after a recorded stop, so only a positive STOPPED answer changes the outcome here."""
         if self.is_stopped(item):
+            return True
+        if self.barrier is None:
+            return False
+        try:
+            decision = await self.barrier.decide(item.tenant_id, item.relationship_id)
+        except Exception:
+            return False
+        if decision is BarrierDecision.STOPPED:
+            self._stopped.add((item.tenant_id, item.relationship_id))
+            return True
+        return False
+
+    async def _reserve_spend(self, item: WorkItem) -> None:
+        if item.spend_paise is None:
+            return
+        if self.spend is None:
+            await self._emit(item, WorkItemState.FAILED, reason=ReasonCode.POLICY_BLOCKED)
+            raise SpendRefused("no spend chain is wired for a step that costs money")
+        try:
+            await self.spend.reserve(item)
+        except Exception as error:
+            await self._emit(item, WorkItemState.FAILED, reason=ReasonCode.POLICY_BLOCKED)
+            raise SpendRefused(str(error)) from error
+
+    async def _settle(self, item: WorkItem, result: ProviderResult) -> TimelineEvent:
+        if await self._fenced_after(item):
             return await self._emit(item, WorkItemState.HALTED, reason=ReasonCode.EMERGENCY_STOP, evidence=_late(result))
         if result.status is ProviderStatus.REJECTED:
             return await self._emit(
@@ -223,10 +304,17 @@ class ExecutionTimeline:
                 reason=ReasonCode.AWAITING_PROVIDER_PROOF,
                 evidence=result.evidence_refs,
             )
+        evidence = result.evidence_refs
+        if proven and item.spend_paise is not None and self.spend is not None:
+            try:
+                await self.spend.charge(item, result)
+            except Exception:
+                # The provider has acted. The unpaid reservation stays open for reconciliation; it is never hidden.
+                evidence = (*evidence, "spend-charge-pending")
         return await self._emit(
             item,
             WorkItemState.COMPLETED,
-            evidence=result.evidence_refs,
+            evidence=evidence,
             provider_reference=result.provider_reference,
         )
 

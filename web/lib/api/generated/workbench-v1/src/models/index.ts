@@ -54,6 +54,7 @@ export * from './WorkbenchMonitorV1';
 export * from './WorkbenchNarrativeListV1';
 export * from './WorkbenchNarrativePartV1';
 export * from './WorkbenchNarrativeV1';
+export * from './WorkbenchNavigationEntryV1';
 export * from './WorkbenchPlanV1';
 export * from './WorkbenchProblemCodeV1';
 export * from './WorkbenchProblemDetailV1';

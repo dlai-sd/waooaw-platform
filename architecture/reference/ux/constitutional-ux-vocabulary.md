@@ -547,15 +547,26 @@ Mobile bottom bar (4 items — max):
 
 ### 6.2 Logged-In Navigation
 
-```
-Desktop header:
-[WAOOAW logo]     Home  My Agents    [⏹ Active — Emergency Stop]  [👤 My Profile ▾]
+WC-171 reconciliation: the earlier Home / My Agents / My Profile text is replaced by the shell as built. A signed-in customer has **one global menu** and, after choosing an agent, **one context menu for that agent**.
 
-Mobile bottom bar:
-  🏠 Home    🤖 My Agents    👤 My Profile
-  
-  [⏹ Active]  ← persistent Emergency Stop pill in header, always visible
 ```
+Global menu (every customer, every agent; desktop rail, and mobile bottom bar with Menu):
+  My Agents    Marketplace    Alerts    Settings
+Account drawer:
+  Profile    Billing    [Staff access — only for a staff grant]    Switch account    Sign out
+Operations group (staff and Founder only, by grant; never listed for a customer):
+  Operations    Pricing    Providers    Azure Key Vault    Access
+
+Mobile bottom bar (4 items): My Agents    Marketplace    Alerts    Menu
+  [⏹ Emergency Stop]  ← persistent in the header, always visible
+
+Agent context menu (after choosing an agent; same surfaces, order and words for every agent):
+  Overview    Plan    Decisions    Work    Results    Usage and budget    Alerts for this agent    Rights and control
+  then the agent's declared entries, in its own words (e.g. DMA: Profile and maturity, Campaigns and calendar,
+  Platform accounts, Business results)
+```
+
+**Rules:** the agent supplies a label from its vocabulary, an icon from a closed set, an order hint and the surface kind it opens (a platform view, a composition of existing blocks, or a registered domain block). It never supplies markup, layout or code (architecture section 6.5). Platform-level Connected accounts stay reachable from Settings. Old links keep working. A deep link names a surface (`?surface=`).
 
 ### 6.3 Navigation Item Definitions
 

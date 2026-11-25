@@ -21,6 +21,7 @@ from payment.lifecycle_jobs import run_lifecycle_sweep
 from markup.router import router as pricing_router
 from markup import thread_catalog
 from meter.router import router as meter_router
+from meter.service import MeterService
 from procurement.router import router as procurement_router
 from reconciliation.router import router as reconciliation_router
 from reconciliation.scheduler import create_scheduler
@@ -75,6 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     logger.info("Starting billing-engine application")
     await init_db()
+    app.state.meter_service = MeterService(session_factory=get_session_factory())
 
     settings = Settings()
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
