@@ -11,14 +11,26 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
-import runtime_workload_credentials as credentials  # noqa: E402
-from workload_identity_issuance import group_route_grants  # noqa: E402
+import runtime_workload_credentials as credentials
+from workload_identity_issuance import group_route_grants
 
 GRANTS = [
-    {"caller": "business-platform", "target": "professional-runtime", "method": "POST",
-     "route": "/api/v1/paas/sessions", "operation": "startPAASSession", "contract_major": 1},
-    {"caller": "business-platform", "target": "professional-runtime", "method": "GET",
-     "route": "/internal/v1/service-link", "operation": "probeServiceLink", "contract_major": 1},
+    {
+        "caller": "business-platform",
+        "target": "professional-runtime",
+        "method": "POST",
+        "route": "/api/v1/paas/sessions",
+        "operation": "startPAASSession",
+        "contract_major": 1,
+    },
+    {
+        "caller": "business-platform",
+        "target": "professional-runtime",
+        "method": "GET",
+        "route": "/internal/v1/service-link",
+        "operation": "probeServiceLink",
+        "contract_major": 1,
+    },
 ]
 MANIFEST = {
     "workloads": {

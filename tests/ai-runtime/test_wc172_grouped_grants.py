@@ -11,16 +11,27 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
-import runtime_workload_credentials as credentials  # noqa: E402
-from employment_auth import _expand_route_grants  # noqa: E402
-from workload_identity_issuance import group_route_grants  # noqa: E402
+import runtime_workload_credentials as credentials
+from employment_auth import _expand_route_grants
+from workload_identity_issuance import group_route_grants
 
 GRANTS = [
-    {"caller": "professional-runtime", "target": "ai-runtime", "method": "POST",
-     "route": "/internal/v1/employment-patch-proposals", "operation": "proposeEmploymentPatch", "contract_major": 1},
-    {"caller": "professional-runtime", "target": "ai-runtime", "method": "GET",
-     "route": "/internal/v1/employment-patch-proposals/{proposalId}", "operation": "getEmploymentPatchProposal",
-     "contract_major": 1},
+    {
+        "caller": "professional-runtime",
+        "target": "ai-runtime",
+        "method": "POST",
+        "route": "/internal/v1/employment-patch-proposals",
+        "operation": "proposeEmploymentPatch",
+        "contract_major": 1,
+    },
+    {
+        "caller": "professional-runtime",
+        "target": "ai-runtime",
+        "method": "GET",
+        "route": "/internal/v1/employment-patch-proposals/{proposalId}",
+        "operation": "getEmploymentPatchProposal",
+        "contract_major": 1,
+    },
 ]
 MANIFEST = {
     "workloads": {

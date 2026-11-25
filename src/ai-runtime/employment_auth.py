@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
@@ -26,14 +27,13 @@ class EmploymentAuthError(RuntimeError):
     pass
 
 
-
-def _expand_route_grants(value: object) -> list[dict]:
+def _expand_route_grants(value: object) -> list[dict[str, Any]]:
     """Route grants as a list of grant objects, from the plain list or the grouped form (WC-172 B10)."""
     if isinstance(value, list):
         return value
     if not isinstance(value, dict) or value.get("format") != "grouped-v1" or not isinstance(value.get("pairs"), dict):
         raise ValueError("The route grants are in an unknown form")
-    grants: list[dict] = []
+    grants: list[dict[str, Any]] = []
     for pair, items in value["pairs"].items():
         caller, target = pair.split(">", 1)
         for item in items:
@@ -48,6 +48,7 @@ def _expand_route_grants(value: object) -> list[dict]:
                 }
             )
     return grants
+
 
 @dataclass(frozen=True)
 class RouteGrant:
