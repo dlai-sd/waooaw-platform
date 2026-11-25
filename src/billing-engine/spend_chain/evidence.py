@@ -30,13 +30,13 @@ class EvidenceOwner(Protocol):
         scope_evidence_id: UUID,
     ) -> bool:
         """The artifact is locked at this digest and not superseded, and the two decision records exist for it."""
-        ...
+        raise NotImplementedError
 
     async def confirm_provider_proof(
         self, tenant_id: UUID, relationship_id: UUID, work_item_id: UUID, provider_reference: str, evidence_id: UUID
     ) -> bool:
         """The evidence is a timeline event of this work item that carries the provider's own reference."""
-        ...
+        raise NotImplementedError
 
 
 class SqlEvidenceOwner:

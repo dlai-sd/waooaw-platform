@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -82,6 +83,16 @@ async def env(wallet_db):
         yield SimpleNamespace(session=session, clock=lambda: NOW)
 
 
+def _sessions(env):
+    """A session opener that hands back the test's own session, as the service's session factory does."""
+
+    @asynccontextmanager
+    async def open_session():
+        yield env.session
+
+    return open_session
+
+
 def _gate(env, environment: str = "production", mode: str = "LIVE") -> MoneyGate:
     return MoneyGate(env.session, environment, mode, now=env.clock)
 
@@ -143,17 +154,7 @@ async def test_the_provider_client_creates_no_order_while_the_guard_refuses(env)
 
 @pytest.mark.asyncio
 async def test_the_installed_guard_reads_the_gate_from_the_database(env) -> None:
-    class _Open:
-        def __call__(self):
-            return self
-
-        async def __aenter__(self):
-            return env.session
-
-        async def __aexit__(self, *exc):
-            return False
-
-    guard = make_charge_guard(_Open())
+    guard = make_charge_guard(_sessions(env))
     settings = SimpleNamespace(WAOOAW_ENVIRONMENT="production", RAZORPAY_PAYMENT_MODE="LIVE")
     with pytest.raises(ChargeRefused):
         await guard(settings)
@@ -261,18 +262,8 @@ async def test_an_unreadable_provider_is_never_reported_as_a_clean_run(env) -> N
         async def refunds(self, start, end):
             return []
 
-    class _Open:
-        def __call__(self):
-            return self
-
-        async def __aenter__(self):
-            return env.session
-
-        async def __aexit__(self, *exc):
-            return False
-
-    assert await run_money_reconciliation(_Open(), _Down(), now=env.clock) is None
-    clean = await run_money_reconciliation(_Open(), _Provider(), now=env.clock)
+    assert await run_money_reconciliation(_sessions(env), _Down(), now=env.clock) is None
+    clean = await run_money_reconciliation(_sessions(env), _Provider(), now=env.clock)
     assert clean is not None and clean.clean
 
 

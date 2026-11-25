@@ -55,9 +55,13 @@ class ProviderRefund:
 
 
 class ProviderLedger(Protocol):
-    async def payments(self, start: datetime, end: datetime) -> Sequence[ProviderPayment]: ...
+    async def payments(self, start: datetime, end: datetime) -> Sequence[ProviderPayment]:
+        """The provider's payments created in the window."""
+        raise NotImplementedError
 
-    async def refunds(self, start: datetime, end: datetime) -> Sequence[ProviderRefund]: ...
+    async def refunds(self, start: datetime, end: datetime) -> Sequence[ProviderRefund]:
+        """The provider's refunds created in the window."""
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)

@@ -210,12 +210,15 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
             || !grants.TryGetProperty("pairs", out var pairs) || !pairs.TryGetProperty($"{caller}>{target}", out var items)
             || items.ValueKind != JsonValueKind.Array)
             return false;
-        return items.EnumerateArray().Any(item =>
-        {
-            var length = item.GetArrayLength();
-            return (length == 2 || length == 4) && item[0].GetString() == route && item[1].GetString() == operation
-                && (length == 2 || (item[2].GetString() == "POST" && item[3].GetInt32() == 1));
-        });
+        return items.EnumerateArray().Any(item => GroupedGrantMatches(item, route, operation));
+    }
+
+    private static bool GroupedGrantMatches(JsonElement item, string route, string operation)
+    {
+        var length = item.GetArrayLength();
+        if (length is not (2 or 4) || item[0].GetString() != route || item[1].GetString() != operation)
+            return false;
+        return length == 2 || (item[2].GetString() == "POST" && item[3].GetInt32() == 1);
     }
 
     private static byte[] Decode(string text)

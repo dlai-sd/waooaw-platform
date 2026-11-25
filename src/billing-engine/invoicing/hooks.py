@@ -21,6 +21,11 @@ from invoicing.service import TaxDocument, TaxDocumentError, TaxDocumentService
 logger = logging.getLogger(__name__)
 
 
+def _loggable(value: str) -> str:
+    """A caller-supplied reference with line breaks removed, so it cannot forge a log entry."""
+    return value.replace("\r", "").replace("\n", "")[:120]
+
+
 def supplier_from_settings(settings: Any) -> SupplierIdentity | None:
     """The configured GST identity, or None while the Founder has not supplied it (decision D6)."""
     values = [
@@ -61,10 +66,12 @@ async def issue_invoice_safely(
         return document
     except (TaxIdentityNotConfigured, TaxDocumentError) as error:
         await session.rollback()
-        logger.warning("tax_invoice not_issued payment=%s reason=%s", payment_reference, getattr(error, "code", "IDENTITY"))
+        logger.warning(
+            "tax_invoice not_issued payment=%s reason=%s", _loggable(payment_reference), getattr(error, "code", "IDENTITY")
+        )
     except Exception:
         await session.rollback()
-        logger.exception("tax_invoice failed payment=%s", payment_reference)
+        logger.exception("tax_invoice failed payment=%s", _loggable(payment_reference))
     return None
 
 
