@@ -41,9 +41,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-24 — WC-170 Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON delivered
-Latest completed sprint: WC-170 — Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON (PR #640 merged as afb1e82946)
-Latest recorded Work Contract: WC-170 — Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON (merged PR #640)
+Last update: 2026-11-24 — WC-169 Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) delivered
+Latest completed sprint: WC-169 — Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) (PR #641 merged as 1994c6e52e)
+Latest recorded Work Contract: WC-170 — Agent Execution Instructions (merged PR #640)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
