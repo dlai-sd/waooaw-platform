@@ -68,6 +68,23 @@ class ProviderEmulator:
         return f"sandbox:{work_item_id.hex[:12]}", paise + self.skew_paise
 
 
+class OwnerFake:
+    """Stands in for the evidence owner (the Business Platform's real-work record store)."""
+
+    def __init__(self, confirm: bool = True) -> None:
+        self.confirm = confirm
+        self.authorizations: list[tuple] = []
+        self.proofs: list[tuple] = []
+
+    async def confirm_authorization(self, *claim) -> bool:
+        self.authorizations.append(claim)
+        return self.confirm
+
+    async def confirm_provider_proof(self, *claim) -> bool:
+        self.proofs.append(claim)
+        return self.confirm
+
+
 @pytest_asyncio.fixture
 async def env(wallet_db):
     clock = _Clock()
@@ -88,8 +105,11 @@ async def env(wallet_db):
                 {"package": "p1"},
                 uuid4(),
             )
-        chain = SpendChain(session, ledger, tolerance_paise=50, now=clock)
-        yield SimpleNamespace(session=session, ledger=ledger, chain=chain, clock=clock, customer=customer, platform=platform)
+        owner = OwnerFake()
+        chain = SpendChain(session, ledger, tolerance_paise=50, now=clock, evidence=owner)
+        yield SimpleNamespace(
+            session=session, ledger=ledger, chain=chain, clock=clock, customer=customer, platform=platform, owner=owner
+        )
 
 
 async def _authorize(env, *, ceiling: int = 1_000, funding: str = "CUSTOMER", relationship: UUID = RELATIONSHIP, key=None):
@@ -364,3 +384,51 @@ async def test_every_spend_route_refuses_a_caller_without_workload_identity() ->
             )
             assert response.status_code == 401, name
             assert response.json()["detail"] == "WBE_WALLET_UNAUTHORIZED"
+
+
+@pytest.mark.asyncio
+async def test_evidence_the_owner_cannot_confirm_is_refused_before_anything_is_written(env) -> None:
+    env.owner.confirm = False
+    artifact, approval, scope = uuid4(), uuid4(), uuid4()
+    with pytest.raises(SpendError) as forged:
+        await env.chain.authorize(
+            TENANT, RELATIONSHIP, artifact, DIGEST, approval, scope, 1_000, "CUSTOMER", T0, T0 + timedelta(days=1), uuid4()
+        )
+    assert forged.value.code == "SPEND_EVIDENCE_NOT_CONFIRMED"
+    assert env.owner.authorizations == [(TENANT, RELATIONSHIP, artifact, DIGEST, approval, scope)]
+    assert (await env.session.execute(text("SELECT COUNT(*) FROM business.spend_authorizations"))).scalar_one() == 0
+
+
+@pytest.mark.asyncio
+async def test_a_forged_charge_proof_is_refused_and_the_hold_stays_open(env) -> None:
+    authorization = await _authorize(env)
+    item_id = uuid4()
+    await env.chain.reserve(TENANT, authorization.authorization_id, item_id, 500, env.customer, "POSTS")
+    env.owner.confirm = False
+    evidence = uuid4()
+    with pytest.raises(SpendError) as forged:
+        await env.chain.charge(TENANT, authorization.authorization_id, item_id, 500, "sandbox:abc", True, evidence)
+    assert forged.value.code == "SPEND_EVIDENCE_NOT_CONFIRMED"
+    assert env.owner.proofs == [(TENANT, RELATIONSHIP, item_id, "sandbox:abc", evidence)]
+    assert (await env.session.execute(text("SELECT state FROM business.spend_items"))).scalar_one() == "RESERVED"
+    env.owner.confirm = True
+    charged = await env.chain.charge(TENANT, authorization.authorization_id, item_id, 500, "sandbox:abc", True, evidence)
+    assert charged.state == "CHARGED"
+    again = await env.chain.charge(TENANT, authorization.authorization_id, item_id, 500, "sandbox:abc", True, evidence)
+    assert again.replayed and len(env.owner.proofs) == 2
+
+
+@pytest.mark.asyncio
+async def test_without_an_evidence_owner_nothing_is_authorized_or_charged(env) -> None:
+    unowned = SpendChain(env.session, env.ledger, tolerance_paise=50, now=env.clock)
+    with pytest.raises(SpendError) as authorize:
+        await unowned.authorize(
+            TENANT, RELATIONSHIP, uuid4(), DIGEST, uuid4(), uuid4(), 1_000, "CUSTOMER", T0, T0 + timedelta(days=1), uuid4()
+        )
+    assert authorize.value.code == "SPEND_EVIDENCE_OWNER_UNAVAILABLE"
+    authorization = await _authorize(env)
+    item_id = uuid4()
+    await env.chain.reserve(TENANT, authorization.authorization_id, item_id, 500, env.customer, "POSTS")
+    with pytest.raises(SpendError) as charge:
+        await unowned.charge(TENANT, authorization.authorization_id, item_id, 500, "sandbox:abc", True, uuid4())
+    assert charge.value.code == "SPEND_EVIDENCE_OWNER_UNAVAILABLE"

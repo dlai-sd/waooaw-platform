@@ -1598,7 +1598,9 @@ components:
         status: { type: string, enum: [ACCEPTED, SCHEDULED, COMPLETED, BLOCKED] }
         effectiveAt: { type: string, format: date-time }
         proratedFeeDifferencePaise: { type: integer, format: int64, minimum: 0, description: "Upgrade only; GST inclusive." }
-        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Pause and terminate only; a billing adjustment, never a wallet refund." }
+        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Terminate only, and only for a documented service failure; a billing adjustment, never a wallet refund." }
+        creditFeePaise: { type: integer, format: int64, minimum: 0, description: "Pause only: the unused days (at most 30) credited to the next renewal, never refunded to the card." }
+        exportAvailableUntil: { type: string, format: date-time, description: "Terminate only: the evidence export stays downloadable until this instant (90 days after service ends)." }
         taxTreatment: { type: string, enum: [GST_INCLUSIVE] }
         blockedReason: { type: string, minLength: 1, maxLength: 500 }
         correlationId: { type: string, minLength: 1, maxLength: 64 }

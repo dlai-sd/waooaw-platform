@@ -11,13 +11,19 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import redis.asyncio as aioredis
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings
 from database import init_db, close_db, get_session_factory
 from payment.lifecycle_jobs import run_lifecycle_sweep
+from payment.money_gate import ChargeRefused
+from payment.money_jobs import make_charge_guard, run_money_reconciliation
+from payment.money_mode import require_consistent_mode
+from payment.razorpay_client import set_charge_guard
 from markup.router import router as pricing_router
 from markup import thread_catalog
 from meter.router import router as meter_router
@@ -31,6 +37,8 @@ from payment.router import router as payment_router
 from wallet.router import router as wallet_router
 from wallet.private_routes import router as wallet_private_router
 from spend_chain.private_routes import router as spend_chain_private_router
+from invoicing.private_routes import router as tax_documents_private_router
+from money_admin import router as money_admin_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
@@ -75,10 +83,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     - C-059: Implementation traceability via structured logging on lifecycle events.
     """
     logger.info("Starting billing-engine application")
+    settings = Settings()
+    # WC-172 R010: refuse to start when the environment, payment mode, key and readiness state disagree.
+    mode = require_consistent_mode(
+        settings.WAOOAW_ENVIRONMENT, settings.RAZORPAY_PAYMENT_MODE, settings.RAZORPAY_KEY_ID,
+        settings.RAZORPAY_READINESS_STATE,
+    )
+    logger.info("Payment mode environment=%s mode=%s key=%s", mode.environment, mode.payment_mode, mode.key_mode)
     await init_db()
     app.state.meter_service = MeterService(session_factory=get_session_factory())
-
-    settings = Settings()
+    set_charge_guard(make_charge_guard(get_session_factory()))
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     reconciliation_service = ReconciliationService(
         session_factory=get_session_factory(),
@@ -103,6 +117,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         kwargs={"open_session": get_session_factory()},
     )
 
+    scheduler.add_job(
+        run_money_reconciliation,
+        trigger=CronTrigger(hour=3, minute=0, timezone="Asia/Kolkata"),
+        id="wbe_money_reconciliation",
+        name="WBE provider-to-invoice reconciliation (blocks new charges on a discrepancy)",
+        replace_existing=True,
+        kwargs={"open_session": get_session_factory()},
+    )
+
     credential_runtime = getattr(app.state, "credential_runtime", None)
     credential_refresh = (
         asyncio.create_task(credential_runtime.refresher.run())
@@ -114,6 +137,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if credential_refresh is not None:
         credential_refresh.cancel()
+    set_charge_guard(None)
     logger.info("Shutting down billing-engine application")
     scheduler.shutdown()
     logger.info("Reconciliation scheduler shut down")
@@ -158,6 +182,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     configure_telemetry(app)
+
+    @app.exception_handler(ChargeRefused)
+    async def charge_refused(request: Request, error: ChargeRefused) -> JSONResponse:
+        # A new charge is refused, never silently ignored: the gate, the mode or an open discrepancy says why.
+        return JSONResponse(status_code=409, content={"code": error.code})
 
     # allow_credentials=False with wildcard origin -- OWASP A05 compliance (C-100).
     # Prevents CSRF attacks when credentials are not required.
@@ -207,6 +236,9 @@ def create_app() -> FastAPI:
     app.include_router(wallet_private_router)
     # WC-170 DC-6: the sandbox spend chain, over the same private mTLS path
     app.include_router(spend_chain_private_router)
+
+    app.include_router(tax_documents_private_router)
+    app.include_router(money_admin_router)
     configure_relationship_workspace(app)
     # WC-136 C5-03: pricing administration, over the same private mTLS path
     app.include_router(pricing_admin_router)

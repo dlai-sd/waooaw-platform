@@ -182,6 +182,8 @@ class CommercialOutcome(StrictModel):
     effective_at: datetime | None = Field(default=None, alias="effectiveAt")
     prorated_fee_difference_paise: int | None = Field(default=None, alias="proratedFeeDifferencePaise", ge=0)
     refund_fee_paise: int | None = Field(default=None, alias="refundFeePaise", ge=0)
+    credit_fee_paise: int | None = Field(default=None, alias="creditFeePaise", ge=0)
+    export_available_until: datetime | None = Field(default=None, alias="exportAvailableUntil")
     blocked_reason: str | None = Field(default=None, alias="blockedReason", max_length=64)
 
 
@@ -375,6 +377,8 @@ class CommercialStore:
                     "effective_at": result.effective_at,
                     "prorated_fee_difference_paise": result.prorated_fee_difference_paise,
                     "refund_fee_paise": result.refund_fee_paise,
+                    "credit_fee_paise": result.credit_fee_paise,
+                    "export_available_until": result.export_available_until,
                     "blocked_reason": result.blocked_reason,
                 }
             receipt = CommercialReceipt(schemaVersion="1.0", commandId=command_id,

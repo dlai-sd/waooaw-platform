@@ -10,7 +10,7 @@ import hmac
 import logging
 import re
 from base64 import b64encode
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from urllib.parse import quote
 
 import httpx
@@ -28,6 +28,15 @@ _PLAN_ENV_KEYS: dict[str, str] = {
     "RUNNER":  "RAZORPAY_PLAN_ID_RUNNER",
     "WINNER":  "RAZORPAY_PLAN_ID_WINNER",
 }
+
+
+_charge_guard: Callable[[Settings], Awaitable[None]] | None = None
+
+
+def set_charge_guard(guard: Callable[[Settings], Awaitable[None]] | None) -> None:
+    """Install the check every new order passes (real-money gate, money mode, open discrepancies)."""
+    global _charge_guard
+    _charge_guard = guard
 
 
 class RazorpayClient:
@@ -50,6 +59,7 @@ class RazorpayClient:
         notes: dict[str, str],
     ) -> dict:
         """Create a Razorpay order. Returns the full order object."""
+        await self._require_charge_allowed()
         payload = {
             "amount": amount_paise,
             "currency": "INR",
@@ -64,6 +74,35 @@ class RazorpayClient:
         resp.raise_for_status()
         logger.info("Razorpay order created")
         return resp.json()
+
+    async def _require_charge_allowed(self) -> None:
+        if _charge_guard is not None:
+            await _charge_guard(self._settings)
+        elif getattr(self._settings, "RAZORPAY_PAYMENT_MODE", "TEST") == "LIVE":
+            # Live mode with no guard installed is a wiring fault: never create a real order unguarded.
+            from payment.money_gate import ChargeRefused
+
+            raise ChargeRefused("REAL_MONEY_GATE_UNAVAILABLE")
+
+    async def list_collection(self, resource: str, start: int, end: int) -> list[dict]:
+        """Every item of /payments or /refunds created between two unix times, page by page."""
+        if resource not in {"payments", "refunds"}:
+            raise ValueError("Unsupported Razorpay collection.")
+        items: list[dict] = []
+        skip = 0
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            while True:
+                resp = await client.get(
+                    f"{_RAZORPAY_BASE}/{resource}",
+                    params={"from": start, "to": end, "count": 100, "skip": skip},
+                    headers={"Authorization": self._auth_header()},
+                )
+                resp.raise_for_status()
+                page = resp.json().get("items", [])
+                items.extend(page)
+                if len(page) < 100:
+                    return items
+                skip += 100
 
     async def fetch_payment(self, payment_id: str) -> dict:
         """Fetch provider-owned payment status without exposing credentials to the browser."""

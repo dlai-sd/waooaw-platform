@@ -283,11 +283,32 @@ def _workload_record(manifest: Mapping[str, Any], name: str, trust_domain: str) 
     return record
 
 
+def _expand_route_grants(value: Any) -> list[Any]:
+    """Route grants as a list of grant objects, from the plain list or the grouped form (WC-172 B10)."""
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict) or value.get("format") != "grouped-v1" or not isinstance(value.get("pairs"), dict):
+        raise CredentialError("MANIFEST_INVALID")
+    grants: list[dict[str, Any]] = []
+    for pair, items in value["pairs"].items():
+        caller, target = pair.split(">", 1)
+        for item in items:
+            grants.append(
+                {
+                    "caller": caller,
+                    "target": target,
+                    "method": item[2] if len(item) > 2 else "POST",
+                    "route": item[0],
+                    "operation": item[1],
+                    "contract_major": item[3] if len(item) > 3 else 1,
+                }
+            )
+    return grants
+
+
 def grants_for(manifest: Mapping[str, Any], target: str, trust_domain: str) -> frozenset[RouteGrant]:
     workloads = _mapping(manifest.get("workloads"))
-    grants = manifest.get("route_grants")
-    if not isinstance(grants, list):
-        raise CredentialError("MANIFEST_INVALID")
+    grants = _expand_route_grants(manifest.get("route_grants"))
     try:
         return frozenset(
             RouteGrant(

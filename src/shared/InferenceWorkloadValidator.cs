@@ -82,10 +82,7 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
         var workloads = manifest.RootElement.GetProperty("workloads");
         var caller = workloads.GetProperty(callerName);
         var target = workloads.GetProperty(targetName);
-        if (!manifest.RootElement.GetProperty("route_grants").EnumerateArray().Any(grant =>
-            grant.GetProperty("caller").GetString() == callerName && grant.GetProperty("target").GetString() == targetName
-            && grant.GetProperty("method").GetString() == "POST" && grant.GetProperty("route").GetString() == route
-            && grant.GetProperty("operation").GetString() == operation && grant.GetProperty("contract_major").GetInt32() == 1))
+        if (!HasRouteGrant(manifest.RootElement.GetProperty("route_grants"), callerName, targetName, route, operation))
             throw new InferenceWorkloadRejectedException();
         var certificate = await http.Connection.GetClientCertificateAsync(ct) ?? throw new InferenceWorkloadRejectedException();
         var callerUri = caller.GetProperty("identity_uri").GetString()!;
@@ -195,6 +192,33 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
                 endpoint.HttpsOptions.ClientCertificateValidation = (certificate, _, _) => ValidatePeer(certificate, credentials, callerUri);
                 endpoint.ListenOptions.Protocols = HttpProtocols.Http1AndHttp2;
             }));
+    }
+
+    /// <summary>
+    /// A route grant in the trust bundle: the plain list of grant objects, or the grouped form the issuer publishes
+    /// to keep the bundle inside one Key Vault secret (caller>target, POST and contract major 1 implied).
+    /// </summary>
+    private static bool HasRouteGrant(JsonElement grants, string caller, string target, string route, string operation)
+    {
+        if (grants.ValueKind == JsonValueKind.Array)
+            return grants.EnumerateArray().Any(grant =>
+                grant.GetProperty("caller").GetString() == caller && grant.GetProperty("target").GetString() == target
+                && grant.GetProperty("method").GetString() == "POST" && grant.GetProperty("route").GetString() == route
+                && grant.GetProperty("operation").GetString() == operation && grant.GetProperty("contract_major").GetInt32() == 1);
+        if (grants.ValueKind != JsonValueKind.Object
+            || !grants.TryGetProperty("format", out var format) || format.GetString() != "grouped-v1"
+            || !grants.TryGetProperty("pairs", out var pairs) || !pairs.TryGetProperty($"{caller}>{target}", out var items)
+            || items.ValueKind != JsonValueKind.Array)
+            return false;
+        return items.EnumerateArray().Any(item => GroupedGrantMatches(item, route, operation));
+    }
+
+    private static bool GroupedGrantMatches(JsonElement item, string route, string operation)
+    {
+        var length = item.GetArrayLength();
+        if (length is not (2 or 4) || item[0].GetString() != route || item[1].GetString() != operation)
+            return false;
+        return length == 2 || (item[2].GetString() == "POST" && item[3].GetInt32() == 1);
     }
 
     private static byte[] Decode(string text)

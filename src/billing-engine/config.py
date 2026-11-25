@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     TRIAL_DURATION_DAYS: PositiveInt = 14
     MAX_DISCOUNT_PCT: int = Field(default=0, ge=0, le=100)
     TRIAL_IDENTITY_BINDING_MODE: Literal["OFF", "RECORD", "ENFORCE"] = "RECORD"
+    GST_LEGAL_NAME: str = ""
+    GST_GSTIN: str = ""
+    GST_ADDRESS: str = ""
+    GST_STATE_CODE: str = ""
+    GST_SAC_CODE: str = "9984"
+    GST_RATE_PERCENT: int = Field(default=18, ge=0, le=100)
+    RAZORPAY_PAYMENT_MODE: Literal["TEST", "LIVE"] = "TEST"
     WALLET_AUTHORITY: Literal["LEGACY", "SHADOW", "WALLET"] = "LEGACY"
     WALLET_OVERRUN_TOLERANCE_PAISE: int = Field(default=0, ge=0)
 

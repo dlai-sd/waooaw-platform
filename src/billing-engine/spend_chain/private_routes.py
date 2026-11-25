@@ -16,6 +16,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from database import get_session_factory
+from spend_chain.evidence import SqlEvidenceOwner
 from spend_chain.service import SpendChain, SpendError
 from wallet.entity_models import WalletError
 from wallet.ledger import WalletLedger
@@ -33,7 +34,13 @@ OPERATIONS = {
     RECONCILE_ROUTE: "wbeReconcileSpend",
 }
 _REFUSED_AS_UNPROCESSABLE = frozenset(
-    {"SPEND_AMOUNT_INVALID", "SPEND_AUTHORIZATION_INVALID", "SPEND_ARTIFACT_BINDING_REQUIRED", "SPEND_EVIDENCE_REQUIRED"}
+    {
+        "SPEND_AMOUNT_INVALID",
+        "SPEND_AUTHORIZATION_INVALID",
+        "SPEND_ARTIFACT_BINDING_REQUIRED",
+        "SPEND_EVIDENCE_REQUIRED",
+        "SPEND_EVIDENCE_NOT_CONFIRMED",
+    }
 )
 
 router = APIRouter(prefix="/internal/v1/real-work/spend", tags=["Spend Chain Private"])
@@ -112,7 +119,7 @@ async def authorize_spend(
     tenant = _tenant(request, AUTHORIZE_ROUTE, body.model_dump(by_alias=True, mode="json"), idempotency_key)
     try:
         async with get_session_factory()() as session, session.begin():
-            authorization = await SpendChain(session, WalletLedger(session)).authorize(
+            authorization = await SpendChain(session, WalletLedger(session), evidence=SqlEvidenceOwner(session)).authorize(
                 tenant,
                 body.relationship_id,
                 body.artifact_id,
@@ -165,7 +172,7 @@ async def charge_spend(
     tenant = _tenant(request, CHARGE_ROUTE, body.model_dump(by_alias=True, mode="json"), idempotency_key)
     try:
         async with get_session_factory()() as session, session.begin():
-            item = await SpendChain(session, WalletLedger(session)).charge(
+            item = await SpendChain(session, WalletLedger(session), evidence=SqlEvidenceOwner(session)).charge(
                 tenant,
                 body.authorization_id,
                 body.work_item_id,

@@ -262,7 +262,7 @@ def test_trust_bundle_is_written_before_any_workload_bundle_and_routes_cover_the
     first_bundle = min(index for index, name in enumerate(vault.secret_writes) if name.startswith("wid-bundle-"))
     last_trust = max(index for index, name in enumerate(vault.secret_writes) if name == "wid-trust-bundle")
     assert last_trust < first_bundle
-    grants = _json(vault, "wid-trust-bundle")["manifest"]["route_grants"]
+    grants = wid.expand_route_grants(_json(vault, "wid-trust-bundle")["manifest"]["route_grants"])
     assert {
         (grant["caller"], grant["target"], grant["route"])
         for grant in grants
@@ -271,7 +271,6 @@ def test_trust_bundle_is_written_before_any_workload_bundle_and_routes_cover_the
         ("business-platform", "billing-engine", "/internal/v1/service-link"),
         ("business-platform", "professional-runtime", "/internal/v1/service-link"),
     }
-    # WC-170 adds one PR-to-BP grant (ingestRealWorkEvent); the trust bundle has room for no more (Key Vault size limit).
     assert {grant["caller"] for grant in grants} == {"business-platform", "professional-runtime"}
 
 
@@ -377,7 +376,7 @@ def test_trust_bundle_with_the_ai_runtime_workload_stays_within_the_secret_limit
     bundle = json.loads(fixture["wid-trust-bundle"])
 
     assert len(fixture["wid-trust-bundle"].encode()) < wid.MAX_SECRET_BYTES
-    published = {grant["operation"] for grant in bundle["manifest"]["route_grants"]}
+    published = {grant["operation"] for grant in wid.expand_route_grants(bundle["manifest"]["route_grants"])}
     assert {"resolveProviderCredential", "probeProviderGeneration"} <= published
 
 
@@ -908,3 +907,30 @@ def test_cli_prints_the_console_lines_that_the_azure_alerts_parse(capsys: pytest
 
     assert wid_issuer.main(["leaf"], _environ(WID_WORKLOADS="ghost"), vault, T0) == 1
     assert "wid_issuer mode=leaf result=failed reason=issuance-error" in capsys.readouterr().out.splitlines()
+
+
+def test_grouped_route_grants_publish_every_grant_exactly_and_leave_headroom_in_the_secret() -> None:
+    registry = wid.load_registry(REGISTRY_PATH)
+    grants = registry["route_grants"]
+    assert sorted(map(json.dumps, wid.expand_route_grants(wid.group_route_grants(grants)))) == sorted(
+        json.dumps({key: grant[key] for key in ("caller", "target", "method", "route", "operation", "contract_major")}, default=str)
+        for grant in grants
+    )
+    cloud_workloads = [*WORKLOADS, "ai-runtime"]
+    fixture = build_cloud_fixture(REGISTRY_PATH, "demo", cloud_workloads, now=T0)
+    for step in range(1, 7):
+        fixture = renew_cloud_fixture(fixture, T0 + timedelta(hours=8 * step))
+    size = len(fixture["wid-trust-bundle"].encode())
+    # WC-172 B10: at least 4 KiB free, enough for dozens more grants, where the plain list left 78 bytes.
+    assert size < wid.MAX_SECRET_BYTES - 4096, size
+
+
+def test_the_spend_tax_and_money_routes_are_granted_to_exactly_their_callers_and_nobody_else() -> None:
+    fixture = build_cloud_fixture(REGISTRY_PATH, "demo", WORKLOADS, now=T0)
+    grants = wid.expand_route_grants(json.loads(fixture["wid-trust-bundle"])["manifest"]["route_grants"])
+    callers = {grant["operation"]: grant["caller"] for grant in grants if grant["target"] == "billing-engine"}
+    assert callers["wbeAuthorizeSpend"] == "business-platform"
+    assert {callers[name] for name in ("wbeReserveSpend", "wbeChargeSpend", "wbeReconcileSpend")} == {"professional-runtime"}
+    assert {callers[name] for name in ("wbeListTaxDocuments", "wbeGetTaxDocument", "wbeSetMoneyGate", "wbeResolveMoneyDiscrepancy")} == {
+        "business-platform"
+    }

@@ -31,6 +31,7 @@ PRIVATE_SPECS = {
 }
 WBE_PRICING_SPEC = REPO_ROOT / "architecture/reference/api-specs/wbe-pricing-admin.openapi.yaml"
 WBE_WALLET_SPEC = REPO_ROOT / "architecture/reference/api-specs/wbe-wallet-private.openapi.yaml"
+WBE_MONEY_SPEC = REPO_ROOT / "architecture/reference/api-specs/wbe-money-controls.openapi.yaml"
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -86,6 +87,7 @@ def test_registry_exactly_matches_private_f4_operations() -> None:
     expected = {target: _operations(spec_path) for target, spec_path in PRIVATE_SPECS.items()}
     expected["billing-engine"] |= _operations(WBE_PRICING_SPEC, "/internal/v1/pricing/")
     expected["billing-engine"] |= _operations(WBE_WALLET_SPEC, "/internal/v1/")
+    expected["billing-engine"] |= _operations(WBE_MONEY_SPEC, "/internal/v1/money/")
     for target in ("billing-engine", "professional-runtime"):
         expected[target].add(("GET", "/internal/v1/service-link", "probeServiceLink", 1))
     assert grants_by_target == expected

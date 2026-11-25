@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import Settings
+from invoicing.hooks import issue_invoice_safely
 from payment.models import PaymentCapturedEvent, PaymentCaptureResult
 from payment.razorpay_client import RazorpayClient
 from wallet.models import SubscriptionActivationResult
@@ -117,6 +118,10 @@ class WebhookHandler:
             ))
             if stored is None or tuple(str(stored[index]) for index in range(9)) != expected:
                 raise HTTPException(status_code=409, detail={"code": "PAYMENT_CAPTURE_CONFLICT"})
+            await issue_invoice_safely(
+                self._db, self._settings, payment_reference=event.razorpay_payment_id, amount_paise=event.amount_paise,
+                payer_customer_id=event.customer_id, tenant_id=event.tenant_id, relationship_id=event.relationship_id,
+            )
             return PaymentCaptureResult(
                 payment_reference=event.razorpay_payment_id,
                 payment_evidence_id=UUID(str(stored.payment_evidence_id)),
@@ -182,5 +187,9 @@ class WebhookHandler:
         )
         await self._db.commit()
 
+        await issue_invoice_safely(
+            self._db, self._settings, payment_reference=event.razorpay_payment_id, amount_paise=event.amount_paise,
+            payer_customer_id=event.customer_id,
+        )
         logger.info("payment.captured processed: status=activated")
         return result

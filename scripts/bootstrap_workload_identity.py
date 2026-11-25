@@ -29,6 +29,7 @@ from workload_identity_issuance import (
     build_ca_certificate,
     delegation_entry,
     fingerprint,
+    group_route_grants,
     issue_workload_credential,
     load_registry,
     name,
@@ -107,7 +108,7 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
         "root_fingerprint_sha256": fingerprint(root),
         "intermediate_fingerprint_sha256": fingerprint(intermediate),
         "workloads": {},
-        "route_grants": registry["route_grants"],
+        "route_grants": group_route_grants(registry["route_grants"]),
     }
     public_keys: set[bytes] = set()
     for workload_name in registry["workloads"]:

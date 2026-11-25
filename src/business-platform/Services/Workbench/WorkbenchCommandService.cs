@@ -695,14 +695,23 @@ public sealed class WorkbenchCommandService(
                     request.Kind == "UPGRADE"
                         ? Long(answer.Outcome, "proratedFeeDifferencePaise")
                         : null,
-                    request.Kind is "PAUSE" or "TERMINATE"
+                    // A pause is credited to the next renewal and never refunded to the card; a termination refunds
+                    // only for a documented service failure (WC-172 D1, D2).
+                    request.Kind
+                        is "TERMINATE"
                         ? Long(answer.Outcome, "refundFeePaise")
                         : null,
                     "GST_INCLUSIVE",
                     Text(answer.Outcome, "blockedReason") is { } reason
                         ? ExperienceBlockBuilder.Humanize(reason)
                         : null,
-                    context.CorrelationId
+                    context.CorrelationId,
+                    request.Kind is "PAUSE" ? Long(answer.Outcome, "creditFeePaise") : null,
+                    request.Kind is "TERMINATE"
+                    && Text(answer.Outcome, "exportAvailableUntil") is { } exportUntil
+                    && DateTimeOffset.TryParse(exportUntil, out var exportParsed)
+                        ? exportParsed
+                        : null
                 );
             },
             ct

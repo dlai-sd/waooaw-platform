@@ -3,5 +3,5 @@
   "generatorImage": "openapitools/openapi-generator-cli:v7.17.0",
   "generationInput": "deterministically-bundled",
   "specVersion": "1.0.0",
-  "specSha256": "178a88f75bb9fb661f8dc4e25db9043aa068f66eda3222616ac455392c832043"
+  "specSha256": "c63c95c0d23a94af3bbb41679aaa65be7951e9f004139ce201b65619ddb1b982"
 }

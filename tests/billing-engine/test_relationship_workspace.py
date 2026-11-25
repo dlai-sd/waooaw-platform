@@ -161,7 +161,7 @@ async def test_unresolved_lifecycle_policy_blocks_and_cross_tenant_outcome_is_hi
 
 
 @pytest.mark.asyncio
-async def test_stale_projection_version_conflicts_and_pause_refunds_the_unelapsed_fee(hired) -> None:
+async def test_stale_projection_version_conflicts_and_pause_credits_the_unelapsed_fee(hired) -> None:
     hired.clock.at = START + timedelta(days=15)
     version = (await hired.store.projection(str(TENANT), RELATIONSHIP_ID)).projection_version
     stale = await hired.store.submit(CONTEXT, request("PAUSE_RELATIONSHIP", "old-version"), "key-c")
@@ -169,23 +169,23 @@ async def test_stale_projection_version_conflicts_and_pause_refunds_the_unelapse
     paused = await hired.store.submit(CONTEXT, request("PAUSE_RELATIONSHIP", version), "key-d")
     outcome = await hired.store.outcome(CONTEXT, paused.command_id)
     assert paused.status == "COMPLETED"
-    assert outcome.refund_fee_paise == 15_000 and outcome.resolved_at is not None
+    assert outcome.credit_fee_paise == 15_000 and outcome.refund_fee_paise is None and outcome.resolved_at is not None
     async with hired.db() as session:
         adjustments = (await session.execute(text("SELECT amount_paise, status FROM business.billing_adjustments"))).all()
         wallet_entries = (await session.execute(text("SELECT COUNT(*) FROM business.wallet_lots"))).scalar_one()
-    assert adjustments == [(15_000, "NOT_PAYABLE")]
+    assert adjustments == [(15_000, "AVAILABLE")]
     assert wallet_entries == 1
 
 
 @pytest.mark.asyncio
-async def test_terminate_is_allowed_on_a_stale_projection_and_ends_the_period(hired) -> None:
+async def test_terminate_is_allowed_on_a_stale_projection_and_ends_service_at_the_period_end(hired) -> None:
     hired.clock.at = START + timedelta(days=12)
     receipt = await hired.store.submit(CONTEXT, request("TERMINATE_RELATIONSHIP", "any"), "key-e")
     outcome = await hired.store.outcome(CONTEXT, receipt.command_id)
-    assert receipt.status == "COMPLETED"
-    assert outcome.refund_fee_paise == 18_000
-    projection = await hired.store.projection(str(TENANT), RELATIONSHIP_ID)
-    assert projection.currency_state == "BLOCKED"
+    assert receipt.status == "PENDING"
+    assert outcome.refund_fee_paise == 0
+    assert outcome.effective_at == START + timedelta(days=30)
+    assert outcome.export_available_until == START + timedelta(days=120)
 
 
 def test_component_unit_rebind_requires_the_exact_delegated_context() -> None:
