@@ -1,0 +1,127 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-172
+contract_path: work-contracts/WC-172-safe-to-charge-real-customers.md
+contract_digest: 6f5d544e5e9ada361f80ce7c9b24ccdf75d1f73cf9ed253918905ded4074346f
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Executable tests in the Docker runners (billing engine, Business Platform, web, workload identity, pipeline), the single end-of-build validation pass, Demo and UAT read-backs, and the UAT acceptance report; commands and results in the PR body
+  initial_state: new
+  dependencies: The Founder authorizes the build in the session that starts it; WC-171 merged and deployed on Demo; decisions D1 to D8 made by the Founder before the story that needs each; Azure applies approved by the Founder
+  residual_risk: The contract spans application code, UAT infrastructure and production readiness; Meta App Review and tax confirmation have outside lead times; real money stays off until the Founder's written go-live approval
+  completion_rule: Executable evidence at the exact head recorded in the PR body, plus the Demo or UAT read-back named in the row; no row grants real money
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC172-R001
+    source: WC-172 Canonical Requirement Index, R001
+    observable_outcome: The Founder's decisions D1 to D5 are recorded as a lifecycle commercial policy that settles OP-LIFECYCLE-COMM-01, and each rule is a tested configuration or code path.
+    test_path_or_plan: Policy record in the contract and the architecture reference; billing engine and Business Platform tests per rule.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R002
+    source: WC-172 Canonical Requirement Index, R002
+    observable_outcome: A customer can pause and resume a hire with the consequence shown first, billed or credited correctly to the paise, with evidence, and Emergency Stop stays separate from pause.
+    test_path_or_plan: Billing engine tests (tests/billing-engine lifecycle and pro-rata), Business Platform command tests, Jest and Playwright tests of the screens; UAT acceptance step.
+
+  - <<: *defaults
+    requirement_id: WC172-R003
+    source: WC-172 Canonical Requirement Index, R003
+    observable_outcome: A customer can terminate with the end date, notice and export window per policy, nothing deleted, and a downloadable evidence export.
+    test_path_or_plan: Business Platform command and export tests (including retention and data rights), Jest and Playwright tests; UAT acceptance step.
+
+  - <<: *defaults
+    requirement_id: WC172-R004
+    source: WC-172 Canonical Requirement Index, R004
+    observable_outcome: A customer can upgrade or downgrade with the pro-rata difference, effective date and invoice or credit note per policy, and the accepted contract and quote are superseded by evidence, never edited.
+    test_path_or_plan: Billing engine pro-rata and package tests, Business Platform supersession tests, Jest tests; UAT acceptance step.
+
+  - <<: *defaults
+    requirement_id: WC172-R005
+    source: WC-172 Canonical Requirement Index, R005
+    observable_outcome: A hire renews at its locked price; a catalogue price change reaches it only after 30 days' notice and acknowledgement; a failed renewal follows the saga with a defined grace; hires created before the quote lock are migrated or refused by a stated rule.
+    test_path_or_plan: Business Platform tests of HireQuoteService, renewal and the saga; billing engine test that the plan update is blocked until notice and acknowledgement (C-090); real-database test for pre-quote hires.
+
+  - <<: *defaults
+    requirement_id: WC172-R006
+    source: WC-172 Canonical Requirement Index, R006
+    observable_outcome: Every captured payment has a GST tax invoice and every refund or credit a credit note, with gap-free numbering per series and year, the Founder's GST identity, exact paise, immutability, retrieval by the customer and the Founder, and corrections as new documents.
+    test_path_or_plan: Billing engine real-database tests for numbering, concurrency, tax split and reproducibility; web tests for retrieval; tax professional's confirmation recorded in the contract.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R007
+    source: WC-172 Canonical Requirement Index, R007
+    observable_outcome: Payer and funder are recorded on every charge and invoice, a funder needs a billing profile and own acceptance, and a charge with no known payer or funder is refused (C-088).
+    test_path_or_plan: Billing engine and Business Platform tests for payer, funder and refusal; contract tests for the specification change.
+
+  - <<: *defaults
+    requirement_id: WC172-R008
+    source: WC-172 Canonical Requirement Index, R008
+    observable_outcome: The billing engine verifies evidence ids and the verified provider proof with the evidence owner and refuses forged or missing ids (WC-170 B5).
+    test_path_or_plan: tests/billing-engine/test_wc170_spend_chain.py extended with forged, missing and mismatched evidence cases; Constitutional Engine owner-side tests.
+
+  - <<: *defaults
+    requirement_id: WC172-R009
+    source: WC-172 Canonical Requirement Index, R009
+    observable_outcome: The workload trust bundle fits with headroom, the four spend routes have route grants, and a call from an unlisted service is refused (WC-170 B10).
+    test_path_or_plan: tests/constitutional/test_wid_issuer.py at the new grant count, registry.yaml grants, an unlisted-caller refusal test; read-back that the routes answer on Demo.
+
+  - <<: *defaults
+    requirement_id: WC172-R010
+    source: WC-172 Canonical Requirement Index, R010
+    observable_outcome: Each environment has an explicit payment mode, a live key is refused outside production and a test key in production at startup, and the real-money gate is off everywhere and can be turned on only by the Founder's step-up action in production, audited and instantly reversible.
+    test_path_or_plan: Billing engine startup guard tests, Business Platform gate and step-up tests, Terraform and deployment-input tests in tests/pipeline.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R011
+    source: WC-172 Canonical Requirement Index, R011
+    observable_outcome: Daily provider-to-invoice reconciliation covers payments, refunds and credit notes, and a discrepancy blocks new charges until resolved with evidence and shows on the operations console.
+    test_path_or_plan: tests/billing-engine reconciliation tests extended; operations console read-back on Demo and UAT.
+
+  - <<: *defaults
+    requirement_id: WC172-R012
+    source: WC-172 Canonical Requirement Index, R012
+    observable_outcome: UAT is provisioned from reviewed Terraform with the Founder's approval, the Demo to UAT configuration promotion is exercised, blockers CB-018, CB-019 and CB-020 are closed or owned, UAT settings are explicit and tested, and a UAT deployment passes release qualification.
+    test_path_or_plan: Terraform plan review, tests/pipeline deployment-input and settings tests, environment deployment runs and read-backs recorded in the contract.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R013
+    source: WC-172 Canonical Requirement Index, R013
+    observable_outcome: ADR-046 is qualified on UAT, the Demo interim certificate exception is retired before 2026-12-16 or extended in writing by the Founder, and the shared tokens carry no authority anywhere, with a test enumerating the remaining uses.
+    test_path_or_plan: CB-021 closure evidence for UAT, workload identity and Terraform tests, a repository test enumerating uses of BP_SERVICE_JWT_SECRET, PR_SERVICE_JWT_SECRET and OPS_AUTH_TOKEN.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R014
+    source: WC-172 Canonical Requirement Index, R014
+    observable_outcome: The full journey including lifecycle, invoices and reconciliation runs on UAT for a synthetic customer in test mode, with one calibration report and an owner for every NOT-WITNESSED or FAIL item, using the D8 vault path with sandbox values only.
+    test_path_or_plan: UAT acceptance plan and specs, calibration report attached to this ledger after the UAT run.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R015
+    source: WC-172 Canonical Requirement Index, R015
+    observable_outcome: A go-live checklist lists every production prerequisite with owner, status and evidence, and the live Razorpay keys are entered only by the Founder into the production vault and never seen by the author or a GitHub-hosted runner.
+    test_path_or_plan: Checklist in the contract and the runbook; a pipeline test that no workflow step reads a production vault from a hosted runner; Founder confirmation recorded.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R016
+    source: WC-172 Canonical Requirement Index, R016
+    observable_outcome: Meta App Review materials are prepared from the UAT run, the Founder's submission date and result are recorded, and decision D7 governs who may be a customer until it passes.
+    test_path_or_plan: Tracker in the contract (dates entered only by the Founder); the UAT run recording used as the screencast source.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC172-R017
+    source: WC-172 Canonical Requirement Index, R017
+    observable_outcome: M5 is reached only when R001 to R016 are PASS or Founder-reserved with evidence, the checklist is complete, the Founder has recorded written approval to take real money, and a capped rehearsal transaction with refund and credit note has been read back.
+    test_path_or_plan: The Founder's written approval and the rehearsal read-back recorded in the contract; the real-money gate audit record.
+    initial_state: Founder-reserved
