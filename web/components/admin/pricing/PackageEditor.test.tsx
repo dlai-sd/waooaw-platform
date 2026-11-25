@@ -1,7 +1,7 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { fakeResponse, simulationFixture, versionFixture, versionId } from '@/lib/pricing-admin-test-data';
 import type { PackageCatalogue, Simulation } from '@/lib/pricing-admin-types';
 import { PackageEditor } from './PackageEditor';
@@ -66,10 +66,47 @@ test('components can be added and removed and unavailable ones are flagged after
   fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
   type('Component identifier 2', 'AD_BOOST');
   expect(screen.getByText(/Not available: cannot go on sale/)).toBeInTheDocument();
-  expect(screen.getByText('Available at the last simulation')).toBeInTheDocument();
+  const rows = within(screen.getByRole('table', { name: 'Package components' })).getAllByRole('row');
+  expect(rows[1]).toHaveTextContent('Available');
+  expect(rows[1]).not.toHaveTextContent('Not available');
+  expect(rows[2]).toHaveTextContent('Not available');
 
   fireEvent.click(screen.getByRole('button', { name: 'Remove component 2' }));
   expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
+});
+
+test('only the selected component is edited at a time, and Add component selects the new one', () => {
+  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+
+  expect(screen.getByRole('table', { name: 'Package components' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
+  expect(screen.getByLabelText('Component identifier 2')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Component identifier 1')).toBeNull();
+  type('Component identifier 2', 'AD_BOOST');
+  type('Quantity 2', '2');
+  type('Price allocation 2 (INR)', '200');
+
+  const table = screen.getByRole('table', { name: 'Package components' });
+  expect(within(table).getAllByRole('row')[2]).toHaveTextContent('AD_BOOST');
+  expect(within(table).getAllByRole('row')[2]).toHaveTextContent('INR 200.00');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit component 1' }));
+  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
+});
+
+test('removing the selected component selects its neighbour', () => {
+  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
+  type('Component identifier 2', 'AD_BOOST');
+  fireEvent.click(screen.getByRole('button', { name: 'Remove component 2' }));
+
+  expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
+  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
+  expect(within(screen.getByRole('table', { name: 'Package components' })).getAllByRole('row')).toHaveLength(2);
 });
 
 test('problems are listed and nothing is sent until the package is complete', () => {

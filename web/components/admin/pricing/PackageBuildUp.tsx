@@ -24,7 +24,7 @@ export function PackageBuildUp({ simulation, typedPriceInclGstPaise, onUseSugges
   const buildUp = simulation?.buildUp;
   if (!simulation || !buildUp) {
     return (
-      <section aria-label="Price build-up" className="workbench-stack">
+      <section aria-label="Price build-up" className="workbench-stack package-build-up">
         <h4>Price build-up</h4>
         <p className="workbench-hint">
           Save the draft, then press Simulate. The cost lines, your target margin and a suggested price appear here.
@@ -35,7 +35,7 @@ export function PackageBuildUp({ simulation, typedPriceInclGstPaise, onUseSugges
   }
   const suggested = buildUp.suggestedPriceInclGstPaise;
   return (
-    <section aria-label="Price build-up" className="workbench-stack">
+    <section aria-label="Price build-up" className="workbench-stack package-build-up">
       <h4>Price build-up</h4>
       <table aria-label="Cost lines">
         <thead>

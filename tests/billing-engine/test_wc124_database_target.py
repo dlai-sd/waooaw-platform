@@ -58,3 +58,35 @@ def test_unknown_sslmode_fails_closed() -> None:
 
 def test_non_postgres_urls_are_untouched() -> None:
     assert database.asyncpg_engine_target("sqlite+aiosqlite:///:memory:") == ("sqlite+aiosqlite:///:memory:", {})
+
+
+def test_the_pool_tests_connections_so_a_closed_one_is_replaced_not_served(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict = {}
+
+    class _Connection:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def execute(self, *_):
+            return None
+
+    class _Engine:
+        def connect(self):
+            return _Connection()
+
+    def fake_create_async_engine(url: str, **kwargs):
+        captured.update(kwargs)
+        return _Engine()
+
+    monkeypatch.setattr(database, "create_async_engine", fake_create_async_engine)
+    monkeypatch.setattr(database.settings, "DATABASE_URL", "postgresql://u:p@h:5432/d?sslmode=disable", raising=False)
+
+    import asyncio
+
+    asyncio.run(database.init_db())
+
+    assert captured["pool_pre_ping"] is True
+    assert 0 < captured["pool_recycle"] <= 300
