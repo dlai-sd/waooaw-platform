@@ -1,7 +1,7 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-05
 // Constitutional basis: C-001, C-042, C-059, C-063, ADR-051
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { workbenchMessages } from '@/lib/workbench-i18n';
 import { CapabilitiesPanel } from './CapabilitiesPanel';
 import { ControlsBar } from './ControlsBar';
@@ -111,6 +111,26 @@ describe('workbench panels', () => {
   });
 
   describe('MonitorPanel', () => {
+    it('leads with business results, then performance, and keeps technical telemetry behind a details control', () => {
+      const snapshot = snapshotFixture();
+      const base = snapshot.projection.tiles[0];
+      snapshot.projection.tiles = [
+        { ...base, tileId: 't-tech', label: 'Queue depth', owner: 'System Telemetry' },
+        { ...base, tileId: 't-perf', label: 'Plan timeliness', owner: 'Platform Owner Record' },
+        { ...base, tileId: 't-out', label: 'Profile coverage', owner: 'Customer Confirmation', freshness: 'STALE' },
+      ];
+      render(<MonitorPanel {...props(snapshot)} />);
+      const headings = screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent);
+      expect(headings.indexOf('Profile coverage')).toBeLessThan(headings.indexOf('Plan timeliness'));
+      const details = screen.getByText('Technical details').closest('details');
+      expect(details).toContainElement(screen.getByText('Queue depth'));
+      expect(details).not.toContainElement(screen.getByText('Plan timeliness'));
+      const stale = screen.getByText('Profile coverage').closest('li');
+      expect(stale).toHaveAttribute('data-stale', 'true');
+      expect(within(stale as HTMLElement).getByText('Stale: not a current figure')).toBeInTheDocument();
+      expect(screen.getByText('Plan timeliness').closest('li')).toHaveAttribute('data-stale', 'false');
+    });
+
     it('shows a tile without a trend or target and hides the alerts section when there are none', () => {
       const snapshot = snapshotFixture();
       snapshot.projection.tiles = [{ ...snapshot.projection.tiles[0], trend: undefined, target: undefined }];

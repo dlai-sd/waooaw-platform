@@ -13,6 +13,11 @@ variable "feature_settings" {
     whatsapp_stop_acknowledgement_enabled = optional(bool, false)
     # Demo and UAT only (ADR-055 decision 4); the validation below refuses it for Production.
     acceptance_synthetic_tenants_enabled = optional(bool, false)
+    # WC-170: the employment protocol gate and its rollback epoch. The epoch is never reused; raising it blocks in-flight commands.
+    employment_protocol_enabled        = optional(bool, false)
+    employment_protocol_rollback_epoch = optional(number, 0)
+    # WC-170: the web switch that moves the conversation stories from the stream route to the events route.
+    web_conversation_enabled = optional(bool, false)
   })
   default = {}
 
@@ -22,6 +27,14 @@ variable "feature_settings" {
       contains(["OFF", "RECORD", "ENFORCE"], var.feature_settings.trial_identity_binding_mode)
     )
     error_message = "wallet_authority must be LEGACY, SHADOW or WALLET and trial_identity_binding_mode must be OFF, RECORD or ENFORCE."
+  }
+
+  validation {
+    condition = (
+      var.feature_settings.employment_protocol_rollback_epoch >= 0 &&
+      var.feature_settings.employment_protocol_rollback_epoch == floor(var.feature_settings.employment_protocol_rollback_epoch)
+    )
+    error_message = "employment_protocol_rollback_epoch must be a whole number of at least 0."
   }
 
   validation {
@@ -59,6 +72,13 @@ locals {
         Workbench__Enabled                           = tostring(var.feature_settings.workbench_enabled)
         Protocol__WhatsAppStopAcknowledgementEnabled = tostring(var.feature_settings.whatsapp_stop_acknowledgement_enabled)
         AcceptanceSyntheticTenants__Enabled          = tostring(var.feature_settings.acceptance_synthetic_tenants_enabled)
+        EmploymentProtocol__GateId                   = "conversational-employment-candidate-v1"
+        EmploymentProtocol__Enabled                  = tostring(var.feature_settings.employment_protocol_enabled)
+        EmploymentProtocol__RollbackEpoch            = tostring(var.feature_settings.employment_protocol_rollback_epoch)
+        EmploymentReadiness__Environment             = var.environment
+        EmploymentReadiness__ProfessionalRuntimeUrl  = local.service_urls.professional_runtime
+        EmploymentReadiness__AiRuntimeUrl            = local.service_urls.ai_runtime
+        EmploymentReadiness__DomainAdapterUrl        = local.service_urls.dma_adapter
       },
       merge([
         for index, founder in var.platform_access.founders : merge(
@@ -68,6 +88,9 @@ locals {
         )
       ]...)
     )
+    "web" = {
+      WC120_CONVERSATION_ENABLED = tostring(var.feature_settings.web_conversation_enabled)
+    }
     "billing-engine" = {
       WALLET_AUTHORITY            = var.feature_settings.wallet_authority
       TRIAL_IDENTITY_BINDING_MODE = var.feature_settings.trial_identity_binding_mode

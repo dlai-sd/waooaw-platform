@@ -1,0 +1,129 @@
+{
+  "defaultDomain": "default",
+  "source": "architecture/reference/agents/digital-marketing-agent.md#3.1",
+  "tokens": {
+    "BOOKING_PLATFORM_PRIORITY": {
+      "accounting_firm": "calendly, waooaw_native",
+      "beauty_artist": "fresha, vagaro, calendly, waooaw_native",
+      "beauty_salon": "fresha, vagaro, calendly, waooaw_native",
+      "default": "calendly, waooaw_native",
+      "dental_clinic": "practo, calendly, waooaw_native",
+      "digital_marketing_agency": "calendly, waooaw_native",
+      "fitness_studio": "mindbody, glofox, calendly, waooaw_native",
+      "law_firm": "calendly, waooaw_native",
+      "restaurant": "dineout, eazydiner, zomato_table, waooaw_native",
+      "technology_saas": "waooaw_native"
+    },
+    "CUSTOMER_PLURAL": {
+      "beauty_artist": "clients",
+      "default": "customers",
+      "dental_clinic": "patients",
+      "fitness_studio": "members",
+      "law_firm": "clients",
+      "restaurant": "guests"
+    },
+    "CUSTOMER_SINGULAR": {
+      "accounting_firm": "client",
+      "beauty_artist": "client",
+      "beauty_salon": "client",
+      "cloud_kitchen": "customer",
+      "default": "customer",
+      "dental_clinic": "patient",
+      "digital_marketing_agency": "client",
+      "education": "student",
+      "fitness_studio": "member",
+      "law_firm": "client",
+      "real_estate": "prospect",
+      "restaurant": "guest",
+      "retail": "customer",
+      "technology_saas": "user"
+    },
+    "LIFECYCLE_KPI": {
+      "beauty_artist": "repeat booking rate + client LTV (₹)",
+      "default": "repeat customer rate + customer LTV (₹)",
+      "dental_clinic": "6-month patient return rate + patient LTV (₹)",
+      "digital_marketing_agency": "client retention rate + average contract LTV (₹)",
+      "fitness_studio": "member retention rate + average membership LTV (₹)",
+      "restaurant": "return visit rate + per-cover LTV (₹)",
+      "technology_saas": "trial-to-paid conversion rate (%) + MRR growth"
+    },
+    "LOYALTY_ACHIEVEMENT": {
+      "beauty_artist": "{name} has trusted us with {n} transformations! ✨",
+      "default": "{name} has been with us for {n} months!",
+      "dental_clinic": "{name} has been keeping their smile healthy for {n} months with us! 🦷",
+      "fitness_studio": "{name} has completed {n} sessions this year! 💪",
+      "restaurant": "{name} has visited us {n} times! A true regular! 🍽️"
+    },
+    "POST_VISIT_CHECKIN_MESSAGE": {
+      "accounting_firm": "Hope our {service} session was useful, {name}. Any follow-up queries?",
+      "beauty_artist": "How are you loving your new {service}, {name}? ✨ We'd love to hear from you!",
+      "beauty_salon": "Hope you're enjoying your {service}, {name}! 😊 How did it go?",
+      "default": "How was your experience, {name}? We'd love to hear from you! 🙏",
+      "dental_clinic": "How are you feeling after your {service} yesterday, {name}? Any discomfort? 🙏",
+      "digital_marketing_agency": "Hi {name}, following up on our {service} meeting. Any questions so far?",
+      "fitness_studio": "Hope you're feeling great after your {service} session, {name}! 💪",
+      "law_firm": "Hope our meeting was helpful, {name}. Do you have any follow-up questions?",
+      "restaurant": "Hope you enjoyed your visit yesterday, {name}! 😊 We'd love your feedback.",
+      "technology_saas": "Hi {name}, how is your {trial} going? Any questions or feedback? 🙏"
+    },
+    "REACTIVATION_HOOK": {
+      "beauty_artist": "Your next transformation is overdue! 💄",
+      "default": "It's been a while — we'd love to see you again.",
+      "dental_clinic": "Your oral health matters — even small issues are easier to fix early.",
+      "digital_marketing_agency": "Your competitors aren't standing still. Let's catch up.",
+      "fitness_studio": "Your fitness journey is waiting for you. Every day is a new start. 💪",
+      "law_firm": "In case anything has changed since we last spoke — happy to help.",
+      "restaurant": "New menu items since your last visit — worth coming back for! 🍽️",
+      "technology_saas": "Your trial expired — come back and see what's new. A lot has improved."
+    },
+    "REPUTATION_PLATFORMS": {
+      "beauty_artist": "google, justdial, instagram_ratings",
+      "default": "google, justdial",
+      "dental_clinic": "google, practo, justdial, sulekha",
+      "digital_marketing_agency": "google, justdial, clutch",
+      "fitness_studio": "google, justdial",
+      "restaurant": "google, zomato, swiggy, dineout, justdial",
+      "technology_saas": "google, g2, producthunt, capterra"
+    },
+    "REVIEW_REQUEST_MESSAGE": {
+      "beauty_artist": "If you loved your new look, share it on Google — it helps others discover us! {review_link} ✨",
+      "default": "If you're happy with your experience, a Google review helps others find us: {review_link}",
+      "dental_clinic": "If you're happy with your visit, a Google review helps other {customers} find us. 30 seconds: {review_link}",
+      "fitness_studio": "Enjoying your training? A Google review goes a long way for us! {review_link} 💪",
+      "restaurant": "Enjoyed your visit? A quick review helps us reach more food lovers! {review_link} 🙏"
+    },
+    "REVISIT_REMINDER_MESSAGE": {
+      "beauty_artist": "Time for your next {service}? It's been {n} months, {name}! {booking_link}",
+      "default": "Hi {name}, it's been {n} months since your last {visit}. Come back anytime: {booking_link}",
+      "dental_clinic": "Your routine {service} checkup may be due. Book a slot: {booking_link}",
+      "digital_marketing_agency": "Hi {name}, just checking in — it's been {n} months since we last connected. How's your marketing going?",
+      "fitness_studio": "We haven't seen you in a while, {name}! Your {service} is waiting 💪 {booking_link}",
+      "real_estate": "Hi {name}, any update on your property search? Happy to share new listings. {contact_link}",
+      "restaurant": "It's been {n} months since your last visit, {name}. We have new dishes! {booking_link}"
+    },
+    "SEASONAL_HIGHLIGHT": {
+      "beauty_artist": "Bridal season (Oct-Dec, Mar-May) · Diwali fashion looks · Valentine's",
+      "default": "India festive calendar: Diwali · Navratri · New Year · Valentine's",
+      "dental_clinic": "Diwali season → whitening promotions · School admissions → children's dental camp",
+      "digital_marketing_agency": "Q4 budget season · New Year campaign planning · Festive ad spend season",
+      "fitness_studio": "New Year resolutions (Jan) · Summer body (Mar-May) · Navratri (Oct)",
+      "restaurant": "Festival dining (Diwali, Eid, Christmas) · Monsoon specials",
+      "technology_saas": "Product Hunt launches · SaaS Black Friday (Nov) · New Year 'start fresh' signups · Budget season Q4"
+    },
+    "VISIT_NOUN": {
+      "accounting_firm": "consultation",
+      "beauty_artist": "booking",
+      "beauty_salon": "appointment",
+      "default": "visit",
+      "dental_clinic": "appointment",
+      "digital_marketing_agency": "meeting",
+      "fitness_studio": "session",
+      "law_firm": "meeting",
+      "real_estate": "viewing",
+      "restaurant": "reservation",
+      "technology_saas": "trial"
+    }
+  },
+  "version": "3.1",
+  "vocabularyId": "digital-marketing-domain-vocabulary"
+}

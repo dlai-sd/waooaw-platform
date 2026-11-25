@@ -17,11 +17,13 @@ import json
 import pprint
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, field_validator
 from typing import Any, List, Optional
+from conversation_compatibility_client.models.accept_artifact_version_command_v1 import AcceptArtifactVersionCommandV1
 from conversation_compatibility_client.models.accept_plan_version_command_v1 import AcceptPlanVersionCommandV1
 from conversation_compatibility_client.models.acknowledge_corrective_proposal_command_v1 import AcknowledgeCorrectiveProposalCommandV1
 from conversation_compatibility_client.models.acknowledge_material_change_command_v1 import AcknowledgeMaterialChangeCommandV1
 from conversation_compatibility_client.models.apply_candidate_patch_command_v1 import ApplyCandidatePatchCommandV1
 from conversation_compatibility_client.models.confirm_induction_item_command_v1 import ConfirmInductionItemCommandV1
+from conversation_compatibility_client.models.confirm_scope_boundary_command_v1 import ConfirmScopeBoundaryCommandV1
 from conversation_compatibility_client.models.defer_induction_item_command_v1 import DeferInductionItemCommandV1
 from conversation_compatibility_client.models.request_reassessment_command_v1 import RequestReassessmentCommandV1
 from conversation_compatibility_client.models.reschedule_within_tolerance_command_v1 import RescheduleWithinToleranceCommandV1
@@ -30,7 +32,7 @@ from pydantic import StrictStr, Field
 from typing import Union, List, Set, Optional, Dict
 from typing_extensions import Literal, Self
 
-EMPLOYMENTCOMMANDREQUESTV1_ONE_OF_SCHEMAS = ["AcceptPlanVersionCommandV1", "AcknowledgeCorrectiveProposalCommandV1", "AcknowledgeMaterialChangeCommandV1", "ApplyCandidatePatchCommandV1", "ConfirmInductionItemCommandV1", "DeferInductionItemCommandV1", "RequestReassessmentCommandV1", "RescheduleWithinToleranceCommandV1", "SubmitPlanForReviewCommandV1"]
+EMPLOYMENTCOMMANDREQUESTV1_ONE_OF_SCHEMAS = ["AcceptArtifactVersionCommandV1", "AcceptPlanVersionCommandV1", "AcknowledgeCorrectiveProposalCommandV1", "AcknowledgeMaterialChangeCommandV1", "ApplyCandidatePatchCommandV1", "ConfirmInductionItemCommandV1", "ConfirmScopeBoundaryCommandV1", "DeferInductionItemCommandV1", "RequestReassessmentCommandV1", "RescheduleWithinToleranceCommandV1", "SubmitPlanForReviewCommandV1"]
 
 class EmploymentCommandRequestV1(BaseModel):
     """
@@ -54,8 +56,12 @@ class EmploymentCommandRequestV1(BaseModel):
     oneof_schema_8_validator: Optional[RequestReassessmentCommandV1] = None
     # data type: AcknowledgeCorrectiveProposalCommandV1
     oneof_schema_9_validator: Optional[AcknowledgeCorrectiveProposalCommandV1] = None
-    actual_instance: Optional[Union[AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1]] = None
-    one_of_schemas: Set[str] = { "AcceptPlanVersionCommandV1", "AcknowledgeCorrectiveProposalCommandV1", "AcknowledgeMaterialChangeCommandV1", "ApplyCandidatePatchCommandV1", "ConfirmInductionItemCommandV1", "DeferInductionItemCommandV1", "RequestReassessmentCommandV1", "RescheduleWithinToleranceCommandV1", "SubmitPlanForReviewCommandV1" }
+    # data type: AcceptArtifactVersionCommandV1
+    oneof_schema_10_validator: Optional[AcceptArtifactVersionCommandV1] = None
+    # data type: ConfirmScopeBoundaryCommandV1
+    oneof_schema_11_validator: Optional[ConfirmScopeBoundaryCommandV1] = None
+    actual_instance: Optional[Union[AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1]] = None
+    one_of_schemas: Set[str] = { "AcceptArtifactVersionCommandV1", "AcceptPlanVersionCommandV1", "AcknowledgeCorrectiveProposalCommandV1", "AcknowledgeMaterialChangeCommandV1", "ApplyCandidatePatchCommandV1", "ConfirmInductionItemCommandV1", "ConfirmScopeBoundaryCommandV1", "DeferInductionItemCommandV1", "RequestReassessmentCommandV1", "RescheduleWithinToleranceCommandV1", "SubmitPlanForReviewCommandV1" }
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -123,12 +129,22 @@ class EmploymentCommandRequestV1(BaseModel):
             error_messages.append(f"Error! Input type `{type(v)}` is not `AcknowledgeCorrectiveProposalCommandV1`")
         else:
             match += 1
+        # validate data type: AcceptArtifactVersionCommandV1
+        if not isinstance(v, AcceptArtifactVersionCommandV1):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `AcceptArtifactVersionCommandV1`")
+        else:
+            match += 1
+        # validate data type: ConfirmScopeBoundaryCommandV1
+        if not isinstance(v, ConfirmScopeBoundaryCommandV1):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `ConfirmScopeBoundaryCommandV1`")
+        else:
+            match += 1
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when setting `actual_instance` in EmploymentCommandRequestV1 with oneOf schemas: AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when setting `actual_instance` in EmploymentCommandRequestV1 with oneOf schemas: AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when setting `actual_instance` in EmploymentCommandRequestV1 with oneOf schemas: AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when setting `actual_instance` in EmploymentCommandRequestV1 with oneOf schemas: AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
         else:
             return v
 
@@ -197,13 +213,25 @@ class EmploymentCommandRequestV1(BaseModel):
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
+        # deserialize data into AcceptArtifactVersionCommandV1
+        try:
+            instance.actual_instance = AcceptArtifactVersionCommandV1.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into ConfirmScopeBoundaryCommandV1
+        try:
+            instance.actual_instance = ConfirmScopeBoundaryCommandV1.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
 
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when deserializing the JSON string into EmploymentCommandRequestV1 with oneOf schemas: AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when deserializing the JSON string into EmploymentCommandRequestV1 with oneOf schemas: AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when deserializing the JSON string into EmploymentCommandRequestV1 with oneOf schemas: AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when deserializing the JSON string into EmploymentCommandRequestV1 with oneOf schemas: AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1. Details: " + ", ".join(error_messages))
         else:
             return instance
 
@@ -217,7 +245,7 @@ class EmploymentCommandRequestV1(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Optional[Union[Dict[str, Any], AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1]]:
+    def to_dict(self) -> Optional[Union[Dict[str, Any], AcceptArtifactVersionCommandV1, AcceptPlanVersionCommandV1, AcknowledgeCorrectiveProposalCommandV1, AcknowledgeMaterialChangeCommandV1, ApplyCandidatePatchCommandV1, ConfirmInductionItemCommandV1, ConfirmScopeBoundaryCommandV1, DeferInductionItemCommandV1, RequestReassessmentCommandV1, RescheduleWithinToleranceCommandV1, SubmitPlanForReviewCommandV1]]:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None

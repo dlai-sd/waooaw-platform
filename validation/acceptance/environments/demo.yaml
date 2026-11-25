@@ -31,6 +31,7 @@ journeys:
   - slice-1-discover-to-connect
   - slice-2-publish
   - slice-3-hire-and-selection
+  - slice-4-agent-work
 synthetic:
   customers_per_run: 2
   max_open_relationships: 20

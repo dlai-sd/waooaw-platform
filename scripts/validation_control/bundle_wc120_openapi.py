@@ -36,8 +36,8 @@ def bundle(source: Path, output: Path) -> None:
         raise ValueError("OpenAPI components.schemas must be objects")
 
     command_union = external_schemas.get("EmploymentCommandRequestV1")
-    if not isinstance(command_union, dict) or len(command_union.get("oneOf", [])) != 9:
-        raise ValueError("Employment command union must contain exactly nine branches")
+    if not isinstance(command_union, dict) or len(command_union.get("oneOf", [])) != 11:
+        raise ValueError("Employment command union must contain exactly eleven branches")
     command_union.pop("discriminator", None)
     for branch in command_union["oneOf"]:
         name = branch["$ref"].rsplit("/", 1)[1]

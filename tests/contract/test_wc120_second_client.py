@@ -45,7 +45,7 @@ def test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_aut
     )
     mapping = employment_spec["components"]["schemas"]["EmploymentCommandRequestV1"]["discriminator"]["mapping"]
     command_models = sorted(reference.rsplit("/", 1)[1] for reference in mapping.values())
-    assert len(command_models) == 9
+    assert len(command_models) == 11
 
     typescript_union = (TYPESCRIPT_ROOT / "src/models/EmploymentCommandRequestV1.ts").read_text(encoding="utf-8")
     python_union = (package / "models/employment_command_request_v1.py").read_text(encoding="utf-8")
@@ -54,7 +54,7 @@ def test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_aut
         assert f"import type {{ {model} }} from './{model}';" in typescript_union
         python_name = "".join(f"_{character.lower()}" if character.isupper() else character for character in model).lstrip("_")
         assert (package / f"models/{python_name}.py").is_file()
-    assert python_union.count("oneof_schema_") >= 9
+    assert python_union.count("oneof_schema_") >= 11
 
 
 def test_wc120_python_client_source_imports_without_network_or_provider_configuration() -> None:

@@ -25,10 +25,11 @@ import { EvidencePanel } from './EvidencePanel';
 import { GoalPlanPanel } from './GoalPlanPanel';
 import { MonitorPanel } from './MonitorPanel';
 import { OverviewPanel } from './OverviewPanel';
+import { RealWorkPanel } from './RealWorkPanel';
 import { WalletPanel } from './WalletPanel';
 import type { WorkbenchPanelProps } from './useWorkbenchCommand';
 
-type ToolId = 'overview' | 'goals' | 'capabilities' | 'decisions' | 'monitor' | 'wallet' | 'evidence';
+type ToolId = 'overview' | 'goals' | 'capabilities' | 'decisions' | 'monitor' | 'work' | 'wallet' | 'evidence';
 
 // The tool a redeemed handoff opens; the allowance is never opened for a beneficiary, who has no such tool.
 export function toolForPurpose(purpose: string, beneficiary: boolean): ToolId {
@@ -136,6 +137,7 @@ export function WorkbenchShell({
     { id: 'capabilities', label: copy.toolCapabilities },
     { id: 'decisions', label: copy.toolDecisions },
     { id: 'monitor', label: copy.toolMonitor },
+    { id: 'work', label: copy.toolWork },
     ...(beneficiary ? [] : [{ id: 'wallet' as const, label: copy.toolWallet }]),
     { id: 'evidence', label: copy.toolEvidence },
   ];
@@ -195,6 +197,7 @@ export function WorkbenchShell({
           {tool === 'capabilities' ? <CapabilitiesPanel {...panel} /> : null}
           {tool === 'decisions' ? <DecisionQueue {...panel} /> : null}
           {tool === 'monitor' ? <MonitorPanel {...panel} /> : null}
+          {tool === 'work' ? <RealWorkPanel relationshipId={relationshipId} /> : null}
           {tool === 'wallet' && !beneficiary ? <WalletPanel {...panel} /> : null}
           {tool === 'evidence' ? <EvidencePanel {...panel} /> : null}
         </div>

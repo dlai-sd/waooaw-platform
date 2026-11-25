@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Protocol
 
 from evaluation_workflow import EvaluationMessage, InterviewAnswerService, TypedAnswerEnvelope
-from intent_crystallizer import CrystallizerRequiredError, LockedArtifact
+from intent_crystallizer import CrystallizerRequiredError, LockedArtifact, StubApprovalRefused
 from skill_resolver import SessionSkillContext
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,12 @@ class SessionExecutor:
     # ── Session state management (WC041-04) ────────────────────────────────
 
     def add_locked_artifact(self, skill_id: str, artifact: LockedArtifact) -> None:
-        """Record a customer-approved LockedArtifact. Unblocks tool calls for this skill."""
+        """Record a customer-approved LockedArtifact. Unblocks tool calls for this skill.
+
+        A stub or empty approval evidence id never locks anything (WC-170 DC-2).
+        """
+        if not artifact.has_genuine_approval():
+            raise StubApprovalRefused(skill_id)
         self._locked_artifacts[skill_id] = artifact
         self._crystallization_complete[skill_id] = True
         logger.info("LockedArtifact stored for skill_id=%s", skill_id)

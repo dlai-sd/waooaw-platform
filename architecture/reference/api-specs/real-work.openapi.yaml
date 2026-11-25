@@ -1,0 +1,180 @@
+openapi: 3.1.0
+info:
+  title: WAOOAW Real Agent Work (WC-170)
+  version: 1.0.0-candidate.1
+  description: |
+    Customer reads of locked artifacts, the execution timeline and traceable outcomes (Business Platform); the Founder
+    readiness read-back; the Professional Runtime ingest route; and the sandbox spend chain private routes (Billing
+    Engine). The data contracts are in architecture/reference/product/ae02-real-work-solution-contract.md (DC-1 to DC-7).
+    Customer decisions are not routes here: they are the closed employment commands ACCEPT_ARTIFACT_VERSION and
+    CONFIRM_SCOPE_BOUNDARY in conversational-employment-business-platform.openapi.yaml (submitEmploymentCommand).
+servers:
+  - url: https://api.demo.waooaw.com
+paths:
+  /api/v1/employment/relationships/{relationshipId}/real-work/artifacts:
+    get:
+      operationId: listRealWorkArtifacts
+      summary: Locked artifacts that control execution, each with its two decision records
+      parameters:
+        - { $ref: "#/components/parameters/RelationshipId" }
+        - { name: artifactType, in: query, required: false, schema: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" } }
+      responses:
+        "200": { description: Artifact versions with decision state and the command context the decisions must quote back, content: { application/json: { schema: { $ref: "#/components/schemas/ArtifactListV1" } } } }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+  /api/v1/employment/relationships/{relationshipId}/real-work/artifacts/{artifactId}:
+    get:
+      operationId: getRealWorkArtifact
+      summary: One artifact version with its decision state
+      parameters:
+        - { $ref: "#/components/parameters/RelationshipId" }
+        - { name: artifactId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: The artifact and its decision state, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+  /api/v1/employment/relationships/{relationshipId}/real-work/timeline:
+    get:
+      operationId: getRealWorkTimeline
+      summary: One execution timeline per relationship in six states
+      parameters:
+        - { $ref: "#/components/parameters/RelationshipId" }
+      responses:
+        "200": { description: Events in sequence order and the latest state per work item, content: { application/json: { schema: { $ref: "#/components/schemas/TimelineV1" } } } }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+  /api/v1/employment/relationships/{relationshipId}/real-work/outcomes:
+    get:
+      operationId: getRealWorkOutcomes
+      summary: Work completed, agent-stated figures and business outcomes that cannot be measured yet
+      parameters:
+        - { $ref: "#/components/parameters/RelationshipId" }
+      responses:
+        "200": { description: Outcome view, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+  /api/v1/employment/relationships/{relationshipId}/real-work/outcomes/{claimId}:
+    get:
+      operationId: getRealWorkOutcomeTrace
+      summary: The work items and evidence behind one claim
+      parameters:
+        - { $ref: "#/components/parameters/RelationshipId" }
+        - { name: claimId, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9_.:-]{1,128}$" } }
+      responses:
+        "200": { description: The claim with its work items and evidence, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+  /api/v1/admin/employment/readiness:
+    get:
+      operationId: getEmploymentReadiness
+      summary: Founder-only read-back of whether the real-work chain can run (never returns a credential value)
+      responses:
+        "200": { description: Gate, epoch and a named BLOCKED-BY-FLAG reason for every fact that is not ready, content: { application/json: { schema: { $ref: "#/components/schemas/ReadinessV1" } } } }
+        "403": { description: Not the Founder }
+  /internal/v1/real-work/events:
+    post:
+      operationId: ingestRealWorkEvent
+      summary: The Professional Runtime reports a timeline event, an artifact proposal or an agent-stated claim (ADR-046 signed workload call)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/IngestRequestV1" } } }
+      responses:
+        "200": { description: Timeline event recorded }
+        "201": { description: Artifact proposed }
+        "202": { description: Claim recorded }
+        "400": { description: Invalid request or a credential-looking value }
+        "403": { description: Workload authority denied }
+        "409": { description: Owner rule refused the event (artifact not executable, blind retry, state conflict) }
+  /internal/v1/real-work/spend/authorize:
+    post:
+      operationId: wbeAuthorizeSpend
+      summary: Authorize sandbox spend for one exact approved and scope-confirmed artifact version
+      parameters: [ { $ref: "#/components/parameters/IdempotencyKey" } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses: { "200": { description: Authorization }, "409": { description: Refused }, "422": { description: Invalid } }
+  /internal/v1/real-work/spend/reserve:
+    post:
+      operationId: wbeReserveSpend
+      summary: Reserve before dispatch; the ceiling check and the hold are one operation
+      parameters: [ { $ref: "#/components/parameters/IdempotencyKey" } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses: { "200": { description: Reservation }, "409": { description: Refused }, "422": { description: Invalid } }
+  /internal/v1/real-work/spend/charge:
+    post:
+      operationId: wbeChargeSpend
+      summary: Charge only on verified provider evidence
+      parameters: [ { $ref: "#/components/parameters/IdempotencyKey" } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses: { "200": { description: Charge }, "409": { description: Refused }, "422": { description: Invalid } }
+  /internal/v1/real-work/spend/reconcile:
+    post:
+      operationId: wbeReconcileSpend
+      summary: MATCHED, WITHIN_TOLERANCE or DISCREPANCY; a discrepancy blocks new spend for the relationship
+      parameters: [ { $ref: "#/components/parameters/IdempotencyKey" } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses: { "200": { description: Reconciliation result }, "409": { description: Refused } }
+components:
+  parameters:
+    RelationshipId: { name: relationshipId, in: path, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+  responses:
+    NotAccessible:
+      description: One closed answer for a disabled protocol, a missing relationship or another tenant
+      content: { application/json: { schema: { type: object, properties: { code: { type: string, const: EMPLOYMENT_NOT_ACCESSIBLE } } } } }
+  schemas:
+    ArtifactListV1:
+      type: object
+      required: [items]
+      properties:
+        commandContext:
+          type: [object, "null"]
+          properties:
+            workspaceVersion: { type: string }
+            manifestVersion: { type: string }
+            decisionSpaceVersion: { type: integer }
+        items: { type: array, items: { type: object } }
+    TimelineV1:
+      type: object
+      required: [relationshipId, events, workItems, emergencyStopActive]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        events: { type: array, items: { $ref: "#/components/schemas/TimelineEventV1" } }
+        workItems: { type: array, items: { type: object } }
+        emergencyStopActive: { type: boolean }
+    TimelineEventV1:
+      type: object
+      required: [eventId, workItemId, workItemType, state, sequence, sentence]
+      properties:
+        eventId: { type: string, format: uuid }
+        workItemId: { type: string, format: uuid }
+        workItemType: { type: string }
+        state: { type: string, enum: [PROPOSED, APPROVED, EXECUTING, COMPLETED, FAILED, HALTED] }
+        reasonCode: { type: [string, "null"], enum: [EMERGENCY_STOP, PROVIDER_REJECTED, UNKNOWN_OUTCOME, RECONCILED, AWAITING_PROVIDER_PROOF, POLICY_BLOCKED, TIMED_OUT, null] }
+        artifactId: { type: [string, "null"], format: uuid }
+        artifactDigest: { type: [string, "null"], pattern: "^[0-9a-f]{64}$" }
+        providerReference: { type: [string, "null"] }
+        sequence: { type: integer }
+        sentence: { type: string }
+    ReadinessV1:
+      type: object
+      required: [schemaVersion, gateId, enabled, rollbackEpoch, ready, checks]
+      properties:
+        schemaVersion: { type: string }
+        gateId: { type: string }
+        enabled: { type: boolean }
+        rollbackEpoch: { type: integer }
+        ready: { type: boolean }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [id, state]
+            properties:
+              id: { type: string }
+              state: { type: string, enum: [READY, BLOCKED-BY-FLAG] }
+              reason: { type: [string, "null"] }
+    IngestRequestV1:
+      type: object
+      required: [type, tenantId, relationshipId]
+      properties:
+        type: { type: string, enum: [TIMELINE_EVENT, ARTIFACT_PROPOSAL, AGENT_CLAIM] }
+        tenantId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        event: { type: object }
+        artifact: { type: object }
+        claim: { type: object }

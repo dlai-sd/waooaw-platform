@@ -222,7 +222,12 @@ def test_feature_settings_and_founders_pass_through_unchanged_for_any_environmen
         "trial_identity_binding_mode": "RECORD",
         "whatsapp_stop_acknowledgement_enabled": True,
     }
-    access = {"founders": [{"email": "founder@example.org", "subject": "a1b2c3d4-e5f6"}, {"email": "second@example.org", "rebind_on_start": True}]}
+    access = {
+        "founders": [
+            {"email": "founder@example.org", "subject": "a1b2c3d4-e5f6"},
+            {"email": "second@example.org", "rebind_on_start": True},
+        ]
+    }
     for environment in ("demo", "uat", "prod"):
         inputs = create_inputs(
             environment,
@@ -291,6 +296,9 @@ def test_acceptance_synthetic_tenants_setting_must_be_a_boolean() -> None:
         {"platform_access": {"founders": [{"email": "a@example.org", "rebind_on_start": "true"}]}},
         {"platform_access": {"founders": [{"email": "a@example.org", "subject": "a1b2c3d4-e5f6", "rebind_on_start": True}]}},
         {"platform_access": {"admins": [{"email": "a@example.org"}]}},
+        {"feature_settings": {"employment_protocol_rollback_epoch": -1}},
+        {"feature_settings": {"employment_protocol_rollback_epoch": True}},
+        {"feature_settings": {"employment_protocol_enabled": "true"}},
     ],
 )
 def test_invalid_feature_settings_or_founders_fail_before_terraform(fields: dict[str, Any]) -> None:
@@ -298,6 +306,22 @@ def test_invalid_feature_settings_or_founders_fail_before_terraform(fields: dict
         create_inputs(
             "demo", manifest(), configured("demo", **fields), True, current_time=datetime(2026, 8, 25, tzinfo=timezone.utc)
         )
+
+
+def test_wc170_employment_activation_settings_pass_through_for_demo() -> None:
+    settings = {
+        "employment_protocol_enabled": True,
+        "employment_protocol_rollback_epoch": 2,
+        "web_conversation_enabled": True,
+    }
+    inputs = create_inputs(
+        "demo",
+        manifest(),
+        configured("demo", feature_settings=settings),
+        True,
+        current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+    )
+    assert inputs["feature_settings"] == settings
 
 
 SETTINGS_DIR = Path(__file__).resolve().parents[2] / "infrastructure" / "platform-settings"

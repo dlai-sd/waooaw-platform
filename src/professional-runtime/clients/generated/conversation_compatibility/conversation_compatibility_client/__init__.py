@@ -32,6 +32,7 @@ __all__ = [
     "ApiKeyError",
     "ApiAttributeError",
     "ApiException",
+    "AcceptArtifactVersionCommandV1",
     "AcceptPlanVersionCommandV1",
     "AcknowledgeCorrectiveProposalCommandV1",
     "AcknowledgeMaterialChangeCommandV1",
@@ -46,6 +47,7 @@ __all__ = [
     "CanonicalMessageV1",
     "ChannelKind",
     "ConfirmInductionItemCommandV1",
+    "ConfirmScopeBoundaryCommandV1",
     "ContextCorrectionRequestV1",
     "ContextFreshness",
     "ContextProfileItemV1",
@@ -122,6 +124,7 @@ from conversation_compatibility_client.exceptions import ApiAttributeError as Ap
 from conversation_compatibility_client.exceptions import ApiException as ApiException
 
 # import models into sdk package
+from conversation_compatibility_client.models.accept_artifact_version_command_v1 import AcceptArtifactVersionCommandV1 as AcceptArtifactVersionCommandV1
 from conversation_compatibility_client.models.accept_plan_version_command_v1 import AcceptPlanVersionCommandV1 as AcceptPlanVersionCommandV1
 from conversation_compatibility_client.models.acknowledge_corrective_proposal_command_v1 import AcknowledgeCorrectiveProposalCommandV1 as AcknowledgeCorrectiveProposalCommandV1
 from conversation_compatibility_client.models.acknowledge_material_change_command_v1 import AcknowledgeMaterialChangeCommandV1 as AcknowledgeMaterialChangeCommandV1
@@ -136,6 +139,7 @@ from conversation_compatibility_client.models.canonical_conversation_v1 import C
 from conversation_compatibility_client.models.canonical_message_v1 import CanonicalMessageV1 as CanonicalMessageV1
 from conversation_compatibility_client.models.channel_kind import ChannelKind as ChannelKind
 from conversation_compatibility_client.models.confirm_induction_item_command_v1 import ConfirmInductionItemCommandV1 as ConfirmInductionItemCommandV1
+from conversation_compatibility_client.models.confirm_scope_boundary_command_v1 import ConfirmScopeBoundaryCommandV1 as ConfirmScopeBoundaryCommandV1
 from conversation_compatibility_client.models.context_correction_request_v1 import ContextCorrectionRequestV1 as ContextCorrectionRequestV1
 from conversation_compatibility_client.models.context_freshness import ContextFreshness as ContextFreshness
 from conversation_compatibility_client.models.context_profile_item_v1 import ContextProfileItemV1 as ContextProfileItemV1

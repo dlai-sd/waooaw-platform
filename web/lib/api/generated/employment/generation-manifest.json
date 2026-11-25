@@ -3,5 +3,5 @@
   "generatorVersion": "7.17.0",
   "language": "typescript-fetch",
   "input": "architecture/reference/api-specs/conversational-employment-business-platform.openapi.yaml",
-  "inputSha256": "aa9f3992cb35036c9757c507860039d24fad161a0e79e38b8ad898b12b0deefa"
+  "inputSha256": "064030e496f279ac0b8cb0e6f7d841a0d70065499f953a2c701756728434462e"
 }

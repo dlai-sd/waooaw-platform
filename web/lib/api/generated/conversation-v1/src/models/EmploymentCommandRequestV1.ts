@@ -12,6 +12,13 @@
  * Do not edit the class manually.
  */
 
+import type { AcceptArtifactVersionCommandV1 } from './AcceptArtifactVersionCommandV1';
+import {
+    instanceOfAcceptArtifactVersionCommandV1,
+    AcceptArtifactVersionCommandV1FromJSON,
+    AcceptArtifactVersionCommandV1FromJSONTyped,
+    AcceptArtifactVersionCommandV1ToJSON,
+} from './AcceptArtifactVersionCommandV1';
 import type { AcceptPlanVersionCommandV1 } from './AcceptPlanVersionCommandV1';
 import {
     instanceOfAcceptPlanVersionCommandV1,
@@ -47,6 +54,13 @@ import {
     ConfirmInductionItemCommandV1FromJSONTyped,
     ConfirmInductionItemCommandV1ToJSON,
 } from './ConfirmInductionItemCommandV1';
+import type { ConfirmScopeBoundaryCommandV1 } from './ConfirmScopeBoundaryCommandV1';
+import {
+    instanceOfConfirmScopeBoundaryCommandV1,
+    ConfirmScopeBoundaryCommandV1FromJSON,
+    ConfirmScopeBoundaryCommandV1FromJSONTyped,
+    ConfirmScopeBoundaryCommandV1ToJSON,
+} from './ConfirmScopeBoundaryCommandV1';
 import type { DeferInductionItemCommandV1 } from './DeferInductionItemCommandV1';
 import {
     instanceOfDeferInductionItemCommandV1,
@@ -81,7 +95,7 @@ import {
  *
  * @export
  */
-export type EmploymentCommandRequestV1 = AcceptPlanVersionCommandV1 | AcknowledgeCorrectiveProposalCommandV1 | AcknowledgeMaterialChangeCommandV1 | ApplyCandidatePatchCommandV1 | ConfirmInductionItemCommandV1 | DeferInductionItemCommandV1 | RequestReassessmentCommandV1 | RescheduleWithinToleranceCommandV1 | SubmitPlanForReviewCommandV1;
+export type EmploymentCommandRequestV1 = AcceptArtifactVersionCommandV1 | AcceptPlanVersionCommandV1 | AcknowledgeCorrectiveProposalCommandV1 | AcknowledgeMaterialChangeCommandV1 | ApplyCandidatePatchCommandV1 | ConfirmInductionItemCommandV1 | ConfirmScopeBoundaryCommandV1 | DeferInductionItemCommandV1 | RequestReassessmentCommandV1 | RescheduleWithinToleranceCommandV1 | SubmitPlanForReviewCommandV1;
 
 export function EmploymentCommandRequestV1FromJSON(json: any): EmploymentCommandRequestV1 {
     return EmploymentCommandRequestV1FromJSONTyped(json, false);
@@ -93,6 +107,9 @@ export function EmploymentCommandRequestV1FromJSONTyped(json: any, ignoreDiscrim
     }
     if (typeof json !== 'object') {
         return json;
+    }
+    if (instanceOfAcceptArtifactVersionCommandV1(json)) {
+        return AcceptArtifactVersionCommandV1FromJSONTyped(json, true);
     }
     if (instanceOfAcceptPlanVersionCommandV1(json)) {
         return AcceptPlanVersionCommandV1FromJSONTyped(json, true);
@@ -108,6 +125,9 @@ export function EmploymentCommandRequestV1FromJSONTyped(json: any, ignoreDiscrim
     }
     if (instanceOfConfirmInductionItemCommandV1(json)) {
         return ConfirmInductionItemCommandV1FromJSONTyped(json, true);
+    }
+    if (instanceOfConfirmScopeBoundaryCommandV1(json)) {
+        return ConfirmScopeBoundaryCommandV1FromJSONTyped(json, true);
     }
     if (instanceOfDeferInductionItemCommandV1(json)) {
         return DeferInductionItemCommandV1FromJSONTyped(json, true);
@@ -135,6 +155,9 @@ export function EmploymentCommandRequestV1ToJSONTyped(value?: EmploymentCommandR
     if (typeof value !== 'object') {
         return value;
     }
+    if (instanceOfAcceptArtifactVersionCommandV1(value)) {
+        return AcceptArtifactVersionCommandV1ToJSON(value as AcceptArtifactVersionCommandV1);
+    }
     if (instanceOfAcceptPlanVersionCommandV1(value)) {
         return AcceptPlanVersionCommandV1ToJSON(value as AcceptPlanVersionCommandV1);
     }
@@ -149,6 +172,9 @@ export function EmploymentCommandRequestV1ToJSONTyped(value?: EmploymentCommandR
     }
     if (instanceOfConfirmInductionItemCommandV1(value)) {
         return ConfirmInductionItemCommandV1ToJSON(value as ConfirmInductionItemCommandV1);
+    }
+    if (instanceOfConfirmScopeBoundaryCommandV1(value)) {
+        return ConfirmScopeBoundaryCommandV1ToJSON(value as ConfirmScopeBoundaryCommandV1);
     }
     if (instanceOfDeferInductionItemCommandV1(value)) {
         return DeferInductionItemCommandV1ToJSON(value as DeferInductionItemCommandV1);

@@ -55,6 +55,9 @@ FEATURE_SETTING_TYPES: dict[str, Any] = {
     "trial_identity_binding_mode": ("OFF", "RECORD", "ENFORCE"),
     "whatsapp_stop_acknowledgement_enabled": bool,
     "acceptance_synthetic_tenants_enabled": bool,
+    "employment_protocol_enabled": bool,
+    "employment_protocol_rollback_epoch": int,
+    "web_conversation_enabled": bool,
 }
 # Settings that exist only for Demo and UAT; Production rejects the key before Terraform (ADR-055 decision 4).
 NON_PRODUCTION_FEATURE_SETTINGS = frozenset({"acceptance_synthetic_tenants_enabled"})
@@ -93,12 +96,19 @@ def feature_settings_inputs(configuration: Mapping[str, Any]) -> dict[str, Any]:
             allowed = FEATURE_SETTING_TYPES[name]
             if allowed is bool:
                 valid = isinstance(value, bool)
+            elif allowed is int:
+                valid = isinstance(value, int) and not isinstance(value, bool) and value >= 0
             else:
                 valid = isinstance(value, str) and value in allowed
             if not valid:
-                raise ValueError(
-                    f"feature_settings.{name} must be " + ("a boolean" if allowed is bool else "one of " + ", ".join(allowed))
+                expected = (
+                    "a boolean"
+                    if allowed is bool
+                    else "a whole number of at least 0"
+                    if allowed is int
+                    else "one of " + ", ".join(allowed)
                 )
+                raise ValueError(f"feature_settings.{name} must be {expected}")
         inputs["feature_settings"] = dict(settings)
     access = configuration.get("platform_access")
     if access is not None:

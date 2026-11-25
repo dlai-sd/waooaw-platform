@@ -98,6 +98,7 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AcceptArtifactVersionCommandV1](conversation_compatibility_client/docs/AcceptArtifactVersionCommandV1.md)
  - [AcceptPlanVersionCommandV1](conversation_compatibility_client/docs/AcceptPlanVersionCommandV1.md)
  - [AcknowledgeCorrectiveProposalCommandV1](conversation_compatibility_client/docs/AcknowledgeCorrectiveProposalCommandV1.md)
  - [AcknowledgeMaterialChangeCommandV1](conversation_compatibility_client/docs/AcknowledgeMaterialChangeCommandV1.md)
@@ -112,6 +113,7 @@ Class | Method | HTTP request | Description
  - [CanonicalMessageV1](conversation_compatibility_client/docs/CanonicalMessageV1.md)
  - [ChannelKind](conversation_compatibility_client/docs/ChannelKind.md)
  - [ConfirmInductionItemCommandV1](conversation_compatibility_client/docs/ConfirmInductionItemCommandV1.md)
+ - [ConfirmScopeBoundaryCommandV1](conversation_compatibility_client/docs/ConfirmScopeBoundaryCommandV1.md)
  - [ContextCorrectionRequestV1](conversation_compatibility_client/docs/ContextCorrectionRequestV1.md)
  - [ContextFreshness](conversation_compatibility_client/docs/ContextFreshness.md)
  - [ContextProfileItemV1](conversation_compatibility_client/docs/ContextProfileItemV1.md)

@@ -4,6 +4,7 @@
 
 using System.Text.Json;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.RealWork;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
@@ -86,6 +87,100 @@ public sealed class EmploymentCommandCoordinatorTests
         Assert.Equal(
             "UNKNOWN",
             service.GetCommand(tenantId, relationshipId, submission.Receipt.CommandId)?.State
+        );
+    }
+
+    [Fact]
+    public async Task TheTwoArtifactDecisionsRunThroughTheCommandPipelineAndBindTheExactDigest()
+    {
+        var service = new ConversationalEmploymentService();
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var workspace = Workspace(tenantId, relationshipId);
+        service.RegisterWorkspace(workspace);
+        var ledger = new InMemoryRealWorkLedger();
+        var artifacts = new RealWorkArtifactService(ledger, TimeProvider.System);
+        var decisions = new RealWorkDecisionService(
+            ledger,
+            artifacts,
+            new AllowingConstitutionalGateway(),
+            TimeProvider.System
+        );
+        var artifact = artifacts.Propose(
+            tenantId,
+            relationshipId,
+            new("CAMPAIGN_BRIEF", Json("""{"goal":"x"}"""), "A plain summary.")
+        );
+        var coordinator = new EmploymentCommandCoordinator(
+            service,
+            new RecordingGateway(),
+            decisions
+        );
+
+        async Task<EmploymentCommandOutcome?> Run(string kind, string digest, long space = 1)
+        {
+            var command = Json(
+                kind == "ACCEPT_ARTIFACT_VERSION"
+                    ? $$"""
+                    {"schemaVersion":"1.0","kind":"{{kind}}","subjectRef":"{{artifact.ArtifactId}}",
+                     "expectedWorkspaceVersion":"workspace-1","expectedManifestVersion":"manifest-1",
+                     "expectedArtifactId":"{{artifact.ArtifactId}}","expectedArtifactDigest":"{{digest}}",
+                     "acknowledgement":"I approve this exact version."}
+                    """
+                    : $$"""
+                    {"schemaVersion":"1.0","kind":"{{kind}}","subjectRef":"{{artifact.ArtifactId}}",
+                     "expectedWorkspaceVersion":"workspace-1","expectedManifestVersion":"manifest-1",
+                     "expectedArtifactId":"{{artifact.ArtifactId}}","expectedArtifactDigest":"{{digest}}",
+                     "expectedDecisionSpaceVersion":{{space}},
+                     "acknowledgement":"This is within what the agent may do."}
+                    """
+            );
+            var submission = service.Submit(
+                tenantId,
+                relationshipId,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                command
+            );
+            await coordinator.CoordinateAsync(
+                new EmploymentCommandCoordinationContext(
+                    tenantId,
+                    relationshipId,
+                    Guid.NewGuid(),
+                    submission.Receipt.CommandId,
+                    kind,
+                    command,
+                    workspace
+                ),
+                CancellationToken.None
+            );
+            return service.GetCommand(tenantId, relationshipId, submission.Receipt.CommandId);
+        }
+
+        var tooEarly = await Run("CONFIRM_SCOPE_BOUNDARY", artifact.Digest);
+        var wrongDigest = await Run("ACCEPT_ARTIFACT_VERSION", new string('e', 64));
+        var approved = await Run("ACCEPT_ARTIFACT_VERSION", artifact.Digest);
+        var staleSpace = await Run("CONFIRM_SCOPE_BOUNDARY", artifact.Digest, 9);
+        var confirmed = await Run("CONFIRM_SCOPE_BOUNDARY", artifact.Digest);
+
+        Assert.Equal("BLOCKED", tooEarly!.State);
+        Assert.Contains(
+            "artifact-binding:REAL_WORK_APPROVAL_REQUIRED_FIRST",
+            tooEarly.EvidenceRefs
+        );
+        Assert.Equal("BLOCKED", wrongDigest!.State);
+        Assert.Contains("artifact-binding:REAL_WORK_DIGEST_MISMATCH", wrongDigest.EvidenceRefs);
+        Assert.Equal("COMPLETED", approved!.State);
+        Assert.Equal("BLOCKED", staleSpace!.State);
+        Assert.Contains(
+            "artifact-binding:REAL_WORK_DECISION_SPACE_CHANGED",
+            staleSpace.EvidenceRefs
+        );
+        Assert.Equal("COMPLETED", confirmed!.State);
+        Assert.True(
+            decisions
+                .Check(tenantId, relationshipId, artifact.ArtifactId, artifact.Digest)
+                .Executable
         );
     }
 
@@ -231,6 +326,19 @@ public sealed class EmploymentCommandCoordinatorTests
     {
         using var document = JsonDocument.Parse(value);
         return document.RootElement.Clone();
+    }
+
+    private sealed class AllowingConstitutionalGateway : IRelationshipConstitutionalGateway
+    {
+        public Task<Guid> AuthorizeAndRecordAsync(
+            Guid tenantId,
+            Guid relationshipId,
+            string professionalType,
+            string actionType,
+            Guid correlationId,
+            object actionParameters,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(Guid.NewGuid());
     }
 
     private sealed class RecordingGateway(string? unknownOwner = null)

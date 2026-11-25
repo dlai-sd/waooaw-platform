@@ -1,0 +1,17 @@
+{
+  "vocabularyId": "private-tutor-domain-vocabulary",
+  "version": "1.0",
+  "defaultDomain": "default",
+  "tokens": {
+    "CUSTOMER_SINGULAR": {
+      "primary_school": "pupil",
+      "exam_coaching": "candidate",
+      "default": "learner"
+    },
+    "VISIT_NOUN": {
+      "primary_school": "lesson",
+      "exam_coaching": "mock test",
+      "default": "session"
+    }
+  }
+}

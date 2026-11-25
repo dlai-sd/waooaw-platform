@@ -10,6 +10,7 @@ src/apis/SharedConversationApi.ts
 src/apis/WhatsAppProviderCallbackApi.ts
 src/apis/index.ts
 src/index.ts
+src/models/AcceptArtifactVersionCommandV1.ts
 src/models/AcceptPlanVersionCommandV1.ts
 src/models/AcknowledgeCorrectiveProposalCommandV1.ts
 src/models/AcknowledgeMaterialChangeCommandV1.ts
@@ -24,6 +25,7 @@ src/models/CanonicalConversationV1.ts
 src/models/CanonicalMessageV1.ts
 src/models/ChannelKind.ts
 src/models/ConfirmInductionItemCommandV1.ts
+src/models/ConfirmScopeBoundaryCommandV1.ts
 src/models/ContextCorrectionRequestV1.ts
 src/models/ContextFreshness.ts
 src/models/ContextProfileItemV1.ts

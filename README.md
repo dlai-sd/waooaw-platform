@@ -18,14 +18,14 @@ Deviation rule:    Any change to iterations, order, scope or Work Contract numbe
 ## Platform Status
 
 ```
-Version:              v1.45.0 — state as of 2026-11-25: WC-169 delivered (PR #642 merged as eee79848c1)
+Version:              v1.45.0 — state as of 2026-11-25: WC-170 delivered (PR #643 merged as 843719eb23)
 Epoch:                1 — Foundation
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 56
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (16 active + 1 proposed skill, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G5 CLEAR
-Phase:                IMPLEMENTATION — latest delivered WC-169
+Phase:                IMPLEMENTATION — latest delivered WC-170
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
@@ -42,8 +42,8 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-169 — Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2)
-Sprint status:   DONE — 2026-11-25 · PR #642 merged as eee79848c1
+Last sprint:     WC-170 — Agent Execution Instructions
+Sprint status:   DONE — 2026-11-25 · PR #643 merged as 843719eb23
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```

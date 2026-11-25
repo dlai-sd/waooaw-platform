@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AcceptArtifactVersionCommandV1';
 export * from './AcceptPlanVersionCommandV1';
 export * from './AcknowledgeCorrectiveProposalCommandV1';
 export * from './AcknowledgeMaterialChangeCommandV1';
@@ -14,6 +15,7 @@ export * from './CanonicalConversationV1';
 export * from './CanonicalMessageV1';
 export * from './ChannelKind';
 export * from './ConfirmInductionItemCommandV1';
+export * from './ConfirmScopeBoundaryCommandV1';
 export * from './ContextCorrectionRequestV1';
 export * from './ContextFreshness';
 export * from './ContextProfileItemV1';

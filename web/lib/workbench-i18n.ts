@@ -16,6 +16,7 @@ export type WorkbenchMessages = {
   toolCapabilities: string;
   toolDecisions: string;
   toolMonitor: string;
+  toolWork: string;
   toolWallet: string;
   toolEvidence: string;
   nextStep: string;
@@ -117,6 +118,7 @@ const en: WorkbenchMessages = {
   toolCapabilities: 'Capabilities',
   toolDecisions: 'Decisions',
   toolMonitor: 'Monitor',
+  toolWork: 'Work',
   toolWallet: 'Allowance',
   toolEvidence: 'Evidence',
   nextStep: 'Recommended next step',
@@ -283,6 +285,7 @@ const hi: WorkbenchMessages = {
   toolCapabilities: 'क्षमताएँ',
   toolDecisions: 'निर्णय',
   toolMonitor: 'निगरानी',
+  toolWork: 'काम',
   toolWallet: 'सीमा',
   toolEvidence: 'प्रमाण',
   nextStep: 'सुझाया गया अगला कदम',

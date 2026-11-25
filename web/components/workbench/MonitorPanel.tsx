@@ -2,13 +2,48 @@
 // Constitutional basis: C-001, C-042, C-059, C-063, ADR-051
 
 import { labelFor } from '@/lib/workbench-i18n';
+import { groupTiles, isStale } from '@/lib/monitor-tiles';
+import { realWorkCopy } from '@/lib/real-work-copy';
 import type { WorkbenchPanelProps } from './useWorkbenchCommand';
 
 const trendSymbols: Record<string, string> = { UP: '↑', DOWN: '↓', FLAT: '→' };
 
+type Tile = WorkbenchPanelProps['snapshot']['projection']['tiles'][number];
+
+function TileCards({ copy, tiles }: { copy: WorkbenchPanelProps['copy']; tiles: Tile[] }) {
+  return (
+    <ul className="workbench-cards">
+      {tiles.map((tile) => (
+        <li className="workbench-card" data-stale={isStale(tile.freshness)} key={tile.tileId}>
+          <h4>{tile.label}</h4>
+          <p className="workbench-metric">
+            {tile.value} {tile.unit}
+            {tile.trend ? (
+              <span aria-label={`${copy.trend}: ${labelFor({}, tile.trend)}`} role="img">
+                {' '}
+                {trendSymbols[tile.trend]}
+              </span>
+            ) : null}
+          </p>
+          {tile.target ? (
+            <p>
+              {copy.target}: {tile.target}
+            </p>
+          ) : null}
+          {isStale(tile.freshness) ? <p className="workbench-hint">{realWorkCopy.staleMarker}</p> : null}
+          <p className="workbench-hint">
+            {labelFor(copy.freshnessStates, tile.freshness)} · {copy.owner}: {tile.owner}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function MonitorPanel({ copy, snapshot }: WorkbenchPanelProps) {
   const { tiles, alerts, sourceFreshness } = snapshot.projection;
   const items = snapshot.workItems?.items ?? [];
+  const groups = groupTiles(tiles);
   return (
     <div className="workbench-stack">
       <section aria-labelledby="workbench-monitor-title" className="workbench-section">
@@ -17,30 +52,24 @@ export function MonitorPanel({ copy, snapshot }: WorkbenchPanelProps) {
           {copy.freshness}: {labelFor(copy.freshnessStates, sourceFreshness)}
         </p>
         {tiles.length === 0 ? <p>{copy.noTiles}</p> : null}
-        <ul className="workbench-cards">
-          {tiles.map((tile) => (
-            <li className="workbench-card" key={tile.tileId}>
-              <h4>{tile.label}</h4>
-              <p className="workbench-metric">
-                {tile.value} {tile.unit}
-                {tile.trend ? (
-                  <span aria-label={`${copy.trend}: ${labelFor({}, tile.trend)}`} role="img">
-                    {' '}
-                    {trendSymbols[tile.trend]}
-                  </span>
-                ) : null}
-              </p>
-              {tile.target ? (
-                <p>
-                  {copy.target}: {tile.target}
-                </p>
-              ) : null}
-              <p className="workbench-hint">
-                {labelFor(copy.freshnessStates, tile.freshness)} · {copy.owner}: {tile.owner}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {groups.OUTCOME.length > 0 ? (
+          <section aria-label={realWorkCopy.monitorOutcomeTitle}>
+            <h4>{realWorkCopy.monitorOutcomeTitle}</h4>
+            <TileCards copy={copy} tiles={groups.OUTCOME} />
+          </section>
+        ) : null}
+        {groups.PERFORMANCE.length > 0 ? (
+          <section aria-label={realWorkCopy.monitorPerformanceTitle}>
+            <h4>{realWorkCopy.monitorPerformanceTitle}</h4>
+            <TileCards copy={copy} tiles={groups.PERFORMANCE} />
+          </section>
+        ) : null}
+        {groups.TECHNICAL.length > 0 ? (
+          <details>
+            <summary>{realWorkCopy.monitorTechnicalTitle}</summary>
+            <TileCards copy={copy} tiles={groups.TECHNICAL} />
+          </details>
+        ) : null}
       </section>
       {alerts.length > 0 ? (
         <section aria-labelledby="workbench-monitor-alerts" className="workbench-section">

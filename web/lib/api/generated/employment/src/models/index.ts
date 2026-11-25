@@ -1,5 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AcceptArtifactVersionCommandV1';
 export * from './AcceptPlanVersionCommandV1';
 export * from './AcknowledgeCorrectiveProposalCommandV1';
 export * from './AcknowledgeMaterialChangeCommandV1';
@@ -9,6 +10,7 @@ export * from './BlockedEffectV1';
 export * from './CalendarCommitmentV1';
 export * from './CalendarTolerancePolicyRefV1';
 export * from './ConfirmInductionItemCommandV1';
+export * from './ConfirmScopeBoundaryCommandV1';
 export * from './DeferInductionItemCommandV1';
 export * from './EmploymentCommandKind';
 export * from './EmploymentCommandOutcomeV1';

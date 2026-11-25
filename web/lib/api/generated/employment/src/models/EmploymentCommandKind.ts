@@ -26,7 +26,9 @@ export const EmploymentCommandKind = {
     AcknowledgeMaterialChange: 'ACKNOWLEDGE_MATERIAL_CHANGE',
     RescheduleWithinTolerance: 'RESCHEDULE_WITHIN_TOLERANCE',
     RequestReassessment: 'REQUEST_REASSESSMENT',
-    AcknowledgeCorrectiveProposal: 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL'
+    AcknowledgeCorrectiveProposal: 'ACKNOWLEDGE_CORRECTIVE_PROPOSAL',
+    AcceptArtifactVersion: 'ACCEPT_ARTIFACT_VERSION',
+    ConfirmScopeBoundary: 'CONFIRM_SCOPE_BOUNDARY'
 } as const;
 export type EmploymentCommandKind = typeof EmploymentCommandKind[keyof typeof EmploymentCommandKind];
 
