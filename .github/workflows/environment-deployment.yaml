@@ -1717,6 +1717,18 @@ jobs:
             --environment demo --action Stop --component database-reset \
             --output wc132-demo-maintenance.json
 
+      - name: Quiesce running Demo applications before migrations
+        id: demo-quiesce
+        if: inputs.apply && steps.database-chain.outputs.reuse == 'true' && inputs.environment == 'demo'
+        run: |
+          set -euo pipefail
+          # Without a database reset nothing else stops Demo, and the Temporal startup qualification needs a pool with
+          # no other client: it waits for ca-demo-temporal to reach zero replicas, which never happens while it runs.
+          # Stop the same consumers the reset path stops, so a deploy starts from the state the nightly stop leaves.
+          python3 scripts/goal006_application_lifecycle.py \
+            --environment demo --action Stop --component database-reset \
+            --output wc168-demo-quiesce.json
+
       - name: Create WC-124 database provisioner
         id: database-provisioner
         if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && (inputs.environment == 'demo' || inputs.environment == 'uat')
@@ -4263,6 +4275,7 @@ jobs:
             wc124-db-provisioner-evidence.log
             wc124-db-provisioner-result.json
             wc132-demo-maintenance.json
+            wc168-demo-quiesce.json
             wc132-recovery-job-preflight.json
             wc132-demo-reset-recovery.json
             wc124-pgbouncer-preflight-job.before.json
@@ -4278,7 +4291,8 @@ jobs:
             wc124-db-credential-inventory.json
             wc143-database-chain-decision.json
             wc143-database-chain-live-facts.json
-            wc143-database-chain-reuse.json            wc124-connection-budget.json
+            wc143-database-chain-reuse.json
+            wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
             whatsapp-autopilot/*.json
             wc124-dependency-readiness.json
