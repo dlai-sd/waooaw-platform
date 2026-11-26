@@ -3,7 +3,7 @@
 // Implements: work-contracts/WC-171-agent-navigation-alerts-and-oversight.md WC171-R008, WC171-R009
 // Constitutional basis: C-023, C-049, C-059, C-063
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { StepUpCommand } from '@/components/admin/StepUpCommand';
 import {
   acknowledgePage,
@@ -19,21 +19,20 @@ import {
   type BlockedMessage,
   type CustomerEntry,
   type CustomerStatus,
-  type OverviewView,
-  type PageRecord,
-  type ResolutionRecord,
+  type OperationsResult,
   type ResolveAction,
   type TimelineView,
 } from '@/lib/operations-client';
+import { stepUpResumingText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
 const actionLabels: Record<ResolveAction, string> = {
-  RETRY: 'Unblock',
+  RETRY: 'Retry send',
   CLOSE_WITH_REASON: 'Close with a reason',
   MARK_UNDELIVERABLE: 'Mark undeliverable',
 };
 
 const actionPastTense: Record<ResolveAction, string> = {
-  RETRY: 'Unblocked',
+  RETRY: 'Retry queued',
   CLOSE_WITH_REASON: 'Closed',
   MARK_UNDELIVERABLE: 'Marked undeliverable',
 };
@@ -50,6 +49,76 @@ const when = (value: string) => new Date(value).toLocaleString('en');
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type TabId = 'overview' | 'blocked' | 'pages' | 'customers' | 'work';
+
+const resolveKey = 'operations.resolve';
+const acknowledgeKey = 'operations.acknowledge';
+
+// Each read is loading, loaded or failed on its own, so a failed read is never shown as an empty list.
+type Remote<T> = { status: 'loading' } | { status: 'loaded'; data: T } | { status: 'failed'; message: string };
+
+function failureText(reason: 'step-up' | 'forbidden' | 'inactive' | 'failed', what: string): string {
+  if (reason === 'forbidden') return copy.forbidden;
+  if (reason === 'inactive') return copy.inactive;
+  return `${what} could not be loaded right now. Nothing was changed.`;
+}
+
+function useRemote<T>(reader: () => Promise<OperationsResult<T>>, what: string) {
+  const [state, setState] = useState<Remote<T>>({ status: 'loading' });
+  const reload = useCallback(async () => {
+    const result = await reader();
+    setState(
+      result.ok
+        ? { status: 'loaded', data: result.data }
+        : { status: 'failed', message: failureText(result.reason, what) }
+    );
+  }, [reader, what]);
+  const retry = useCallback(() => {
+    setState({ status: 'loading' });
+    void reload();
+  }, [reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+  return { state, reload, retry };
+}
+
+function LoadProblem({ state, onRetry }: { state: Remote<unknown>; onRetry: () => void }) {
+  if (state.status === 'loading') return <output aria-busy="true">{copy.loading}</output>;
+  if (state.status === 'failed') {
+    return (
+      <div>
+        <p role="alert">{state.message}</p>
+        <button className="secondary-link" onClick={onRetry} type="button">
+          {copy.retryLoad}
+        </button>
+      </div>
+    );
+  }
+  return null;
+}
+
+type PendingResolve = { outboxId: string; action: ResolveAction; reason: string };
+type PendingStepUp = { key: string; payload: unknown };
+
+function asPendingResolve(value: unknown): PendingResolve | null {
+  const candidate = value as Partial<PendingResolve> | null;
+  if (
+    !candidate ||
+    typeof candidate.outboxId !== 'string' ||
+    typeof candidate.reason !== 'string' ||
+    typeof candidate.action !== 'string' ||
+    !(candidate.action in actionLabels)
+  )
+    return null;
+  return { outboxId: candidate.outboxId, action: candidate.action as ResolveAction, reason: candidate.reason };
+}
+
+function spendChainProblem(result: { reason: string; code?: string }): string {
+  if (result.reason === 'forbidden') return copy.forbidden;
+  if (result.code?.includes('ROUTE_GRANT')) return copy.spendChainGrant;
+  if (result.code === 'SPEND_CHAIN_READ_UNAVAILABLE') return copy.spendChainUnavailable;
+  return copy.spendChainFailed;
+}
 
 // The work timeline and the spend chain of one relationship, read for an operator who names the tenant and relationship.
 function ChainLookup() {
@@ -76,7 +145,7 @@ function ChainLookup() {
     setSpend(
       chain.ok
         ? `${chain.data.authorizations.length} authorizations, ${chain.data.items.length} items, ${chain.data.reconciliations.length} reconciliations`
-        : 'The spend chain cannot be read yet: it needs a route grant to the billing engine.'
+        : spendChainProblem(chain)
     );
   }
 
@@ -236,38 +305,46 @@ function CustomersPanel() {
 
 export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
   const [tab, setTab] = useState<TabId>('overview');
-  const [overview, setOverview] = useState<OverviewView | null>(null);
-  const [blocked, setBlocked] = useState<BlockedMessage[] | null>(null);
-  const [history, setHistory] = useState<ResolutionRecord[]>([]);
-  const [pages, setPages] = useState<PageRecord[] | null>(null);
+  const overviewRead = useRemote(readOverview, 'The overview');
+  const blockedRead = useRemote(readBlocked, 'Blocked messages');
+  const pagesRead = useRemote(readPages, 'Pages');
+  const historyRead = useRemote(readResolutions, 'Recent changes');
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
-  const [stepUp, setStepUp] = useState(false);
+  const [stepUp, setStepUp] = useState<PendingStepUp | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const load = useCallback(async () => {
-    const [overviewResult, blockedResult, pageResult, historyResult] = await Promise.all([
-      readOverview(),
-      readBlocked(),
-      readPages(),
-      readResolutions(),
-    ]);
-    if (!overviewResult.ok) {
-      setError(overviewResult.reason === 'forbidden' ? copy.forbidden : copy.loadFailed);
-      return;
-    }
+  const overview = overviewRead.state.status === 'loaded' ? overviewRead.state.data : null;
+  const blocked = blockedRead.state.status === 'loaded' ? blockedRead.state.data.items : null;
+  const history = historyRead.state.status === 'loaded' ? historyRead.state.data.items : null;
+  const pages = pagesRead.state.status === 'loaded' ? pagesRead.state.data.items : null;
+
+  const { reload: reloadOverview } = overviewRead;
+  const { reload: reloadBlocked } = blockedRead;
+  const { reload: reloadPages } = pagesRead;
+  const { reload: reloadHistory } = historyRead;
+  const load = useCallback(
+    () => Promise.all([reloadOverview(), reloadBlocked(), reloadPages(), reloadHistory()]),
+    [reloadOverview, reloadBlocked, reloadPages, reloadHistory]
+  );
+
+  async function submitResolution(outboxId: string, action: ResolveAction, reason: string) {
+    setNotice(undefined);
     setError(undefined);
-    setOverview(overviewResult.data);
-    setBlocked(blockedResult.ok ? blockedResult.data.items : []);
-    setPages(pageResult.ok ? pageResult.data.items : []);
-    setHistory(historyResult.ok ? historyResult.data.items : []);
-  }, []);
+    setStepUp(null);
+    const result = await resolveBlocked(outboxId, action, reason);
+    if (result.ok) {
+      setNotice(action === 'RETRY' ? copy.retryQueued : copy.resolved);
+      setReasons((current) => ({ ...current, [outboxId]: '' }));
+      await load();
+    } else if (result.reason === 'step-up') setStepUp({ key: resolveKey, payload: { outboxId, action, reason } });
+    else if (result.reason === 'forbidden') setError(copy.forbidden);
+    else if (action === 'RETRY') setError(result.reason === 'inactive' ? copy.retryInactive : copy.retryFailed);
+    else setError(copy.failed);
+  }
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function resolve(message: BlockedMessage, action: ResolveAction) {
+  function resolve(message: BlockedMessage, action: ResolveAction) {
     setNotice(undefined);
     setError(undefined);
     const reason = (reasons[message.outboxId] ?? '').trim();
@@ -275,20 +352,30 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
       setError('Write a reason of at least five characters.');
       return;
     }
-    const result = await resolveBlocked(message.outboxId, action, reason);
-    if (result.ok) {
-      setNotice(copy.resolved);
-      setReasons((current) => ({ ...current, [message.outboxId]: '' }));
-      await load();
-    } else if (result.reason === 'step-up') setStepUp(true);
-    else setError(result.reason === 'forbidden' ? copy.forbidden : copy.failed);
+    void submitResolution(message.outboxId, action, reason);
   }
 
   async function acknowledge(signal: string) {
+    setError(undefined);
+    setStepUp(null);
     const result = await acknowledgePage(signal);
     if (result.ok) await load();
-    else setError(copy.failed);
+    else if (result.reason === 'step-up') setStepUp({ key: acknowledgeKey, payload: { signal } });
+    else setError(result.reason === 'forbidden' ? copy.forbidden : copy.failed);
   }
+
+  const resumingResolve = useResumeAfterStepUp<unknown>(resolveKey, async (payload) => {
+    const pending = asPendingResolve(payload);
+    if (!pending) return;
+    setTab('blocked');
+    setReasons((current) => ({ ...current, [pending.outboxId]: pending.reason }));
+    await submitResolution(pending.outboxId, pending.action, pending.reason);
+  });
+  const resumingAcknowledge = useResumeAfterStepUp<{ signal?: unknown }>(acknowledgeKey, async (payload) => {
+    if (typeof payload.signal !== 'string') return;
+    setTab('pages');
+    await acknowledge(payload.signal);
+  });
 
   const tabs: Array<{ id: TabId; label: string }> = [
     { id: 'overview', label: 'Overview' },
@@ -301,32 +388,63 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
     { id: 'work', label: 'Work and spend' },
   ];
 
+  function moveTab(event: KeyboardEvent<HTMLButtonElement>) {
+    const current = Math.max(
+      0,
+      tabs.findIndex((item) => item.id === tab)
+    );
+    let target: number;
+    if (event.key === 'ArrowRight') target = (current + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') target = (current - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') target = 0;
+    else if (event.key === 'End') target = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    const next = tabs[target].id;
+    setTab(next);
+    tabRefs.current[next]?.focus();
+  }
+
   return (
     <div className="operations-body">
       <div aria-label="Operations sections" className="operations-tabs" role="tablist">
         {tabs.map((item) => (
           <button
+            aria-controls="operations-tabpanel"
             aria-selected={tab === item.id}
             className={tab === item.id ? 'primary-command' : 'secondary-link'}
             id={`operations-tab-${item.id}`}
             key={item.id}
             onClick={() => setTab(item.id)}
+            onKeyDown={moveTab}
+            ref={(node) => {
+              tabRefs.current[item.id] = node;
+            }}
             role="tab"
+            tabIndex={tab === item.id ? 0 : -1}
             type="button"
           >
             {item.label}
           </button>
         ))}
       </div>
-      <output aria-live="polite">{notice ?? ''}</output>
+      <output aria-live="polite">{resumingResolve || resumingAcknowledge ? stepUpResumingText : (notice ?? '')}</output>
       {error ? <p role="alert">{error}</p> : null}
       {stepUp ? (
         <>
-          <p>{copy.stepUp}</p>
-          <StepUpCommand />
+          <p>
+            {copy.stepUp} {copy.stepUpResume}
+          </p>
+          <StepUpCommand payload={stepUp.payload} pendingKey={stepUp.key} />
         </>
       ) : null}
-      <div aria-labelledby={`operations-tab-${tab}`} role="tabpanel">
+      <div aria-labelledby={`operations-tab-${tab}`} id="operations-tabpanel" role="tabpanel">
+        {tab === 'overview' && overview === null ? (
+          <section aria-labelledby="ops-overview">
+            <h2 id="ops-overview">Overview</h2>
+            <LoadProblem onRetry={overviewRead.retry} state={overviewRead.state} />
+          </section>
+        ) : null}
         {tab === 'overview' && overview ? (
           <section aria-labelledby="ops-overview">
             <h2 id="ops-overview">Overview</h2>
@@ -395,9 +513,11 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
           <section aria-labelledby="ops-blocked">
             <h2 id="ops-blocked">Blocked messages</h2>
             <p>
-              Unblock puts the same message back on the queue. Your name, the time and your reason are recorded; the
-              message is never deleted.
+              Retry send puts the same message back on the queue. It does not confirm that WhatsApp delivered it; the
+              message leaves this list when it is no longer blocked. Your name, the time and your reason are recorded;
+              the message is never deleted.
             </p>
+            <LoadProblem onRetry={blockedRead.retry} state={blockedRead.state} />
             {blocked !== null && blocked.length === 0 ? <p>{copy.noBlocked}</p> : null}
             <ul className="portal-list">
               {(blocked ?? []).map((message) => (
@@ -426,7 +546,7 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
                             <button
                               className="secondary-link"
                               key={action}
-                              onClick={() => void resolve(message, action)}
+                              onClick={() => resolve(message, action)}
                               type="button"
                             >
                               {actionLabels[action]}
@@ -444,9 +564,9 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
               ))}
             </ul>
             <h3>Recent changes</h3>
-            {history.length === 0 ? (
-              <p>No blocked message has been changed yet.</p>
-            ) : (
+            <LoadProblem onRetry={historyRead.retry} state={historyRead.state} />
+            {history !== null && history.length === 0 ? <p>No blocked message has been changed yet.</p> : null}
+            {history !== null && history.length > 0 ? (
               <ul className="portal-list">
                 {history.map((entry) => (
                   <li className="portal-list-item" key={entry.resolutionId}>
@@ -455,13 +575,14 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
                   </li>
                 ))}
               </ul>
-            )}
+            ) : null}
           </section>
         ) : null}
         {tab === 'pages' ? (
           <section aria-labelledby="ops-pages">
             <h2 id="ops-pages">Pages</h2>
             <p>{copy.emitted}. A standing alert is recorded once an hour, not every check.</p>
+            <LoadProblem onRetry={pagesRead.retry} state={pagesRead.state} />
             {pages !== null && pages.length === 0 ? <p>{copy.noPages}</p> : null}
             <ul className="portal-list">
               {(pages ?? []).map((page, index) => (

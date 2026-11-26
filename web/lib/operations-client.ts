@@ -68,7 +68,7 @@ export type ResolveAction = 'RETRY' | 'CLOSE_WITH_REASON' | 'MARK_UNDELIVERABLE'
 
 export type OperationsResult<T> =
   | { ok: true; data: T }
-  | { ok: false; reason: 'step-up' | 'forbidden' | 'inactive' | 'failed' };
+  | { ok: false; reason: 'step-up' | 'forbidden' | 'inactive' | 'failed'; code?: string };
 
 async function call<T>(
   method: 'GET' | 'POST',
@@ -96,7 +96,7 @@ async function call<T>(
     return { ok: false, reason: payload?.code === 'OPERATIONS_STEP_UP_REQUIRED' ? 'step-up' : 'forbidden' };
   if (response.status === 503 && payload?.code === 'OPERATIONS_WHATSAPP_INACTIVE')
     return { ok: false, reason: 'inactive' };
-  if (!response.ok) return { ok: false, reason: 'failed' };
+  if (!response.ok) return { ok: false, reason: 'failed', code: payload?.code };
   return { ok: true, data: payload as T };
 }
 
@@ -150,8 +150,17 @@ export const operationsCopy = {
   noBlocked: 'No blocked messages.',
   noPages: 'No pages recorded.',
   noCustomers: 'No customers match these filters.',
+  stepUpResume: 'Confirm below and your action resumes automatically.',
+  loading: 'Loading…',
+  retryLoad: 'Retry',
   resolved:
     'Done. The message was kept; only its status changed, and your name, the time and the reason were recorded.',
+  retryQueued: 'Queued for retry. Delivery is confirmed when the message leaves this list — refresh to check.',
+  retryFailed: 'The message could not be queued for retry. Nothing was changed.',
+  retryInactive: 'WhatsApp is not active in this environment, so the message cannot be retried. Nothing was changed.',
+  spendChainFailed: 'The spend chain could not be read right now.',
+  spendChainUnavailable: 'The spend chain could not be read: the billing engine did not answer.',
+  spendChainGrant: 'The spend chain cannot be read yet: it needs a route grant to the billing engine.',
   failed: 'That change could not be completed. Nothing was changed.',
   emitted: 'Handed to monitoring (a person receiving it is not proven here)',
 } as const;

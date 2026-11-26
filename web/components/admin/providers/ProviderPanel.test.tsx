@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { signIn } from 'next-auth/react';
 import { fakeResponse } from '@/lib/pricing-admin-test-data';
 import type { CredentialVersion, ProviderSummary } from '@/lib/provider-admin-client';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { ProviderPanel } from './ProviderPanel';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
@@ -73,6 +74,7 @@ function valueInput() {
 afterEach(() => {
   global.fetch = originalFetch;
   jest.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 test('the value field is a password field that never autofills and the copy says it can never be read back', async () => {
@@ -228,6 +230,60 @@ test('a rejected save explains why, clears the value and offers the step-up sign
   );
 });
 
+test('the step-up remembers which action was interrupted but never the value', async () => {
+  serve({
+    [`GET ${base}`]: history,
+    [`POST ${base}/test`]: fakeResponse(403, { code: 'PROVIDER_STEP_UP_REQUIRED' }),
+  });
+  open();
+  fireEvent.change(valueInput(), { target: { value: secret } });
+  fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm with multi-factor sign-in' }));
+
+  const remembered = window.sessionStorage.getItem(`waooaw.step-up.providers.panel.${providerId}`) ?? '';
+  expect(JSON.parse(remembered).payload).toEqual({ providerId, action: 'test' });
+  expect(remembered).not.toContain(secret);
+});
+
+test('after the step-up the value is asked for again, not retried, and the reminder shows once', async () => {
+  savePendingStepUp(`providers.panel.${providerId}`, { providerId, action: 'save' });
+  const methods: Array<string | undefined> = [];
+  global.fetch = jest.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    methods.push(init?.method);
+    return fakeResponse(200, versions);
+  }) as typeof fetch;
+  const { unmount } = render(<ProviderPanel focusOnMount={false} onChanged={jest.fn()} provider={provider} />);
+
+  expect(
+    screen.getByText(
+      'You are signed in with extra security. Press Test to continue. The value was not kept; enter it again first.'
+    )
+  ).toBeInTheDocument();
+  expect(valueInput()).toHaveFocus();
+  expect(valueInput().value).toBe('');
+  await screen.findByRole('table');
+  expect(methods).not.toContain('POST');
+  unmount();
+
+  render(<ProviderPanel focusOnMount={false} onChanged={jest.fn()} provider={provider} />);
+  expect(screen.queryByText(/You are signed in with extra security/)).not.toBeInTheDocument();
+  await screen.findByRole('table');
+});
+
+test('after the step-up a roll back reopens its dialog and waits for Confirm roll back', async () => {
+  savePendingStepUp(`providers.rollback.${providerId}`, { providerId, versionId: 'a1' });
+  const activate = jest.fn(() => fakeResponse(200, { versionId: 'a1', versionNo: 1, status: 'ACTIVE' }));
+  serve({ [`GET ${base}`]: history, [`POST ${base}/a1/activate`]: activate });
+  open();
+
+  const dialog = await screen.findByRole('dialog');
+  expect(
+    within(dialog).getByText('You are signed in with extra security. Press Confirm roll back to continue.')
+  ).toBeVisible();
+  expect(activate).not.toHaveBeenCalled();
+});
+
 test('a test that cannot run clears the value and shows the vault problem', async () => {
   serve({
     [`GET ${base}`]: history,
@@ -324,6 +380,9 @@ test('a roll back that needs a fresh sign-in shows the step-up command inside th
     })
   ).toBeInTheDocument();
   expect(within(dialog).getByRole('alert')).toHaveTextContent('multi-factor');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm with multi-factor sign-in' }));
+  const remembered = window.sessionStorage.getItem(`waooaw.step-up.providers.rollback.${providerId}`) ?? '';
+  expect(JSON.parse(remembered).payload).toEqual({ providerId, versionId: 'a1' });
 });
 
 test('history loading, empty and error states are announced and the error can be retried', async () => {

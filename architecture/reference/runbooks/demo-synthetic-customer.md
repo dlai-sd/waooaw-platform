@@ -34,10 +34,16 @@ Both need `WAOOAW_RUNNER_TYPESCRIPT_IMAGE` (and the Python image for the journey
 - In-network calls use only `X-Forwarded-*` headers. Forcing a `Host` header makes Container Apps answer 404.
 - Deletion touches only users that carry the prefix and are in the `synthetic` group.
 
-## Known limitation (found 2026-11-26)
+## How a throwaway customer passes the customer identity proof
 
-A throwaway customer can be created and can sign in to Keycloak, but Business Platform then denies the customer actor
-(`Customer identity actor denied by actor_provider`) because it accepts only customers whose token carries a configured
-broker identity (`idp` or `identity_provider` of `google` or `facebook`). Until a `synthetic` provider alias exists for
-Demo, customer pages show "Access not permitted" for these users and the journey harness cannot act as a customer.
-The Founder-page step-up probe and the public pages do not depend on this.
+Business Platform accepts a customer only when the token carries a broker `idp` claim and Keycloak holds exactly one
+federated link to that provider. A password user has neither, so the first live run (2026-11-26) showed "Access not
+permitted" on every customer page. The fix needs no Business Platform change:
+
+- The Demo realm declares an admin-only user attribute `synthetic_idp` (only `google` or `facebook`; users cannot view or edit it).
+- The `waooaw-web` client maps that attribute to the `idp` claim. The mapper exists only when the acceptance provisioner is enabled (Demo).
+- The utility sets `synthetic_idp=google` and creates one fake federated link (`synthetic-<username>`) for each throwaway user.
+- Real brokered users are unchanged: they have no such attribute, so their `idp` still comes from the broker session.
+
+This works only after the deploy that carries the realm change has re-imported the realm.
+The Founder-page step-up probe and the public pages do not depend on it.

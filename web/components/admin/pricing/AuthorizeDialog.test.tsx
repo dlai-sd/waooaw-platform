@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import type { ComponentProps } from 'react';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { fakeResponse, simulationFixture, versionFixture, versionId } from '@/lib/pricing-admin-test-data';
 import { AuthorizeDialog } from './AuthorizeDialog';
 
@@ -16,6 +17,7 @@ const calm = { ...simulationFixture, warnings: [] };
 afterEach(() => {
   global.fetch = originalFetch;
   jest.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 function open(props: Partial<ComponentProps<typeof AuthorizeDialog>> = {}) {
@@ -122,6 +124,19 @@ test('a missing step-up offers the multi-factor sign-in', async () => {
     expect.objectContaining({ waooawIntent: 'LOGIN' }),
     expect.objectContaining({ prompt: 'login', max_age: '0' })
   );
+  const remembered = JSON.parse(window.sessionStorage.getItem(`waooaw.step-up.pricing.authorize.${versionId}`) ?? '{}');
+  expect(remembered.payload).toEqual({ versionId, effectiveFrom: '' });
+});
+
+test('after the step-up the date comes back and the person is told to press Authorize', () => {
+  savePendingStepUp(`pricing.authorize.${versionId}`, { versionId, effectiveFrom: '2027-01-01T10:00' });
+  global.fetch = jest.fn();
+  open();
+
+  expect(screen.getByText('You are signed in with extra security. Press Authorize to continue.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Effective from (UTC, optional)')).toHaveValue('2027-01-01T10:00');
+  expect(global.fetch).not.toHaveBeenCalled();
+  expect(window.sessionStorage.getItem(`waooaw.step-up.pricing.authorize.${versionId}`)).toBeNull();
 });
 
 test('another failure is shown without the step-up offer', async () => {

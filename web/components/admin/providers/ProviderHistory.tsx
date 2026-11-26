@@ -14,6 +14,7 @@ import {
   type ProviderSummary,
   type SavedVersion,
 } from '@/lib/provider-admin-client';
+import { stepUpSignedInText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
 export type HistoryState =
   | { kind: 'loading' }
@@ -36,11 +37,13 @@ function formatWhen(value: string | null): string {
 function RollbackDialog({
   provider,
   version,
+  signedIn,
   onClose,
   onRolledBack,
 }: {
   provider: ProviderSummary;
   version: CredentialVersion;
+  signedIn: boolean;
   onClose: () => void;
   onRolledBack: (version: SavedVersion) => void;
 }) {
@@ -89,8 +92,16 @@ function RollbackDialog({
         Version {version.versionNo} becomes the active value straight away and WAOOAW will use it without a deployment.
         The value is not read or sent again; the stored version is re-activated.
       </p>
+      {signedIn && message === null ? (
+        <output className="workbench-hint">{stepUpSignedInText('Confirm roll back')}</output>
+      ) : null}
       <PricingMessage message={message} />
-      {stepUp ? <StepUpCommand /> : null}
+      {stepUp ? (
+        <StepUpCommand
+          payload={{ providerId: provider.id, versionId: version.versionId }}
+          pendingKey={`providers.rollback.${provider.id}`}
+        />
+      ) : null}
       <div className="workbench-actions">
         <button className="primary-command" disabled={busy} onClick={() => void confirm()} type="button">
           {busy ? 'Rolling back...' : 'Confirm roll back'}
@@ -105,10 +116,27 @@ function RollbackDialog({
 
 export function ProviderHistory({ provider, history, onReload, onRolledBack }: Props) {
   const [target, setTarget] = useState<CredentialVersion | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const opener = useRef<HTMLButtonElement | null>(null);
+
+  // A roll back changes the live credential, so after the step-up the dialog reopens and waits for the person.
+  useResumeAfterStepUp<{ versionId?: unknown }>(
+    `providers.rollback.${provider.id}`,
+    (payload) => {
+      if (history.kind !== 'ready') return;
+      const version = history.versions.find(
+        (entry) => entry.versionId === payload.versionId && entry.status === 'SUPERSEDED'
+      );
+      if (!version) return;
+      setTarget(version);
+      setSignedIn(true);
+    },
+    history.kind === 'ready'
+  );
 
   function closeDialog() {
     setTarget(null);
+    setSignedIn(false);
     opener.current?.focus();
   }
 
@@ -177,9 +205,11 @@ export function ProviderHistory({ provider, history, onReload, onRolledBack }: P
           onClose={closeDialog}
           onRolledBack={(saved) => {
             setTarget(null);
+            setSignedIn(false);
             onRolledBack(saved);
           }}
           provider={provider}
+          signedIn={signedIn}
           version={target}
         />
       ) : null}

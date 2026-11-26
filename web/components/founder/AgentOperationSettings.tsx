@@ -4,7 +4,9 @@
 // Constitutional basis: C-023, C-042, C-059, C-063, C-088
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { StepUpCommand } from '@/components/admin/StepUpCommand';
 import type { OperationMessages } from '@/lib/operation-i18n';
+import { stepUpResumingText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
 export type OperationSettings = {
   chatAllowanceDefault: number;
@@ -18,19 +20,38 @@ type ShareDay = { day: string; asked: number; accepted: number; tool: number; as
 type Share = { days: ShareDay[]; relationshipsCounted: number; assistantShare: number | null };
 type Attention = { relationshipRef: string; metric: string; total: number; lastDay: string };
 
-const base = '/api/admin/agent-operation';
+type Remote<T> = { status: 'loading' } | { status: 'loaded'; data: T } | { status: 'failed' };
 
-async function read<T>(path: string): Promise<T | null> {
+const base = '/api/admin/agent-operation';
+const settingsKey = 'agent-operation.settings';
+
+async function read<T>(path: string): Promise<Remote<T>> {
   try {
     const response = await fetch(`${base}/${path}`, {
       cache: 'no-store',
       credentials: 'same-origin',
       headers: { Accept: 'application/json' },
     });
-    return response.ok ? ((await response.json()) as T) : null;
+    return response.ok ? { status: 'loaded', data: (await response.json()) as T } : { status: 'failed' };
   } catch {
-    return null;
+    return { status: 'failed' };
   }
+}
+
+function asSettings(value: unknown): OperationSettings | null {
+  const candidate = value as Partial<OperationSettings> | null;
+  if (
+    !candidate ||
+    typeof candidate.chatAllowanceDefault !== 'number' ||
+    typeof candidate.instagramConnectEnabled !== 'boolean' ||
+    typeof candidate.publishSandboxOnly !== 'boolean' ||
+    typeof candidate.registryReadsEnabled !== 'boolean' ||
+    !Array.isArray(candidate.sandboxAccountIds) ||
+    !candidate.chatAllowanceByProfessionalType ||
+    typeof candidate.chatAllowanceByProfessionalType !== 'object'
+  )
+    return null;
+  return candidate as OperationSettings;
 }
 
 export function parseOverrides(text: string): Record<string, number> | null {
@@ -65,17 +86,54 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
   const [accounts, setAccounts] = useState(initial.sandboxAccountIds.join('\n'));
   const [registry, setRegistry] = useState(initial.registryReadsEnabled);
   const [message, setMessage] = useState('');
-  const [share, setShare] = useState<Share | null>(null);
-  const [attention, setAttention] = useState<Attention[]>([]);
+  const [stepUp, setStepUp] = useState<OperationSettings | null>(null);
+  const [shareRead, setShareRead] = useState<Remote<Share>>({ status: 'loading' });
+  const [attentionRead, setAttentionRead] = useState<Remote<Attention[]>>({ status: 'loading' });
 
-  const loadMeasures = useCallback(async () => {
-    setShare(await read<Share>('share'));
-    setAttention((await read<Attention[]>('attention')) ?? []);
-  }, []);
+  const loadShare = useCallback(async () => setShareRead(await read<Share>('share')), []);
+  const loadAttention = useCallback(async () => setAttentionRead(await read<Attention[]>('attention')), []);
 
   useEffect(() => {
-    void loadMeasures();
-  }, [loadMeasures]);
+    void loadShare();
+    void loadAttention();
+  }, [loadShare, loadAttention]);
+
+  async function send(body: OperationSettings) {
+    setStepUp(null);
+    let response: Response;
+    try {
+      response = await fetch(`${base}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
+      });
+    } catch {
+      setMessage(copy.failed);
+      return;
+    }
+    if (response.ok) setMessage(copy.settingsSaved);
+    else if (response.status === 403) {
+      setMessage(copy.stepUpNeeded);
+      setStepUp(body);
+    } else setMessage(copy.failed);
+  }
+
+  const resuming = useResumeAfterStepUp<unknown>(settingsKey, async (payload) => {
+    const body = asSettings(payload);
+    if (!body) return;
+    setAllowance(String(body.chatAllowanceDefault));
+    setOverrides(
+      Object.entries(body.chatAllowanceByProfessionalType)
+        .map(([name, amount]) => `${name}=${amount}`)
+        .join('\n')
+    );
+    setInstagram(body.instagramConnectEnabled);
+    setSandboxOnly(body.publishSandboxOnly);
+    setAccounts(body.sandboxAccountIds.join('\n'));
+    setRegistry(body.registryReadsEnabled);
+    await send(body);
+  });
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -85,31 +143,17 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
       setMessage('The conversation allowance must be a whole number from 1 to 1,000,000.');
       return;
     }
-    let response: Response;
-    try {
-      response = await fetch(`${base}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          chatAllowanceDefault: quantity,
-          chatAllowanceByProfessionalType: byType,
-          instagramConnectEnabled: instagram,
-          publishSandboxOnly: sandboxOnly,
-          sandboxAccountIds: accounts
-            .split('\n')
-            .map((value) => value.trim())
-            .filter(Boolean),
-          registryReadsEnabled: registry,
-        }),
-      });
-    } catch {
-      setMessage(copy.failed);
-      return;
-    }
-    if (response.ok) setMessage(copy.settingsSaved);
-    else if (response.status === 403) setMessage(copy.stepUpNeeded);
-    else setMessage(copy.failed);
+    await send({
+      chatAllowanceDefault: quantity,
+      chatAllowanceByProfessionalType: byType,
+      instagramConnectEnabled: instagram,
+      publishSandboxOnly: sandboxOnly,
+      sandboxAccountIds: accounts
+        .split('\n')
+        .map((value) => value.trim())
+        .filter(Boolean),
+      registryReadsEnabled: registry,
+    });
   }
 
   return (
@@ -152,17 +196,33 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
         <button className="primary-command" type="submit">
           {copy.saveSettings}
         </button>
-        <output aria-live="polite">{message}</output>
+        <output aria-live="polite">{resuming ? stepUpResumingText : message}</output>
+        {stepUp ? <StepUpCommand payload={stepUp} pendingKey={settingsKey} /> : null}
       </form>
       <section aria-label={copy.shareTitle}>
         <h2>{copy.shareTitle}</h2>
         <p>{copy.shareNote}</p>
-        {share === null || share.days.length === 0 ? (
-          <p>{copy.nothingYet}</p>
-        ) : (
+        {shareRead.status === 'loading' ? <output aria-busy="true">{copy.loading}</output> : null}
+        {shareRead.status === 'failed' ? (
+          <div>
+            <p role="alert">{copy.failed}</p>
+            <button
+              className="secondary-link"
+              onClick={() => {
+                setShareRead({ status: 'loading' });
+                void loadShare();
+              }}
+              type="button"
+            >
+              {copy.retry}
+            </button>
+          </div>
+        ) : null}
+        {shareRead.status === 'loaded' && shareRead.data.days.length === 0 ? <p>{copy.nothingYet}</p> : null}
+        {shareRead.status === 'loaded' && shareRead.data.days.length > 0 ? (
           <>
             <p>
-              {percent(share.assistantShare)} · {share.relationshipsCounted}
+              {percent(shareRead.data.assistantShare)} · {shareRead.data.relationshipsCounted}
             </p>
             <table>
               <thead>
@@ -175,7 +235,7 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
                 </tr>
               </thead>
               <tbody>
-                {share.days.map((day) => (
+                {shareRead.data.days.map((day) => (
                   <tr key={day.day}>
                     <th scope="row">{day.day}</th>
                     <td>{day.asked}</td>
@@ -187,13 +247,29 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
               </tbody>
             </table>
           </>
-        )}
+        ) : null}
       </section>
       <section aria-label={copy.attentionTitle}>
         <h2>{copy.attentionTitle}</h2>
-        {attention.length === 0 ? <p>{copy.nothingYet}</p> : null}
+        {attentionRead.status === 'loading' ? <output aria-busy="true">{copy.loading}</output> : null}
+        {attentionRead.status === 'failed' ? (
+          <div>
+            <p role="alert">{copy.failed}</p>
+            <button
+              className="secondary-link"
+              onClick={() => {
+                setAttentionRead({ status: 'loading' });
+                void loadAttention();
+              }}
+              type="button"
+            >
+              {copy.retry}
+            </button>
+          </div>
+        ) : null}
+        {attentionRead.status === 'loaded' && attentionRead.data.length === 0 ? <p>{copy.nothingYet}</p> : null}
         <ul>
-          {attention.map((row) => (
+          {(attentionRead.status === 'loaded' ? attentionRead.data : []).map((row) => (
             <li key={`${row.relationshipRef}-${row.metric}`}>
               {row.metric.toLowerCase().replace(/_/g, ' ')} × {row.total} · {row.relationshipRef} · {row.lastDay}
             </li>

@@ -2,8 +2,12 @@
 // Constitutional basis: C-023, C-059, C-063, C-088
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { signIn } from 'next-auth/react';
 import { operationMessages } from '@/lib/operation-i18n';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { AgentOperationSettings, parseOverrides, type OperationSettings } from './AgentOperationSettings';
+
+jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
 const copy = operationMessages('en');
 const initial: OperationSettings = {
@@ -39,6 +43,7 @@ describe('parseOverrides', () => {
 });
 
 describe('AgentOperationSettings', () => {
+  beforeEach(() => window.sessionStorage.clear());
   afterEach(() => jest.restoreAllMocks());
 
   it('shows the Founder’s current values and the default allowance of 1,000 chats', async () => {
@@ -95,6 +100,17 @@ describe('AgentOperationSettings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: copy.saveSettings }));
     expect(await screen.findByText(copy.stepUpNeeded)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm with multi-factor sign-in' }));
+    expect(signIn).toHaveBeenCalledWith('keycloak', expect.objectContaining({ waooawIntent: 'LOGIN' }), {
+      prompt: 'login',
+      max_age: '0',
+      acr_values: '2',
+    });
+    const saved = JSON.parse(window.sessionStorage.getItem('waooaw.step-up.agent-operation.settings') ?? '{}');
+    expect(saved.payload).toMatchObject({
+      chatAllowanceDefault: 1000,
+      chatAllowanceByProfessionalType: { TYPE_A: 500 },
+    });
     status = 500;
     fireEvent.click(screen.getByRole('button', { name: copy.saveSettings }));
     expect(await screen.findByText(copy.failed)).toBeInTheDocument();
@@ -126,8 +142,58 @@ describe('AgentOperationSettings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: copy.saveSettings }));
 
-    expect(await screen.findByText(copy.failed)).toBeInTheDocument();
-    expect(await screen.findAllByText(copy.nothingYet)).toHaveLength(2);
+    await waitFor(() => expect(screen.getAllByText(copy.failed)).toHaveLength(3));
+    expect(screen.queryByText(copy.nothingYet)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: copy.retry })).toHaveLength(2);
+  });
+
+  it('shows Loading while the measures are read, then an error with Retry instead of an empty state', async () => {
+    let healthy = false;
+    install({
+      'GET share': () =>
+        healthy ? reply(200, { days: [], relationshipsCounted: 0, assistantShare: null }) : reply(500, {}),
+      'GET attention': () => reply(200, []),
+    });
+    render(<AgentOperationSettings copy={copy} initial={initial} />);
+
+    expect(screen.getAllByText(copy.loading)).toHaveLength(2);
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.failed);
+    expect(screen.getAllByText(copy.nothingYet)).toHaveLength(1);
+
+    healthy = true;
+    fireEvent.click(screen.getByRole('button', { name: copy.retry }));
+    await waitFor(() => expect(screen.getAllByText(copy.nothingYet)).toHaveLength(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('saves the interrupted change again once after the step-up and restores the fields', async () => {
+    const remembered = {
+      chatAllowanceDefault: 640,
+      chatAllowanceByProfessionalType: { TYPE_B: 70 },
+      instagramConnectEnabled: true,
+      publishSandboxOnly: false,
+      sandboxAccountIds: ['page-9'],
+      registryReadsEnabled: true,
+    };
+    savePendingStepUp('agent-operation.settings', remembered);
+    const calls = install({
+      'GET share': () => reply(200, { days: [], relationshipsCounted: 0, assistantShare: null }),
+      'GET attention': () => reply(200, []),
+      'PUT settings': () => reply(200, {}),
+    });
+    const { unmount } = render(<AgentOperationSettings copy={copy} initial={initial} />);
+
+    expect(await screen.findByText(copy.settingsSaved)).toBeInTheDocument();
+    expect(calls.filter((call) => call.method === 'PUT')).toEqual([
+      { method: 'PUT', path: 'settings', body: remembered },
+    ]);
+    expect(screen.getByLabelText(copy.allowanceDefault)).toHaveValue(640);
+    expect(screen.getByLabelText(copy.allowanceByType)).toHaveValue('TYPE_B=70');
+    unmount();
+
+    render(<AgentOperationSettings copy={copy} initial={initial} />);
+    await waitFor(() => expect(screen.getAllByText(copy.nothingYet)).toHaveLength(2));
+    expect(calls.filter((call) => call.method === 'PUT')).toHaveLength(1);
   });
 
   it('shows how work is reached as a trend with counts only, and what needs the operator', async () => {

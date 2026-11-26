@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { fakeResponse } from '@/lib/pricing-admin-test-data';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { AddProviderForm } from './AddProviderForm';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
@@ -13,6 +14,7 @@ const originalFetch = global.fetch;
 afterEach(() => {
   global.fetch = originalFetch;
   jest.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 function openForm(onCreated = jest.fn()) {
@@ -148,4 +150,28 @@ test('a conflict keeps the form open and explains it; a step-up requirement offe
   expect(signIn).toHaveBeenCalledTimes(1);
   expect(onCreated).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Provider name')).toHaveValue('openai');
+  const remembered = JSON.parse(window.sessionStorage.getItem('waooaw.step-up.providers.add') ?? '{}');
+  expect(remembered.payload).toMatchObject({ providerName: 'openai', displayName: 'OpenAI', category: 'PLATFORM_LLM' });
+});
+
+test('after the step-up the form reopens with its fields and waits for Create provider', () => {
+  savePendingStepUp('providers.add', {
+    providerName: 'acme-search',
+    displayName: 'Acme Search',
+    category: 'AGENT_API',
+    agentTypeId: 'dma',
+    testUrl: 'https://api.acme.example/ping',
+    scheme: 'HEADER',
+    authHeader: 'X-Acme-Key',
+  });
+  global.fetch = jest.fn();
+  render(<AddProviderForm onCreated={jest.fn()} />);
+
+  expect(screen.getByLabelText('Provider name')).toHaveValue('acme-search');
+  expect(screen.getByLabelText('Display name')).toHaveValue('Acme Search');
+  expect(screen.getByLabelText('Category')).toHaveValue('AGENT_API');
+  expect(screen.getByLabelText('Agent type (optional)')).toHaveValue('dma');
+  expect(screen.getByLabelText('Header name')).toHaveValue('X-Acme-Key');
+  expect(screen.getByText('You are signed in with extra security. Press Create provider to continue.')).toBeVisible();
+  expect(global.fetch).not.toHaveBeenCalled();
 });
