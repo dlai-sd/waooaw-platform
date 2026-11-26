@@ -149,6 +149,7 @@ describe('F1 shell primitives', () => {
       '/admin/operations',
       '/admin/pricing',
       '/admin/providers',
+      '/admin/agent-operation',
       '/admin/azure-key-vault',
       '/access',
     ]);

@@ -20,6 +20,11 @@ Name | Type | Description | Notes
 **channel_support** | [**EmploymentExperienceManifestV1ChannelSupport**](EmploymentExperienceManifestV1ChannelSupport.md) |  | 
 **conformance_scenarios** | **List[str]** |  | 
 **navigation** | [**List[EmploymentExperienceNavigationEntryV1]**](EmploymentExperienceNavigationEntryV1.md) | WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces.  | [optional] 
+**modes** | [**List[EmploymentExperienceModeV1]**](EmploymentExperienceModeV1.md) | WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and tool groups for the context menu, the readiness source and the gates on actions with a side effect. Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest without it shows the WC-171 menu.  | [optional] 
+**event_layers** | [**List[EmploymentExperienceEventLayerV1]**](EmploymentExperienceEventLayerV1.md) | WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated. | [optional] 
+**plan_levels** | [**List[EmploymentExperiencePlanLevelV1]**](EmploymentExperiencePlanLevelV1.md) | WC-174. The levels of the agent&#39;s plan tree, outermost first. | [optional] 
+**platforms** | [**List[EmploymentExperiencePlatformV1]**](EmploymentExperiencePlatformV1.md) | WC-174. The outside places the agent works from; each needs an explicit customer answer. | [optional] 
+**views** | **List[str]** | WC-174. Which platform calendar views the agent offers. | [optional] 
 
 ## Example
 

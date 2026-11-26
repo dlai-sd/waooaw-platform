@@ -22,13 +22,17 @@ from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from employment_domain_client.models.employment_experience_audience_v1 import EmploymentExperienceAudienceV1
 from employment_domain_client.models.employment_experience_component_v1 import EmploymentExperienceComponentV1
+from employment_domain_client.models.employment_experience_event_layer_v1 import EmploymentExperienceEventLayerV1
 from employment_domain_client.models.employment_experience_goal_type_v1 import EmploymentExperienceGoalTypeV1
 from employment_domain_client.models.employment_experience_manifest_v1_channel_support import EmploymentExperienceManifestV1ChannelSupport
 from employment_domain_client.models.employment_experience_manifest_v1_domain_blocks_inner import EmploymentExperienceManifestV1DomainBlocksInner
 from employment_domain_client.models.employment_experience_manifest_v1_monitor import EmploymentExperienceManifestV1Monitor
 from employment_domain_client.models.employment_experience_manifest_v1_operate import EmploymentExperienceManifestV1Operate
 from employment_domain_client.models.employment_experience_manifest_v1_plan import EmploymentExperienceManifestV1Plan
+from employment_domain_client.models.employment_experience_mode_v1 import EmploymentExperienceModeV1
 from employment_domain_client.models.employment_experience_navigation_entry_v1 import EmploymentExperienceNavigationEntryV1
+from employment_domain_client.models.employment_experience_plan_level_v1 import EmploymentExperiencePlanLevelV1
+from employment_domain_client.models.employment_experience_platform_v1 import EmploymentExperiencePlatformV1
 from employment_domain_client.models.immutable_contract_reference_v1 import ImmutableContractReferenceV1
 from typing import Optional, Set
 from typing_extensions import Self
@@ -51,8 +55,13 @@ class EmploymentExperienceManifestV1(BaseModel):
     channel_support: EmploymentExperienceManifestV1ChannelSupport = Field(alias="channelSupport")
     conformance_scenarios: Annotated[List[Annotated[str, Field(min_length=1, strict=True)]], Field(min_length=1)] = Field(alias="conformanceScenarios")
     navigation: Optional[Annotated[List[EmploymentExperienceNavigationEntryV1], Field(max_length=12)]] = Field(default=None, description="WC-171. Optional entries the agent adds after the platform's fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. ")
+    modes: Optional[Annotated[List[EmploymentExperienceModeV1], Field(max_length=3)]] = Field(default=None, description="WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and tool groups for the context menu, the readiness source and the gates on actions with a side effect. Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest without it shows the WC-171 menu. ")
+    event_layers: Optional[Annotated[List[EmploymentExperienceEventLayerV1], Field(max_length=16)]] = Field(default=None, description="WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated.", alias="eventLayers")
+    plan_levels: Optional[Annotated[List[EmploymentExperiencePlanLevelV1], Field(max_length=6)]] = Field(default=None, description="WC-174. The levels of the agent's plan tree, outermost first.", alias="planLevels")
+    platforms: Optional[Annotated[List[EmploymentExperiencePlatformV1], Field(max_length=16)]] = Field(default=None, description="WC-174. The outside places the agent works from; each needs an explicit customer answer.")
+    views: Optional[Annotated[List[StrictStr], Field(max_length=4)]] = Field(default=None, description="WC-174. Which platform calendar views the agent offers.")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["contractVersion", "vocabularyRef", "componentCatalogueRef", "goalTypes", "plan", "operate", "monitor", "domainBlocks", "components", "audiences", "modalities", "channelSupport", "conformanceScenarios", "navigation"]
+    __properties: ClassVar[List[str]] = ["contractVersion", "vocabularyRef", "componentCatalogueRef", "goalTypes", "plan", "operate", "monitor", "domainBlocks", "components", "audiences", "modalities", "channelSupport", "conformanceScenarios", "navigation", "modes", "eventLayers", "planLevels", "platforms", "views"]
 
     @field_validator('modalities')
     def modalities_validate_enum(cls, value):
@@ -60,6 +69,17 @@ class EmploymentExperienceManifestV1(BaseModel):
         for i in value:
             if i not in set(['text', 'voice']):
                 raise ValueError("each list item must be one of ('text', 'voice')")
+        return value
+
+    @field_validator('views')
+    def views_validate_enum(cls, value):
+        """Validates the enum"""
+        if value is None:
+            return value
+
+        for i in value:
+            if i not in set(['MONTH', 'WEEK', 'PLATFORMS', 'STORYBOARD']):
+                raise ValueError("each list item must be one of ('MONTH', 'WEEK', 'PLATFORMS', 'STORYBOARD')")
         return value
 
     model_config = ConfigDict(
@@ -149,6 +169,34 @@ class EmploymentExperienceManifestV1(BaseModel):
                 if _item_navigation:
                     _items.append(_item_navigation.to_dict())
             _dict['navigation'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in modes (list)
+        _items = []
+        if self.modes:
+            for _item_modes in self.modes:
+                if _item_modes:
+                    _items.append(_item_modes.to_dict())
+            _dict['modes'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in event_layers (list)
+        _items = []
+        if self.event_layers:
+            for _item_event_layers in self.event_layers:
+                if _item_event_layers:
+                    _items.append(_item_event_layers.to_dict())
+            _dict['eventLayers'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in plan_levels (list)
+        _items = []
+        if self.plan_levels:
+            for _item_plan_levels in self.plan_levels:
+                if _item_plan_levels:
+                    _items.append(_item_plan_levels.to_dict())
+            _dict['planLevels'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each item in platforms (list)
+        _items = []
+        if self.platforms:
+            for _item_platforms in self.platforms:
+                if _item_platforms:
+                    _items.append(_item_platforms.to_dict())
+            _dict['platforms'] = _items
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -179,7 +227,12 @@ class EmploymentExperienceManifestV1(BaseModel):
             "modalities": obj.get("modalities"),
             "channelSupport": EmploymentExperienceManifestV1ChannelSupport.from_dict(obj["channelSupport"]) if obj.get("channelSupport") is not None else None,
             "conformanceScenarios": obj.get("conformanceScenarios"),
-            "navigation": [EmploymentExperienceNavigationEntryV1.from_dict(_item) for _item in obj["navigation"]] if obj.get("navigation") is not None else None
+            "navigation": [EmploymentExperienceNavigationEntryV1.from_dict(_item) for _item in obj["navigation"]] if obj.get("navigation") is not None else None,
+            "modes": [EmploymentExperienceModeV1.from_dict(_item) for _item in obj["modes"]] if obj.get("modes") is not None else None,
+            "eventLayers": [EmploymentExperienceEventLayerV1.from_dict(_item) for _item in obj["eventLayers"]] if obj.get("eventLayers") is not None else None,
+            "planLevels": [EmploymentExperiencePlanLevelV1.from_dict(_item) for _item in obj["planLevels"]] if obj.get("planLevels") is not None else None,
+            "platforms": [EmploymentExperiencePlatformV1.from_dict(_item) for _item in obj["platforms"]] if obj.get("platforms") is not None else None,
+            "views": obj.get("views")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

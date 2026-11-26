@@ -3,7 +3,7 @@
   "protocolVersion": "1.0-candidate",
   "agentType": "DIGITAL_MARKETING_LOCAL_SERVICE",
   "agentVersion": "1.0.0",
-  "manifestVersion": "1.1.0",
+  "manifestVersion": "1.2.0",
   "governance": {
     "agentSpecification": {
       "contractRef": "architecture/reference/agents/digital-marketing-agent.md",
@@ -27,7 +27,7 @@
     }
   },
   "induction": {
-    "requirementSetVersion": "1.0.0",
+    "requirementSetVersion": "1.1.0",
     "mandatoryContext": [
       "ACCOUNT_MODE",
       "BUSINESS_IDENTITY",
@@ -36,11 +36,11 @@
       "PROSPECTIVE_CUSTOMERS",
       "THREE_MONTH_ASPIRATION",
       "EMPLOYMENT_MODE",
-      "SELECTED_OUTCOMES"
+      "SELECTED_OUTCOMES",
+      "CURRENT_CHANNELS"
     ],
     "optionalContext": [
       "WEBSITE_URL",
-      "CURRENT_CHANNELS",
       "KNOWN_COMPETITORS",
       "CURRENT_ENQUIRY_BASELINE",
       "TEAM_SIZE",
@@ -64,8 +64,8 @@
     ],
     "domainSummaryAdapter": {
       "contractRef": "src/digital-marketing-agent/contracts/induction-summary-contract.v1.json",
-      "contractVersion": "1.0.0",
-      "contractDigest": "5c91e8d4fd727e0deb47a04550b66277b958775d491aa2d1943ccbfd8cba5682"
+      "contractVersion": "1.1.0",
+      "contractDigest": "f2920dae5ffbb5d3e57bc5026334e3cc0e5d35eb4d4ed61eae4f7f9f0a77c768"
     }
   },
   "planning": {
@@ -208,6 +208,7 @@
         "CONTENT_CALENDAR"
       ],
       "cadence": [
+        {"skillId": "CUSTOMER_PROFILING", "trigger": "ON_INDUCTION_AND_MONTHLY", "window": "MONTH_END_REVIEW_LAST_3_WORKING_DAYS"},
         {"skillId": "CONTENT_STRATEGY_AND_CALENDAR", "trigger": "MONTHLY", "window": "MONTH_END_REVIEW_LAST_3_WORKING_DAYS"},
         {"skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING", "trigger": "WEEKLY", "window": "ACCEPTED_CALENDAR_WINDOW"},
         {"skillId": "VISUAL_AND_VIDEO_CONTENT", "trigger": "ON_APPROVED_BRIEF", "window": "ACCEPTED_CALENDAR_WINDOW"},
@@ -379,7 +380,115 @@
         "audiences": ["customer_owner", "delegate", "steward"],
         "availabilityGate": "AFTER_FIRST_APPROVAL"
       }
-    ]
+    ],
+    "modes": [
+      {
+        "modeId": "INDUCT",
+        "labelKey": "MODE_INDUCT",
+        "label": "Get to know my business",
+        "readinessSource": "INDUCTION_SUMMARY",
+        "entries": [
+          {"entryId": "INDUCT_BUSINESS", "labelKey": "NAV_INDUCT_BUSINESS", "label": "Business", "icon": "profile", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "profile"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "INDUCT_PLATFORMS", "labelKey": "NAV_INDUCT_PLATFORMS", "label": "Platforms", "icon": "accounts", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "presence"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "INDUCT_SOURCES", "labelKey": "NAV_INDUCT_SOURCES", "label": "Sources", "icon": "documents", "order": 30, "surface": {"kind": "BLOCK_COMPOSITION", "blocks": ["LIST", "EVIDENCE"]}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "INDUCT_AUDIENCE", "labelKey": "NAV_INDUCT_AUDIENCE", "label": "Audience", "icon": "insights", "order": 40, "surface": {"kind": "BLOCK_COMPOSITION", "blocks": ["TEXT", "LIST"]}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "INDUCT_BRAND", "labelKey": "NAV_INDUCT_BRAND", "label": "Brand", "icon": "documents", "order": 50, "surface": {"kind": "BLOCK_COMPOSITION", "blocks": ["TEXT", "FORM"]}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "INDUCT_MATURITY", "labelKey": "NAV_INDUCT_MATURITY", "label": "Maturity report", "icon": "insights", "order": 60, "surface": {"kind": "DOMAIN_BLOCK", "target": "MARKETING_MATURITY_SUMMARY"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"}
+        ]
+      },
+      {
+        "modeId": "GOALS",
+        "labelKey": "MODE_GOALS",
+        "label": "Set my goals",
+        "readinessSource": "GOAL_COVERAGE",
+        "entries": [
+          {"entryId": "GOALS_BY_SKILL", "labelKey": "NAV_GOALS_BY_SKILL", "label": "Goals by skill", "icon": "plan", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "goals"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "GOALS_CALENDAR", "labelKey": "NAV_GOALS_CALENDAR", "label": "Calendar", "icon": "calendar", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "calendar"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "GOALS_PLAN", "labelKey": "NAV_GOALS_PLAN", "label": "Plan", "icon": "plan", "order": 30, "surface": {"kind": "KERNEL_VIEW", "target": "plan_tree"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"}
+        ],
+        "toolGroups": [
+          {
+            "groupId": "ANCHORS", "labelKey": "TOOLS_ANCHORS", "label": "Anchors",
+            "tools": [
+              {"toolId": "EVENT", "labelKey": "TOOL_EVENT", "label": "Event", "icon": "calendar", "command": "ADD_EVENT"},
+              {"toolId": "PLACEHOLDER", "labelKey": "TOOL_PLACEHOLDER", "label": "Placeholder", "icon": "calendar", "command": "ADD_PLACEHOLDER"}
+            ]
+          },
+          {
+            "groupId": "PLAN", "labelKey": "TOOLS_PLAN", "label": "Plan",
+            "tools": [
+              {"toolId": "THEME", "labelKey": "TOOL_THEME", "label": "Monthly theme", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "MASTER_THEME"},
+              {"toolId": "WEEKLY", "labelKey": "TOOL_WEEKLY", "label": "Weekly theme", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "WEEKLY_THEME"},
+              {"toolId": "INDIVIDUAL", "labelKey": "TOOL_INDIVIDUAL", "label": "Theme", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "INDIVIDUAL_THEME"},
+              {"toolId": "STORY", "labelKey": "TOOL_STORY", "label": "Story", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "STORY"}
+            ]
+          },
+          {
+            "groupId": "CONTENT", "labelKey": "TOOLS_CONTENT", "label": "Content",
+            "tools": [
+              {
+                "toolId": "POST", "labelKey": "TOOL_POST", "label": "Post", "icon": "work", "command": "ADD_CONTENT", "componentId": "SOCIAL_PUBLICATION",
+                "flyout": [
+                  {"optionId": "IMAGE", "labelKey": "OPTION_IMAGE", "label": "Image"},
+                  {"optionId": "REEL", "labelKey": "OPTION_REEL", "label": "Reel"},
+                  {"optionId": "CAROUSEL", "labelKey": "OPTION_CAROUSEL", "label": "Carousel"},
+                  {"optionId": "TEXT", "labelKey": "OPTION_TEXT", "label": "Text"}
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "PUBLISH", "labelKey": "TOOLS_PUBLISH", "label": "Publish",
+            "tools": [
+              {"toolId": "SLOT", "labelKey": "TOOL_SLOT", "label": "Slot", "icon": "calendar", "command": "ADD_SLOT"},
+              {"toolId": "NOTE", "labelKey": "TOOL_NOTE", "label": "Note", "icon": "documents", "command": "ADD_NOTE"}
+            ]
+          }
+        ],
+        "gates": [
+          {"action": "SCHEDULE", "requiresMode": "INDUCT", "messageKey": "GATE_FINISH_INDUCT"},
+          {"action": "PUBLISH", "requiresMode": "GOALS", "messageKey": "GATE_SET_GOALS"},
+          {"action": "GENERATE_MEDIA", "requiresMode": "GOALS", "messageKey": "GATE_SET_GOALS"}
+        ]
+      },
+      {
+        "modeId": "OPERATIONS",
+        "labelKey": "MODE_OPERATIONS",
+        "label": "Run and improve",
+        "readinessSource": "OPERATION_STATUS",
+        "entries": [
+          {"entryId": "OPS_APPROVALS", "labelKey": "NAV_OPS_APPROVALS", "label": "Approvals", "icon": "work", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "approvals"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "OPS_PUBLISHED", "labelKey": "NAV_OPS_PUBLISHED", "label": "Published", "icon": "documents", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "published"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "OPS_RESULTS", "labelKey": "NAV_OPS_RESULTS", "label": "Results", "icon": "results", "order": 30, "surface": {"kind": "KERNEL_VIEW", "target": "results"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"},
+          {"entryId": "OPS_IMPROVE", "labelKey": "NAV_OPS_IMPROVE", "label": "Improve", "icon": "insights", "order": 40, "surface": {"kind": "KERNEL_VIEW", "target": "improve"}, "audiences": ["customer_owner", "delegate", "steward"], "availabilityGate": "ALWAYS"}
+        ]
+      }
+    ],
+    "eventLayers": [
+      {"layerId": "FESTIVAL", "labelKey": "LAYER_FESTIVAL", "label": "Festivals", "sensitive": false, "defaultOn": true},
+      {"layerId": "LOCAL", "labelKey": "LAYER_LOCAL", "label": "Local", "sensitive": false, "defaultOn": true},
+      {"layerId": "SEASON", "labelKey": "LAYER_SEASON", "label": "Seasons", "sensitive": false, "defaultOn": true},
+      {"layerId": "SPORT", "labelKey": "LAYER_SPORT", "label": "Sport", "sensitive": false, "defaultOn": false},
+      {"layerId": "ART", "labelKey": "LAYER_ART", "label": "Art", "sensitive": false, "defaultOn": false},
+      {"layerId": "RELIGION", "labelKey": "LAYER_RELIGION", "label": "Religion", "sensitive": true, "defaultOn": false},
+      {"layerId": "POLITICS", "labelKey": "LAYER_POLITICS", "label": "Politics", "sensitive": true, "defaultOn": false}
+    ],
+    "planLevels": [
+      {"levelId": "MASTER_THEME", "labelKey": "LEVEL_MASTER_THEME", "label": "Monthly theme"},
+      {"levelId": "WEEKLY_THEME", "labelKey": "LEVEL_WEEKLY_THEME", "label": "Weekly theme"},
+      {"levelId": "INDIVIDUAL_THEME", "labelKey": "LEVEL_INDIVIDUAL_THEME", "label": "Theme"},
+      {"levelId": "STORY", "labelKey": "LEVEL_STORY", "label": "Story"}
+    ],
+    "platforms": [
+      {"platformId": "FACEBOOK", "labelKey": "PLATFORM_FACEBOOK", "label": "Facebook", "connector": "META_FACEBOOK"},
+      {"platformId": "INSTAGRAM", "labelKey": "PLATFORM_INSTAGRAM", "label": "Instagram", "connector": "META_INSTAGRAM"},
+      {"platformId": "WHATSAPP_BUSINESS", "labelKey": "PLATFORM_WHATSAPP_BUSINESS", "label": "WhatsApp Business", "connector": "NONE"},
+      {"platformId": "YOUTUBE", "labelKey": "PLATFORM_YOUTUBE", "label": "YouTube", "connector": "NONE"},
+      {"platformId": "LINKEDIN", "labelKey": "PLATFORM_LINKEDIN", "label": "LinkedIn", "connector": "NONE"},
+      {"platformId": "GOOGLE_BUSINESS", "labelKey": "PLATFORM_GOOGLE_BUSINESS", "label": "Google Business Profile", "connector": "NONE"},
+      {"platformId": "WEBSITE", "labelKey": "PLATFORM_WEBSITE", "label": "Website", "connector": "NONE"}
+    ],
+    "views": ["MONTH", "WEEK", "PLATFORMS", "STORYBOARD"]
   },
   "conformanceScenarios": [
     {

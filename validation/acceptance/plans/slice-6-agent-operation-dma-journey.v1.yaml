@@ -1,0 +1,72 @@
+schema: waooaw.journey-test-plan/v1
+journey_id: slice-6-agent-operation-dma-journey
+version: 1
+status: ACCEPTED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - personal_data_leakage
+# Slice 6 (WC-174, Roadmap Iteration 5, AO-M1) follows a synthetic customer through Agent Operation. S28 is exercised
+# against the declared modes. S29 to S31 need a deployed Demo that carries this build, a tester account and the second
+# sealed image; each reports BLOCKED-BY-FLAG or NOT-COVERED with the named reason and its owner, never a pass.
+steps:
+  - id: S28
+    title: The Calendar is home and the three modes are declared by the agent
+    customer: A
+    stimulus: Open a hired agent and read the mode rail and the Calendar.
+    claims:
+      - id: S28-C1
+        statement: The agent opens on its Calendar, the three modes Get to know my business, Set my goals and Run and improve open at any time, and the platform names no agent in the frame it sends.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [employment_protocol_enabled]
+    proves:
+      requirements: [WC174-R001, WC174-R002]
+  - id: S29
+    title: Induct, goals, plan, approve and publish one post to the tester account
+    customer: A
+    stimulus: Confirm the profile labels, answer each platform, connect and test the tester account, set the five goals, approve one story and publish it.
+    claims:
+      - id: S29-C1
+        statement: Each platform has an answer, one tester account is connected and tested, five goals are versioned, a story is approved before the next level, and one post reaches the tester account only.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [wc174_deployed_on_demo, tester_account_connected]
+    proves:
+      requirements: [WC174-R008, WC174-R009, WC174-R010, WC174-R013, WC174-R014]
+  - id: S30
+    title: Results, the monthly digest and the share-by-route measure
+    customer: A
+    stimulus: Read results after the tester post and the monthly digest.
+    claims:
+      - id: S30-C1
+        statement: Results and the digest are read from stored counts, and the share-by-route measure holds counts only.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    preconditions: [wc174_deployed_on_demo, tester_account_connected]
+    proves:
+      requirements: [WC174-R025]
+  - id: S31
+    title: The fixture agent runs its own three modes from its own sealed image
+    customer: A
+    stimulus: Hire the declaration-only fixture agent and open its modes.
+    claims:
+      - id: S31-C1
+        statement: The fixture agent shows its own three modes and three plan levels through the same generic screens, served by its own image.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [fixture_image_deployed]
+    proves:
+      requirements: [WC174-R015, WC174-R025]
+witness_exceptions: []

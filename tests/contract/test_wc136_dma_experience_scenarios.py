@@ -1,4 +1,4 @@
-"""WC-136 C6-06: DMA experience scenarios, adapter contract carries `experience`, compatibility tuple pins 1.1.0."""
+"""WC-136 C6-06: DMA experience scenarios, adapter contract carries `experience`, compatibility tuple pins 1.2.0."""
 
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-06
 # Constitutional basis: C-059, C-063, ADR-051
@@ -81,4 +81,4 @@ def test_c6_06_adapter_contract_declares_the_optional_experience_section() -> No
 
 
 def test_c6_06_compatibility_tuple_pins_the_published_manifest_version() -> None:
-    assert json.loads(TUPLE.read_text(encoding="utf-8"))["manifestVersion"] == _manifest()["manifestVersion"] == "1.1.0"
+    assert json.loads(TUPLE.read_text(encoding="utf-8"))["manifestVersion"] == _manifest()["manifestVersion"] == "1.2.0"

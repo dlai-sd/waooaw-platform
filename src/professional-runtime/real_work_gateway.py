@@ -109,6 +109,20 @@ class BusinessPlatformRealWorkGateway:
             str(uuid4()),
         )
 
+    async def propose_operation_items(
+        self, tenant_id: UUID, relationship_id: UUID, items: list[dict[str, Any]]
+    ) -> httpx.Response:
+        """WC174-R006: hand BP an agent's typed proposals (events, plan nodes, drafts, labels, goals) as suggestions only."""
+        return await self.post(
+            {
+                "type": "OPERATION_PROPOSALS",
+                "tenantId": str(tenant_id),
+                "relationshipId": str(relationship_id),
+                "proposals": {"items": items},
+            },
+            str(uuid4()),
+        )
+
     async def report_claim(self, tenant_id: UUID, relationship_id: UUID, claim: dict[str, Any]) -> httpx.Response:
         """Report an agent-stated figure. BP stores it labelled as agent-stated, never as an independent result."""
         return await self.post(

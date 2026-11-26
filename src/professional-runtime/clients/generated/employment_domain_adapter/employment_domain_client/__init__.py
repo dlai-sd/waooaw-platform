@@ -38,6 +38,8 @@ __all__ = [
     "EmploymentExperienceBlockTypeV1",
     "EmploymentExperienceComponentV1",
     "EmploymentExperienceComponentV1SelectableDimension",
+    "EmploymentExperienceEventLayerV1",
+    "EmploymentExperienceFlyoutOptionV1",
     "EmploymentExperienceGoalTypeV1",
     "EmploymentExperienceManifestV1",
     "EmploymentExperienceManifestV1ChannelSupport",
@@ -51,8 +53,14 @@ __all__ = [
     "EmploymentExperienceManifestV1OperateCadenceInner",
     "EmploymentExperienceManifestV1Plan",
     "EmploymentExperienceMeasureV1",
+    "EmploymentExperienceModeGateV1",
+    "EmploymentExperienceModeV1",
     "EmploymentExperienceNavigationEntryV1",
     "EmploymentExperienceNavigationSurfaceV1",
+    "EmploymentExperiencePlanLevelV1",
+    "EmploymentExperiencePlatformV1",
+    "EmploymentExperienceToolGroupV1",
+    "EmploymentExperienceToolV1",
     "EmploymentGovernanceReferencesV1",
     "EmploymentInductionManifestV1",
     "EmploymentInterfaceManifestV1",
@@ -92,6 +100,8 @@ from employment_domain_client.models.employment_experience_audience_v1 import Em
 from employment_domain_client.models.employment_experience_block_type_v1 import EmploymentExperienceBlockTypeV1 as EmploymentExperienceBlockTypeV1
 from employment_domain_client.models.employment_experience_component_v1 import EmploymentExperienceComponentV1 as EmploymentExperienceComponentV1
 from employment_domain_client.models.employment_experience_component_v1_selectable_dimension import EmploymentExperienceComponentV1SelectableDimension as EmploymentExperienceComponentV1SelectableDimension
+from employment_domain_client.models.employment_experience_event_layer_v1 import EmploymentExperienceEventLayerV1 as EmploymentExperienceEventLayerV1
+from employment_domain_client.models.employment_experience_flyout_option_v1 import EmploymentExperienceFlyoutOptionV1 as EmploymentExperienceFlyoutOptionV1
 from employment_domain_client.models.employment_experience_goal_type_v1 import EmploymentExperienceGoalTypeV1 as EmploymentExperienceGoalTypeV1
 from employment_domain_client.models.employment_experience_manifest_v1 import EmploymentExperienceManifestV1 as EmploymentExperienceManifestV1
 from employment_domain_client.models.employment_experience_manifest_v1_channel_support import EmploymentExperienceManifestV1ChannelSupport as EmploymentExperienceManifestV1ChannelSupport
@@ -105,8 +115,14 @@ from employment_domain_client.models.employment_experience_manifest_v1_operate_a
 from employment_domain_client.models.employment_experience_manifest_v1_operate_cadence_inner import EmploymentExperienceManifestV1OperateCadenceInner as EmploymentExperienceManifestV1OperateCadenceInner
 from employment_domain_client.models.employment_experience_manifest_v1_plan import EmploymentExperienceManifestV1Plan as EmploymentExperienceManifestV1Plan
 from employment_domain_client.models.employment_experience_measure_v1 import EmploymentExperienceMeasureV1 as EmploymentExperienceMeasureV1
+from employment_domain_client.models.employment_experience_mode_gate_v1 import EmploymentExperienceModeGateV1 as EmploymentExperienceModeGateV1
+from employment_domain_client.models.employment_experience_mode_v1 import EmploymentExperienceModeV1 as EmploymentExperienceModeV1
 from employment_domain_client.models.employment_experience_navigation_entry_v1 import EmploymentExperienceNavigationEntryV1 as EmploymentExperienceNavigationEntryV1
 from employment_domain_client.models.employment_experience_navigation_surface_v1 import EmploymentExperienceNavigationSurfaceV1 as EmploymentExperienceNavigationSurfaceV1
+from employment_domain_client.models.employment_experience_plan_level_v1 import EmploymentExperiencePlanLevelV1 as EmploymentExperiencePlanLevelV1
+from employment_domain_client.models.employment_experience_platform_v1 import EmploymentExperiencePlatformV1 as EmploymentExperiencePlatformV1
+from employment_domain_client.models.employment_experience_tool_group_v1 import EmploymentExperienceToolGroupV1 as EmploymentExperienceToolGroupV1
+from employment_domain_client.models.employment_experience_tool_v1 import EmploymentExperienceToolV1 as EmploymentExperienceToolV1
 from employment_domain_client.models.employment_governance_references_v1 import EmploymentGovernanceReferencesV1 as EmploymentGovernanceReferencesV1
 from employment_domain_client.models.employment_induction_manifest_v1 import EmploymentInductionManifestV1 as EmploymentInductionManifestV1
 from employment_domain_client.models.employment_interface_manifest_v1 import EmploymentInterfaceManifestV1 as EmploymentInterfaceManifestV1

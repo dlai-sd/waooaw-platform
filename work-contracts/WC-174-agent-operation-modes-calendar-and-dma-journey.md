@@ -413,4 +413,13 @@ Build pull request: every requirement has a ledger row with executable evidence;
 
 ## Implementation Record
 
-Not started. The build is not authorized.
+Built on branch `ib/174/dma-agent-operation-grooming` in one session with the Founder's authorization. Ledger rows stay PLANNED: the Definition Of Done turns them to PASS only after the Demo read-back and the slice 6 run, which follow the Founder's deployment.
+
+Built: the additive `modes`, `eventLayers`, `planLevels`, `platforms` and `views` declaration in the schema, the domain adapter specification, the adapter models, the generated clients and the Business Platform admission; the generic Agent Operation service, store, controllers and migration `99zzzzzzzz-wc174-01-agent-operation.sql` (calendar, plan tree, suggestions, hand over, undo, labels, platform answers, goals, digests, scheduling and publishing gates, chat allowance, share-by-route counts); the Founder settings screen (chat allowance default 1,000, Instagram flag, sandbox-only publishing); the web workspace; DMA manifest 1.2.0 with its skills; the declaration-only fixture agent as its own sealed image and compose service; acceptance slice 6 plan and spec.
+
+Defaults as decided: Facebook first, Instagram behind a Founder flag; religion and politics layers start off and their proposals are refused while off; chat allowance 1,000, changed only on the Founder screen with step-up.
+
+Validation (one pass, then fixes, then one final pass, all in Docker): Business Platform 4,441 passed, 0 failed; web tsc, eslint and jest coverage gate passed (1,447 passed); contract, acceptance and Professional Runtime Python 885 passed. Failures seen in the first pass and fixed: four C# compile errors, test-only typing and selector issues, an unenforced schema case, and the pinned-version and baseline lists.
+
+Not done, and owned: Demo read-backs and the slice 6 Demo run (S29 to S31 report BLOCKED-BY-FLAG or NOT-COVERED with owners); Terraform and deployment wiring for the second sealed image; the publication intent owned by the Professional Runtime (publishing goes through the WC-149 connection interface in this build); the customer-made content review check on hand-back runs only as far as the existing checks reach. Pre-existing failures unrelated to this work and left alone: the stale AI-runtime generated-client digest, init-chain lint findings in older migrations, batch-lifecycle and git-ancestry tests that need history the Docker mount lacks.
+

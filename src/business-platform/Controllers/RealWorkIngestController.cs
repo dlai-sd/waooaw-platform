@@ -8,8 +8,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.AgentOperation;
 using Waooaw.BusinessPlatform.Services.RealWork;
+using Waooaw.BusinessPlatform.Services.Workbench;
 using Waooaw.WorkloadIdentity;
 
 namespace Waooaw.BusinessPlatform.Controllers;
@@ -21,8 +24,13 @@ public sealed record RealWorkIngestRequest(
     Guid RelationshipId,
     TimelineEventInput? Event,
     ArtifactProposal? Artifact,
-    AgentClaimInput? Claim
+    AgentClaimInput? Claim,
+    OperationProposalsInput? Proposals = null
 );
+
+/// <summary>WC174-R006: what an agent proposed for a relationship's calendar, plan, profile or goals. Suggestions only.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record OperationProposalsInput(IReadOnlyList<OperationProposal> Items);
 
 /// <summary>
 /// The Professional Runtime reports execution events, proposed artifacts and agent-stated claims here. The call is an
@@ -37,7 +45,8 @@ public sealed class RealWorkIngestController(
     RealWorkArtifactService artifacts,
     RealWorkTimelineService timeline,
     RealWorkOutcomeService outcomes,
-    ILogger<RealWorkIngestController> logger
+    ILogger<RealWorkIngestController> logger,
+    AgentOperationService? operations = null
 ) : ControllerBase
 {
     public const string Route = "internal/v1/real-work/events";
@@ -119,6 +128,34 @@ public sealed class RealWorkIngestController(
                         request.Claim
                     );
                     return StatusCode(202, new { state = "RECORDED" });
+                case "OPERATION_PROPOSALS"
+                    when request.Proposals is not null && operations is not null:
+                {
+                    var context = new WorkbenchContext(
+                        request.TenantId,
+                        request.RelationshipId,
+                        ActorSource,
+                        Guid.Empty,
+                        RelationshipParticipantRole.RelationshipManager,
+                        WorkbenchAudiences.FromRole(
+                            RelationshipParticipantRole.RelationshipManager
+                        ),
+                        HttpContext.TraceIdentifier
+                    );
+                    var outcome = await operations.ProposeAsync(
+                        new OperationCaller(
+                            request.TenantId,
+                            request.RelationshipId,
+                            Guid.Empty,
+                            ActorSource,
+                            context.Audience,
+                            context
+                        ),
+                        request.Proposals.Items,
+                        cancellationToken
+                    );
+                    return StatusCode(202, outcome);
+                }
                 default:
                     throw new RealWorkConflictException("REAL_WORK_INVALID_REQUEST");
             }
@@ -136,6 +173,11 @@ public sealed class RealWorkIngestController(
                 },
                 new { code }
             );
+        }
+        catch (AgentOperationException error)
+        {
+            logger.LogWarning("Operation proposals refused: {Code}", error.Code);
+            return StatusCode(error.Status, new { code = error.Code });
         }
     }
 }

@@ -475,6 +475,130 @@ components:
           type: array
           maxItems: 12
           items: { $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1" }
+        modes:
+          description: |
+            WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and
+            tool groups for the context menu, the readiness source and the gates on actions with a side effect.
+            Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest
+            without it shows the WC-171 menu.
+          type: array
+          maxItems: 3
+          items: { $ref: "#/components/schemas/EmploymentExperienceModeV1" }
+        eventLayers:
+          description: WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated.
+          type: array
+          maxItems: 16
+          items: { $ref: "#/components/schemas/EmploymentExperienceEventLayerV1" }
+        planLevels:
+          description: WC-174. The levels of the agent's plan tree, outermost first.
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/EmploymentExperiencePlanLevelV1" }
+        platforms:
+          description: WC-174. The outside places the agent works from; each needs an explicit customer answer.
+          type: array
+          maxItems: 16
+          items: { $ref: "#/components/schemas/EmploymentExperiencePlatformV1" }
+        views:
+          description: WC-174. Which platform calendar views the agent offers.
+          type: array
+          maxItems: 4
+          uniqueItems: true
+          items: { type: string, enum: [MONTH, WEEK, PLATFORMS, STORYBOARD] }
+    EmploymentExperienceModeV1:
+      type: object
+      additionalProperties: false
+      required: [modeId, labelKey, label, readinessSource, entries]
+      properties:
+        modeId: { type: string, enum: [INDUCT, GOALS, OPERATIONS] }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        readinessSource: { type: string, enum: [INDUCTION_SUMMARY, GOAL_COVERAGE, OPERATION_STATUS] }
+        entries:
+          type: array
+          maxItems: 12
+          items: { $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1" }
+        toolGroups:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/EmploymentExperienceToolGroupV1" }
+        gates:
+          type: array
+          maxItems: 8
+          items: { $ref: "#/components/schemas/EmploymentExperienceModeGateV1" }
+    EmploymentExperienceToolGroupV1:
+      type: object
+      additionalProperties: false
+      required: [groupId, labelKey, label, tools]
+      properties:
+        groupId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        tools:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { $ref: "#/components/schemas/EmploymentExperienceToolV1" }
+    EmploymentExperienceToolV1:
+      type: object
+      additionalProperties: false
+      required: [toolId, labelKey, label, icon, command]
+      properties:
+        toolId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        icon: { type: string, enum: [profile, calendar, accounts, results, plan, work, insights, documents] }
+        command: { type: string, enum: [ADD_EVENT, ADD_PLACEHOLDER, ADD_PLAN_NODE, ADD_CONTENT, ADD_SLOT, ADD_NOTE] }
+        planLevel: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        flyout:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/EmploymentExperienceFlyoutOptionV1" }
+    EmploymentExperienceFlyoutOptionV1:
+      type: object
+      additionalProperties: false
+      required: [optionId, labelKey, label]
+      properties:
+        optionId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+    EmploymentExperienceModeGateV1:
+      description: Blocks only the named action with a side effect until the named mode reports ready; never blocks opening a screen.
+      type: object
+      additionalProperties: false
+      required: [action, requiresMode, messageKey]
+      properties:
+        action: { type: string, enum: [PUBLISH, SCHEDULE, GENERATE_MEDIA] }
+        requiresMode: { type: string, enum: [INDUCT, GOALS, OPERATIONS] }
+        messageKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+    EmploymentExperienceEventLayerV1:
+      type: object
+      additionalProperties: false
+      required: [layerId, labelKey, label, sensitive, defaultOn]
+      properties:
+        layerId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        sensitive: { type: boolean }
+        defaultOn: { type: boolean }
+    EmploymentExperiencePlanLevelV1:
+      type: object
+      additionalProperties: false
+      required: [levelId, labelKey, label]
+      properties:
+        levelId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+    EmploymentExperiencePlatformV1:
+      type: object
+      additionalProperties: false
+      required: [platformId, labelKey, label, connector]
+      properties:
+        platformId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        labelKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 40, pattern: "^[^<>&{}\\[\\]`\\\\]+$" }
+        connector: { type: string, enum: [META_FACEBOOK, META_INSTAGRAM, NONE] }
     EmploymentExperienceNavigationEntryV1:
       type: object
       additionalProperties: false

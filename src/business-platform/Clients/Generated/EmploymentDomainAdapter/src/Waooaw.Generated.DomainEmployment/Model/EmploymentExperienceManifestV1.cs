@@ -52,6 +52,37 @@ namespace Waooaw.Generated.DomainEmployment.Model
         }
 
         /// <summary>
+        /// Defines Views
+        /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
+        public enum ViewsEnum
+        {
+            /// <summary>
+            /// Enum MONTH for value: MONTH
+            /// </summary>
+            [EnumMember(Value = "MONTH")]
+            MONTH = 1,
+
+            /// <summary>
+            /// Enum WEEK for value: WEEK
+            /// </summary>
+            [EnumMember(Value = "WEEK")]
+            WEEK = 2,
+
+            /// <summary>
+            /// Enum PLATFORMS for value: PLATFORMS
+            /// </summary>
+            [EnumMember(Value = "PLATFORMS")]
+            PLATFORMS = 3,
+
+            /// <summary>
+            /// Enum STORYBOARD for value: STORYBOARD
+            /// </summary>
+            [EnumMember(Value = "STORYBOARD")]
+            STORYBOARD = 4
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="EmploymentExperienceManifestV1" /> class.
         /// </summary>
         [JsonConstructorAttribute]
@@ -76,7 +107,12 @@ namespace Waooaw.Generated.DomainEmployment.Model
         /// <param name="channelSupport">channelSupport (required).</param>
         /// <param name="conformanceScenarios">conformanceScenarios (required).</param>
         /// <param name="navigation">WC-171. Optional entries the agent adds after the platform&#39;s fixed surfaces in its context menu: data only (label, closed icon, order hint, surface kind). Admission refuses unknown surface kinds, markup, duplicate ids and entries that open nothing. A manifest without it shows only the fixed surfaces. .</param>
-        public EmploymentExperienceManifestV1(string contractVersion = default, ImmutableContractReferenceV1 vocabularyRef = default, ImmutableContractReferenceV1 componentCatalogueRef = default, List<EmploymentExperienceGoalTypeV1> goalTypes = default, EmploymentExperienceManifestV1Plan plan = default, EmploymentExperienceManifestV1Operate operate = default, EmploymentExperienceManifestV1Monitor monitor = default, List<EmploymentExperienceManifestV1DomainBlocksInner> domainBlocks = default, List<EmploymentExperienceComponentV1> components = default, List<EmploymentExperienceAudienceV1> audiences = default, List<ModalitiesEnum> modalities = default, EmploymentExperienceManifestV1ChannelSupport channelSupport = default, List<string> conformanceScenarios = default, List<EmploymentExperienceNavigationEntryV1> navigation = default)
+        /// <param name="modes">WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and tool groups for the context menu, the readiness source and the gates on actions with a side effect. Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest without it shows the WC-171 menu. .</param>
+        /// <param name="eventLayers">WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated..</param>
+        /// <param name="planLevels">WC-174. The levels of the agent&#39;s plan tree, outermost first..</param>
+        /// <param name="platforms">WC-174. The outside places the agent works from; each needs an explicit customer answer..</param>
+        /// <param name="views">WC-174. Which platform calendar views the agent offers..</param>
+        public EmploymentExperienceManifestV1(string contractVersion = default, ImmutableContractReferenceV1 vocabularyRef = default, ImmutableContractReferenceV1 componentCatalogueRef = default, List<EmploymentExperienceGoalTypeV1> goalTypes = default, EmploymentExperienceManifestV1Plan plan = default, EmploymentExperienceManifestV1Operate operate = default, EmploymentExperienceManifestV1Monitor monitor = default, List<EmploymentExperienceManifestV1DomainBlocksInner> domainBlocks = default, List<EmploymentExperienceComponentV1> components = default, List<EmploymentExperienceAudienceV1> audiences = default, List<ModalitiesEnum> modalities = default, EmploymentExperienceManifestV1ChannelSupport channelSupport = default, List<string> conformanceScenarios = default, List<EmploymentExperienceNavigationEntryV1> navigation = default, List<EmploymentExperienceModeV1> modes = default, List<EmploymentExperienceEventLayerV1> eventLayers = default, List<EmploymentExperiencePlanLevelV1> planLevels = default, List<EmploymentExperiencePlatformV1> platforms = default, List<ViewsEnum> views = default)
         {
             // to ensure "contractVersion" is required (not null)
             if (contractVersion == null)
@@ -152,6 +188,11 @@ namespace Waooaw.Generated.DomainEmployment.Model
             this.ConformanceScenarios = conformanceScenarios;
             this.ComponentCatalogueRef = componentCatalogueRef;
             this.Navigation = navigation;
+            this.Modes = modes;
+            this.EventLayers = eventLayers;
+            this.PlanLevels = planLevels;
+            this.Platforms = platforms;
+            this.Views = views;
             this.AdditionalProperties = new Dictionary<string, object>();
         }
 
@@ -241,6 +282,41 @@ namespace Waooaw.Generated.DomainEmployment.Model
         public List<EmploymentExperienceNavigationEntryV1> Navigation { get; set; }
 
         /// <summary>
+        /// WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and tool groups for the context menu, the readiness source and the gates on actions with a side effect. Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest without it shows the WC-171 menu. 
+        /// </summary>
+        /// <value>WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and tool groups for the context menu, the readiness source and the gates on actions with a side effect. Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest without it shows the WC-171 menu. </value>
+        [DataMember(Name = "modes", EmitDefaultValue = false)]
+        public List<EmploymentExperienceModeV1> Modes { get; set; }
+
+        /// <summary>
+        /// WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated.
+        /// </summary>
+        /// <value>WC-174. Calendar event layers; a sensitive layer always starts off and its content is approval-gated.</value>
+        [DataMember(Name = "eventLayers", EmitDefaultValue = false)]
+        public List<EmploymentExperienceEventLayerV1> EventLayers { get; set; }
+
+        /// <summary>
+        /// WC-174. The levels of the agent&#39;s plan tree, outermost first.
+        /// </summary>
+        /// <value>WC-174. The levels of the agent&#39;s plan tree, outermost first.</value>
+        [DataMember(Name = "planLevels", EmitDefaultValue = false)]
+        public List<EmploymentExperiencePlanLevelV1> PlanLevels { get; set; }
+
+        /// <summary>
+        /// WC-174. The outside places the agent works from; each needs an explicit customer answer.
+        /// </summary>
+        /// <value>WC-174. The outside places the agent works from; each needs an explicit customer answer.</value>
+        [DataMember(Name = "platforms", EmitDefaultValue = false)]
+        public List<EmploymentExperiencePlatformV1> Platforms { get; set; }
+
+        /// <summary>
+        /// WC-174. Which platform calendar views the agent offers.
+        /// </summary>
+        /// <value>WC-174. Which platform calendar views the agent offers.</value>
+        [DataMember(Name = "views", EmitDefaultValue = false)]
+        public List<EmploymentExperienceManifestV1.ViewsEnum> Views { get; set; }
+
+        /// <summary>
         /// Gets or Sets additional properties
         /// </summary>
         [JsonExtensionData]
@@ -268,6 +344,11 @@ namespace Waooaw.Generated.DomainEmployment.Model
             sb.Append("  ChannelSupport: ").Append(ChannelSupport).Append("\n");
             sb.Append("  ConformanceScenarios: ").Append(ConformanceScenarios).Append("\n");
             sb.Append("  Navigation: ").Append(Navigation).Append("\n");
+            sb.Append("  Modes: ").Append(Modes).Append("\n");
+            sb.Append("  EventLayers: ").Append(EventLayers).Append("\n");
+            sb.Append("  PlanLevels: ").Append(PlanLevels).Append("\n");
+            sb.Append("  Platforms: ").Append(Platforms).Append("\n");
+            sb.Append("  Views: ").Append(Views).Append("\n");
             sb.Append("  AdditionalProperties: ").Append(AdditionalProperties).Append("\n");
             sb.Append("}\n");
             return sb.ToString();

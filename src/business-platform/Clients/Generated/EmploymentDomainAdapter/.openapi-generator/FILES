@@ -33,6 +33,8 @@ src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceAudienceV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceBlockTypeV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceComponentV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceComponentV1SelectableDimension.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceEventLayerV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceFlyoutOptionV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceGoalTypeV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1ChannelSupport.cs
@@ -46,8 +48,14 @@ src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1Operat
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1OperateCadenceInner.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceManifestV1Plan.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceMeasureV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceModeGateV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceModeV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceNavigationEntryV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceNavigationSurfaceV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperiencePlanLevelV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperiencePlatformV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceToolGroupV1.cs
+src/Waooaw.Generated.DomainEmployment/Model/EmploymentExperienceToolV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentGovernanceReferencesV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentInductionManifestV1.cs
 src/Waooaw.Generated.DomainEmployment/Model/EmploymentInterfaceManifestV1.cs
