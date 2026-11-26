@@ -5,6 +5,7 @@
 """Razorpay HTTP client — all configuration from env vars (FA-029)."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -21,6 +22,17 @@ logger = logging.getLogger(__name__)
 
 _RAZORPAY_BASE = "https://api.razorpay.com/v1"
 _RAZORPAY_PAYMENT_ID = re.compile(r"pay_[A-Za-z0-9]{1,64}\Z")
+_RATE_LIMIT_ATTEMPTS = 5
+_RATE_LIMIT_MAX_WAIT_SECONDS = 30.0
+
+
+def _rate_limit_wait_seconds(resp: httpx.Response, attempt: int) -> float:
+    """Honour Retry-After when present, else back off 1, 2, 4 ... seconds, capped."""
+    try:
+        advised = float(resp.headers.get("Retry-After", ""))
+    except ValueError:
+        advised = float(2**attempt)
+    return min(max(advised, 0.0), _RATE_LIMIT_MAX_WAIT_SECONDS)
 
 # Bundle tier → Razorpay plan_id env var lookup
 _PLAN_ENV_KEYS: dict[str, str] = {
@@ -92,17 +104,26 @@ class RazorpayClient:
         skip = 0
         async with httpx.AsyncClient(timeout=15.0) as client:
             while True:
-                resp = await client.get(
+                resp = await self._get_with_backoff(
+                    client,
                     f"{_RAZORPAY_BASE}/{resource}",
-                    params={"from": start, "to": end, "count": 100, "skip": skip},
-                    headers={"Authorization": self._auth_header()},
+                    {"from": start, "to": end, "count": 100, "skip": skip},
                 )
-                resp.raise_for_status()
                 page = resp.json().get("items", [])
                 items.extend(page)
                 if len(page) < 100:
                     return items
                 skip += 100
+
+    async def _get_with_backoff(self, client: httpx.AsyncClient, url: str, params: dict) -> httpx.Response:
+        """GET that waits and retries when Razorpay answers 429 (too many requests)."""
+        for attempt in range(_RATE_LIMIT_ATTEMPTS):
+            resp = await client.get(url, params=params, headers={"Authorization": self._auth_header()})
+            if resp.status_code != 429 or attempt == _RATE_LIMIT_ATTEMPTS - 1:
+                resp.raise_for_status()
+                return resp
+            await asyncio.sleep(_rate_limit_wait_seconds(resp, attempt))
+        raise AssertionError("unreachable")  # pragma: no cover
 
     async def fetch_payment(self, payment_id: str) -> dict:
         """Fetch provider-owned payment status without exposing credentials to the browser."""

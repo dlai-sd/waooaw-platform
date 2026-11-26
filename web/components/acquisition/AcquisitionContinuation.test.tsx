@@ -69,6 +69,20 @@ describe('AcquisitionContinuation', () => {
     );
   });
 
+  it('explains a dependency failure in plain words and offers a retry', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'IDENTITY_DEPENDENCY_UNAVAILABLE' }),
+    }) as jest.Mock;
+
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByText(/We could not save your request just now/)).toBeVisible();
+    expect(screen.queryByText('IDENTITY_DEPENDENCY_UNAVAILABLE')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry trial' })).toBeEnabled();
+  });
+
   it('opens official Razorpay Checkout and submits its signed callback before starting Hire', async () => {
     let checkoutOptions: Record<string, unknown> | undefined;
     const open = jest.fn();

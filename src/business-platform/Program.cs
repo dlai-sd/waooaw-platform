@@ -499,6 +499,10 @@ builder.Services.AddSingleton<
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Alerts.AlertPolicyService>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperationsConsoleService>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperatorPageService>();
+builder.Services.AddScoped<
+    Waooaw.BusinessPlatform.Services.Operations.ICustomerDirectory,
+    Waooaw.BusinessPlatform.Services.Operations.CustomerDirectoryService
+>();
 builder.Services.AddSingleton<
     Waooaw.BusinessPlatform.Services.Operations.ISpendChainReader,
     Waooaw.BusinessPlatform.Services.Operations.UnavailableSpendChainReader

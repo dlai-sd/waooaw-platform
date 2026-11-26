@@ -52,14 +52,18 @@ _DDL = [
         recorded_at TEXT NOT NULL,
         billing_period_start TEXT NOT NULL
     )""",
+    """CREATE TABLE IF NOT EXISTS customer_wallets (
+        id TEXT NOT NULL PRIMARY KEY,
+        organisation_id TEXT NOT NULL
+    )""",
     """CREATE TABLE IF NOT EXISTS wallet_buckets (
         id TEXT NOT NULL PRIMARY KEY,
-        customer_id TEXT NOT NULL,
+        wallet_id TEXT NOT NULL,
         employment_contract_id TEXT NOT NULL,
         thread_type TEXT NOT NULL,
         balance_paise INTEGER NOT NULL DEFAULT 0,
         available_paise INTEGER,
-        is_active INTEGER NOT NULL DEFAULT 1
+        period_end TEXT NOT NULL
     )""",
     """CREATE TABLE IF NOT EXISTS bucket_reservations (
         id TEXT NOT NULL PRIMARY KEY,
@@ -188,23 +192,29 @@ async def _insert_bucket(
     balance_paise: int,
     is_active: bool = True,
 ) -> None:
-    """Insert a wallet_bucket row into test DB."""
+    """Insert a wallet_bucket row into test DB, under a wallet owned by the customer; "active" means the period has not ended."""
     async with sf() as session:
+        wallet_id = str(uuid4())
+        await session.execute(
+            text("INSERT INTO customer_wallets (id, organisation_id) VALUES (:wallet_id, :customer_id)").bindparams(
+                wallet_id=wallet_id, customer_id=str(customer_id)
+            )
+        )
         await session.execute(
             text(
                 """
                 INSERT INTO wallet_buckets
-                    (id, customer_id, employment_contract_id, thread_type, balance_paise, is_active)
+                    (id, wallet_id, employment_contract_id, thread_type, balance_paise, period_end)
                 VALUES
-                    (:id, :customer_id, :ec_id, :thread_type, :balance_paise, :is_active)
+                    (:id, :wallet_id, :ec_id, :thread_type, :balance_paise, :period_end)
                 """
             ).bindparams(
                 id=str(bucket_id),
-                customer_id=str(customer_id),
+                wallet_id=wallet_id,
                 ec_id=str(employment_contract_id),
                 thread_type=thread_type,
                 balance_paise=balance_paise,
-                is_active=1 if is_active else 0,
+                period_end="9999-12-31" if is_active else "2000-01-01",
             )
         )
         await session.commit()

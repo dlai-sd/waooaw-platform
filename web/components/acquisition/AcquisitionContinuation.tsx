@@ -132,7 +132,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       await continueTrial();
     } catch (error) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
-      setStatus(response?.title ?? 'We could not continue yet.');
+      setStatus(plainProblem(response, 'We could not continue yet.'));
       setBusy(false);
       setRegistrationRequired(response?.code === 'REGISTRATION_REQUIRED');
       setRetryable(response?.status === 503);
@@ -243,7 +243,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       setBusy(false);
     } catch (error) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
-      setStatus(response?.title ?? (error instanceof Error ? error.message : 'Secure checkout is unavailable.'));
+      setStatus(plainProblem(response, error instanceof Error ? error.message : 'Secure checkout is unavailable.'));
       setBusy(false);
       setRegistrationRequired(response?.code === 'REGISTRATION_REQUIRED');
       setRetryable(response?.status === 503);
@@ -313,4 +313,16 @@ class AcquisitionResponseError extends Error {
   constructor(readonly response: { code?: string; status: number; title?: string }) {
     super(response.title);
   }
+}
+
+const plainProblems: Record<string, string> = {
+  IDENTITY_DEPENDENCY_UNAVAILABLE:
+    'We could not save your request just now. Nothing was started or charged. Please try again.',
+  IDENTITY_VERIFICATION_REQUIRED: 'Please verify your email and mobile number before continuing.',
+  IDENTITY_STEP_UP_REQUIRED: 'Please sign in again to confirm it is you, then continue.',
+  IDENTITY_ACTION_DENIED: 'This account is not allowed to do that. Please sign in with the account you registered.',
+};
+
+function plainProblem(response: { code?: string; title?: string } | null, fallback: string) {
+  return (response?.code ? plainProblems[response.code] : undefined) ?? response?.title ?? fallback;
 }

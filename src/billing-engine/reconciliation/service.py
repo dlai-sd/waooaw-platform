@@ -284,9 +284,10 @@ class ReconciliationService:
                                wb.balance_paise,
                                wb.employment_contract_id,
                                wb.thread_type,
-                               wb.customer_id
+                               cw.organisation_id
                         FROM wallet_buckets wb
-                        WHERE wb.is_active = TRUE
+                        JOIN customer_wallets cw ON cw.id = wb.wallet_id
+                        WHERE wb.period_end >= CURRENT_DATE
                         """
                     )
                 )
@@ -505,18 +506,20 @@ class ReconciliationService:
                     text(
                         """
                         SELECT
-                            wb.customer_id,
+                            cw.organisation_id,
                             wb.thread_type,
                             COALESCE(SUM(br.reserved_paise), 0)          AS revenue_paise,
                             COALESCE(SUM(pcl.raw_cost_inr_paise), 0)     AS cost_paise
                         FROM bucket_reservations br
                         JOIN wallet_buckets wb
                             ON wb.id = br.bucket_id
+                        JOIN customer_wallets cw
+                            ON cw.id = wb.wallet_id
                         LEFT JOIN platform_cost_ledger pcl
                             ON pcl.bucket_reservation_id = br.id
                         WHERE br.consumed = TRUE
                           AND date(br.consumed_at) = :report_date
-                        GROUP BY wb.customer_id, wb.thread_type
+                        GROUP BY cw.organisation_id, wb.thread_type
                         """
                     ).bindparams(report_date=report_date)
                 )

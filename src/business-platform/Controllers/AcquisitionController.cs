@@ -129,6 +129,10 @@ public sealed partial class AcquisitionController(
         var actorIdentityHash = ActorIdentityHash();
         var materialHash = MaterialHash(request, intent);
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        // A person who has signed in but not registered has no tenant; row security admits only their own pseudonymous actor hash.
+        await using var transaction = db.Database.IsRelational()
+            ? await BindActorScopeAsync(db, actorIdentityHash, cancellationToken)
+            : null;
         var existing = await db.AcquisitionIntents.SingleOrDefaultAsync(
             value =>
                 value.ActorIdentityHash == actorIdentityHash
@@ -214,6 +218,8 @@ public sealed partial class AcquisitionController(
         };
         db.AcquisitionIntents.Add(acquisitionIntent);
         await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         return StatusCode(StatusCodes.Status201Created, IntentResponse(acquisitionIntent, false));
     }
 
@@ -251,6 +257,10 @@ public sealed partial class AcquisitionController(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var actorIdentityHash = ActorIdentityHash(tenantId, participantId);
         var materialHash = MaterialHash(request, intent);
+        // The intent may have been started before registration (no tenant), so it is claimed under the actor's own scope.
+        await using var claimScope = db.Database.IsRelational()
+            ? await BindActorScopeAsync(db, actorIdentityHash, cancellationToken)
+            : null;
         var acquisitionIntent = await db.AcquisitionIntents.SingleOrDefaultAsync(
             value =>
                 value.ActorIdentityHash == actorIdentityHash
@@ -351,6 +361,8 @@ public sealed partial class AcquisitionController(
             acquisitionIntent.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }
+        if (claimScope is not null)
+            await claimScope.CommitAsync(cancellationToken);
         var admissionId = await db
             .AgentAdmissions.AsNoTracking()
             .Where(value =>
@@ -682,6 +694,20 @@ public sealed partial class AcquisitionController(
                 title: "The Hire price changed. Review the offer and accept it again.",
                 type: HireQuoteChangedType
             );
+
+    private static async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BindActorScopeAsync(
+        EmploymentRelationshipDbContext db,
+        string actorIdentityHash,
+        CancellationToken cancellationToken
+    )
+    {
+        var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_catalog.set_config('app.acquisition_actor_hash', {actorIdentityHash}, true)",
+            cancellationToken
+        );
+        return transaction;
+    }
 
     private string ActorIdentityHash(Guid? tenantId = null, Guid? participantId = null)
     {

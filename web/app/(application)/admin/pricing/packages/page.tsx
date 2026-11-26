@@ -1,15 +1,13 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { PackageWorkspace } from '@/components/admin/pricing/PackageWorkspace';
 import { PricingPageFrame } from '@/components/admin/pricing/PricingPageFrame';
-import { loadCatalogue, loadVersions, requirePricingPage } from '@/lib/pricing-admin-pages';
+import { loadVersions, requirePricingPage } from '@/lib/pricing-admin-pages';
 import Link from 'next/link';
 
 export default async function PackagesPage() {
-  const { accessToken, isFounder } = await requirePricingPage();
+  const { accessToken } = await requirePricingPage();
   const packages = await loadVersions(accessToken, 'PACKAGE');
-  const catalogue = await loadCatalogue(accessToken, packages ?? []);
   return (
     <PricingPageFrame
       current="/admin/pricing/packages"
@@ -23,9 +21,14 @@ export default async function PackagesPage() {
         </p>
       ) : (
         <section aria-label="Package versions" className="workbench-section">
-          <h2>Package versions</h2>
+          <div className="master-detail-heading">
+            <h2>Package versions</h2>
+            <Link className="primary-command" href="/admin/pricing/packages/new">
+              New package
+            </Link>
+          </div>
           {packages.length === 0 ? (
-            <p className="workbench-hint">No packages yet. Create the first draft below.</p>
+            <p className="workbench-hint">No packages yet. Choose “New package” to create the first one.</p>
           ) : (
             <table aria-label="Package versions">
               <thead>
@@ -60,10 +63,6 @@ export default async function PackagesPage() {
           )}
         </section>
       )}
-      <section aria-label="New package draft" className="workbench-section">
-        <h2>New package draft</h2>
-        <PackageWorkspace catalogue={catalogue} isFounder={isFounder} version={null} />
-      </section>
     </PricingPageFrame>
   );
 }

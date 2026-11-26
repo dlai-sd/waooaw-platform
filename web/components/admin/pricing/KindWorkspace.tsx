@@ -5,17 +5,23 @@
 
 import { useState } from 'react';
 import type { PricingVersion } from '@/lib/pricing-admin-client';
-import { formSpecs, type FormKind } from '@/lib/pricing-forms';
+import { formSpecs, valuesFromBody, type FormKind } from '@/lib/pricing-forms';
+import { Breadcrumb } from '@/components/admin/master-detail/Breadcrumb';
+import { StateStrip } from '@/components/admin/master-detail/StateStrip';
 import { DraftForm } from './DraftForm';
 import { DraftWorkflow } from './DraftWorkflow';
 
 type Props = { kind: FormKind; versions: PricingVersion[]; isFounder: boolean };
+type View = { mode: 'list' } | { mode: 'new'; seed?: Record<string, unknown> } | { mode: 'detail'; id: string };
 
+const editable = new Set(['DRAFT', 'SIMULATED']);
+
+// The list of subjects and versions, then one version on its own page; a draft is created only on request.
 export function KindWorkspace({ kind, versions: initial, isFounder }: Props) {
   const spec = formSpecs[kind];
   const [versions, setVersions] = useState(initial);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = versions.find((version) => version.versionId === selectedId) ?? null;
+  const [view, setView] = useState<View>({ mode: 'list' });
+  const selected = view.mode === 'detail' ? (versions.find((version) => version.versionId === view.id) ?? null) : null;
 
   const upsert = (version: PricingVersion) => {
     setVersions((current) =>
@@ -23,15 +29,91 @@ export function KindWorkspace({ kind, versions: initial, isFounder }: Props) {
         ? current.map((item) => (item.versionId === version.versionId ? version : item))
         : [version, ...current]
     );
-    setSelectedId(version.versionId);
+    setView({ mode: 'detail', id: version.versionId });
   };
+  const toList = () => setView({ mode: 'list' });
+
+  if (view.mode === 'new') {
+    return (
+      <div className="workbench-stack">
+        <Breadcrumb trail={[{ label: spec.title, onSelect: toList }, { label: 'New draft' }]} />
+        <DraftForm draft={null} key="form:new" onSaved={upsert} seedBody={view.seed} spec={spec} />
+      </div>
+    );
+  }
+
+  if (selected) {
+    const isEditable = editable.has(selected.state);
+    const values = valuesFromBody(spec, selected.body);
+    return (
+      <div className="workbench-stack">
+        <Breadcrumb
+          trail={[
+            { label: spec.title, onSelect: toList },
+            { label: `${selected.subjectKey} version ${selected.versionNo}` },
+          ]}
+        />
+        <section aria-label={`${selected.subjectKey} version ${selected.versionNo}`} className="workbench-section">
+          <div className="master-detail-heading">
+            <h2>
+              {selected.subjectKey}
+              {selected.seed ? ' (seed)' : ''} · version {selected.versionNo}
+            </h2>
+            {isEditable ? null : (
+              <button
+                className="secondary-link"
+                onClick={() => setView({ mode: 'new', seed: selected.body })}
+                type="button"
+              >
+                New version from this
+              </button>
+            )}
+          </div>
+          <StateStrip state={selected.state} />
+        </section>
+        {isEditable ? (
+          <DraftForm draft={selected} key={`form:${selected.versionId}`} onSaved={upsert} spec={spec} />
+        ) : (
+          <section aria-label="Values" className="workbench-section">
+            <h3>Values (read only)</h3>
+            <dl className="detail-list">
+              {spec.fields.map((field) => (
+                <div key={field.name}>
+                  <dt>{field.label}</dt>
+                  <dd>{values[field.name] || 'not set'}</dd>
+                </div>
+              ))}
+              <div>
+                <dt>Effective from</dt>
+                <dd>{selected.effectiveFrom ?? 'not set'}</dd>
+              </div>
+            </dl>
+            <p className="workbench-hint">
+              A version that has been submitted or authorized is never edited. Start a new version to change it.
+            </p>
+          </section>
+        )}
+        <DraftWorkflow
+          isFounder={isFounder}
+          key={`workflow:${selected.versionId}`}
+          onChanged={upsert}
+          version={selected}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="workbench-stack">
       <section aria-label={`${spec.title} versions`} className="workbench-section">
-        <h2>Versions</h2>
+        <div className="master-detail-heading">
+          <h2>Versions</h2>
+          <button className="primary-command" onClick={() => setView({ mode: 'new' })} type="button">
+            New draft
+          </button>
+        </div>
         {versions.length === 0 ? (
-          <p className="workbench-hint">No versions yet. Create the first draft below.</p>
+          <p className="workbench-hint">No versions yet. Choose “New draft” to create the first one.</p>
         ) : (
           <table aria-label={`${spec.title} versions`}>
             <thead>
@@ -45,7 +127,7 @@ export function KindWorkspace({ kind, versions: initial, isFounder }: Props) {
             </thead>
             <tbody>
               {versions.map((version) => (
-                <tr aria-current={version.versionId === selectedId ? 'true' : undefined} key={version.versionId}>
+                <tr key={version.versionId}>
                   <th scope="row">
                     {version.subjectKey}
                     {version.seed ? ' (seed)' : ''}
@@ -57,7 +139,7 @@ export function KindWorkspace({ kind, versions: initial, isFounder }: Props) {
                     <button
                       aria-label={`Open ${version.subjectKey} version ${version.versionNo}`}
                       className="secondary-link"
-                      onClick={() => setSelectedId(version.versionId)}
+                      onClick={() => setView({ mode: 'detail', id: version.versionId })}
                       type="button"
                     >
                       Open
@@ -68,21 +150,7 @@ export function KindWorkspace({ kind, versions: initial, isFounder }: Props) {
             </tbody>
           </table>
         )}
-        {selected ? (
-          <button className="secondary-link" onClick={() => setSelectedId(null)} type="button">
-            Start a blank draft
-          </button>
-        ) : null}
       </section>
-      <DraftForm draft={selected} key={`form:${selectedId ?? 'new'}`} onSaved={upsert} spec={spec} />
-      {selected ? (
-        <DraftWorkflow
-          isFounder={isFounder}
-          key={`workflow:${selected.versionId}`}
-          onChanged={upsert}
-          version={selected}
-        />
-      ) : null}
     </div>
   );
 }

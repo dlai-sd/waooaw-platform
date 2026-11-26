@@ -93,7 +93,7 @@ test('an empty registry says so and an empty group points to Add provider', () =
   expect(screen.getAllByText('No providers here yet. Use Add provider below.')).toHaveLength(2);
 });
 
-test('selecting a provider opens its panel, marks it current and moves focus to it', async () => {
+test('selecting a provider opens its own page with a way back, and moves focus to it', async () => {
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(200, []));
   render(<ProvidersWorkspace initialProviders={[openai, sarvam]} />);
 
@@ -104,9 +104,12 @@ test('selecting a provider opens its panel, marks it current and moves focus to 
     name: 'Sarvam',
   });
   expect(heading).toHaveFocus();
-  expect(screen.getByRole('button', { name: /Sarvam/ })).toHaveAttribute('aria-current', 'true');
-  expect(screen.getByRole('button', { name: /OpenAI/ })).not.toHaveAttribute('aria-current');
+  expect(screen.queryByRole('button', { name: /OpenAI/ })).not.toBeInTheDocument();
   await screen.findByText('No value has been saved for this provider yet.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Providers' }));
+  expect(screen.getByRole('button', { name: /OpenAI/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Sarvam/ })).toBeInTheDocument();
 });
 
 test('a saved value refreshes the list so the chip shows the new version', async () => {
@@ -144,7 +147,9 @@ test('a saved value refreshes the list so the chip shows the new version', async
 
   fireEvent.click(screen.getByRole('button', { name: 'Confirm and save' }));
 
-  await waitFor(() => expect(screen.getAllByText('Active v1').length).toBeGreaterThan(1));
+  await waitFor(() => expect(screen.getAllByText('Active v1').length).toBeGreaterThan(0));
+  fireEvent.click(screen.getByRole('button', { name: 'Providers' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: /OpenAI/ })).toHaveTextContent('Active v1'));
 });
 
 test('a refresh that fails is reported without losing the list', async () => {
@@ -172,6 +177,7 @@ test('a refresh that fails is reported without losing the list', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Confirm and save' }));
 
   expect(await screen.findByText(/The provider list could not be refreshed\./)).toHaveAttribute('role', 'alert');
+  fireEvent.click(screen.getByRole('button', { name: 'Providers' }));
   expect(screen.getByRole('button', { name: /OpenAI/ })).toBeInTheDocument();
 });
 
@@ -204,6 +210,7 @@ test('a created provider joins its group and is opened for a value', async () =>
     name: 'Acme Maps',
   });
   expect(heading).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Providers' }));
   const agents = screen.getByRole('region', { name: 'Agent APIs' });
-  expect(within(agents).getByRole('button', { name: /Acme Maps/ })).toHaveAttribute('aria-current', 'true');
+  expect(within(agents).getByRole('button', { name: /Acme Maps/ })).toBeInTheDocument();
 });

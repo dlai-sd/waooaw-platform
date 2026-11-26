@@ -2,9 +2,10 @@
 // Constitutional basis: C-023, C-059, C-063, C-088
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { type ComponentProps, useState } from 'react';
 import { fakeResponse, simulationFixture, versionFixture, versionId } from '@/lib/pricing-admin-test-data';
 import type { PackageCatalogue, Simulation } from '@/lib/pricing-admin-types';
-import { PackageEditor } from './PackageEditor';
+import { PackageEditor, type PackageTab } from './PackageEditor';
 
 const originalFetch = global.fetch;
 const catalogue: PackageCatalogue = {
@@ -16,11 +17,27 @@ afterEach(() => {
   global.fetch = originalFetch;
 });
 
+// The tabs belong to the workspace; here small buttons stand in for them so one editor keeps its state across tabs.
+function Editor(props: Partial<ComponentProps<typeof PackageEditor>>) {
+  const [tab, setTab] = useState<PackageTab>('details');
+  return (
+    <>
+      {(['details', 'components', 'review'] as const).map((id) => (
+        <button key={id} onClick={() => setTab(id)} type="button">{`Go ${id}`}</button>
+      ))}
+      <PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} {...props} tab={tab} />
+    </>
+  );
+}
+
+const go = (tab: PackageTab) => fireEvent.click(screen.getByRole('button', { name: `Go ${tab}` }));
+
 function type(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
 function fillPackage() {
+  go('details');
   type('Agent type', 'dma');
   type('Agent version', 'v3');
   type('Package code', 'STARTER');
@@ -30,27 +47,36 @@ function fillPackage() {
   type('GST rate (%)', '18');
 }
 
-test('the running allocation sum says short, matches and over in words', () => {
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+function allocate(component: number, value: string) {
+  go('components');
+  fireEvent.click(screen.getByRole('button', { name: `Edit component ${component}` }));
+  type(`Price allocation ${component} (INR)`, value);
+  fireEvent.click(screen.getByRole('button', { name: 'Back to components' }));
+}
 
+test('the running allocation sum says short, matches and over in words', () => {
+  render(<Editor />);
+
+  go('components');
   expect(screen.getByText(/Enter the package price to compare/)).toBeInTheDocument();
   fillPackage();
   expect(screen.getByText(/Derived base price INR 1,694.92 plus GST INR 305.08/)).toBeInTheDocument();
+  go('components');
   expect(screen.getByText('Allocated INR 0.00 of INR 2,000.00: short by INR 2,000.00.')).toBeInTheDocument();
 
-  type('Price allocation 1 (INR)', '2000');
+  allocate(1, '2000');
   expect(screen.getByText('Allocated INR 2,000.00 of INR 2,000.00: matches the price.')).toBeInTheDocument();
-  type('Price allocation 1 (INR)', '2500');
+  allocate(1, '2500');
   expect(screen.getByText('Allocated INR 2,500.00 of INR 2,000.00: over by INR 500.00.')).toBeInTheDocument();
 });
 
 test('the agent selectors suggest the catalogue and the proactive row is present from the start', () => {
-  const { container } = render(
-    <PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />
-  );
+  const { container } = render(<Editor />);
 
   expect(container.querySelector('#package-agent-types option')).toHaveAttribute('value', 'dma');
   expect(container.querySelector('#package-agent-versions option')).toHaveAttribute('value', 'v3');
+  go('components');
+  fireEvent.click(screen.getByRole('button', { name: 'Edit component 1' }));
   expect(screen.getByRole('group', { name: /proactive messages \(fixed at 30\)/ })).toBeInTheDocument();
 });
 
@@ -61,57 +87,69 @@ test('components can be added and removed and unavailable ones are flagged after
       { code: 'PACKAGE_COMPONENT_NOT_AVAILABLE', componentId: 'AD_BOOST', message: 'Ad boost is not available.' },
     ],
   };
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={simulation} />);
+  render(<Editor simulation={simulation} />);
 
+  go('components');
   fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
   type('Component identifier 2', 'AD_BOOST');
   expect(screen.getByText(/Not available: cannot go on sale/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to components' }));
   const rows = within(screen.getByRole('table', { name: 'Package components' })).getAllByRole('row');
   expect(rows[1]).toHaveTextContent('Available');
   expect(rows[1]).not.toHaveTextContent('Not available');
   expect(rows[2]).toHaveTextContent('Not available');
 
+  fireEvent.click(screen.getByRole('button', { name: 'Edit component 2' }));
   fireEvent.click(screen.getByRole('button', { name: 'Remove component 2' }));
-  expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
+  expect(within(screen.getByRole('table', { name: 'Package components' })).getAllByRole('row')).toHaveLength(2);
 });
 
-test('only the selected component is edited at a time, and Add component selects the new one', () => {
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+test('a component is edited on a page of its own, with a way back to the list', () => {
+  render(<Editor />);
 
+  go('components');
   expect(screen.getByRole('table', { name: 'Package components' })).toBeInTheDocument();
-  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Component identifier 1')).toBeNull();
 
   fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
   expect(screen.getByLabelText('Component identifier 2')).toBeInTheDocument();
-  expect(screen.queryByLabelText('Component identifier 1')).toBeNull();
+  expect(screen.queryByRole('table', { name: 'Package components' })).toBeNull();
   type('Component identifier 2', 'AD_BOOST');
   type('Quantity 2', '2');
   type('Price allocation 2 (INR)', '200');
+  fireEvent.click(screen.getByRole('button', { name: 'Components' }));
 
   const table = screen.getByRole('table', { name: 'Package components' });
   expect(within(table).getAllByRole('row')[2]).toHaveTextContent('AD_BOOST');
   expect(within(table).getAllByRole('row')[2]).toHaveTextContent('INR 200.00');
-
-  fireEvent.click(screen.getByRole('button', { name: 'Edit component 1' }));
-  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
-  expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
 });
 
-test('removing the selected component selects its neighbour', () => {
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+test('removing a component returns to the list', () => {
+  render(<Editor />);
 
+  go('components');
   fireEvent.click(screen.getByRole('button', { name: 'Add component' }));
   type('Component identifier 2', 'AD_BOOST');
   fireEvent.click(screen.getByRole('button', { name: 'Remove component 2' }));
 
   expect(screen.queryByLabelText('Component identifier 2')).toBeNull();
-  expect(screen.getByLabelText('Component identifier 1')).toBeInTheDocument();
   expect(within(screen.getByRole('table', { name: 'Package components' })).getAllByRole('row')).toHaveLength(2);
+});
+
+test('the review tab lists what still stops the package going on sale, one next step at a time', () => {
+  render(<Editor />);
+
+  go('review');
+  const list = within(screen.getByRole('region', { name: 'What stops this going on sale' }));
+  expect(list.getByText(/Details are complete/)).toHaveTextContent('To do');
+  expect(list.getByText(/Details are complete/)).toHaveTextContent('Fill the missing details');
+  expect(list.getByText(/Authorized by the Founder/)).not.toHaveTextContent('Only the Founder authorizes');
+  expect(list.getByText(/On sale/)).toHaveTextContent('To do');
 });
 
 test('problems are listed and nothing is sent until the package is complete', () => {
   global.fetch = jest.fn();
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+  render(<Editor />);
 
   fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
 
@@ -123,10 +161,10 @@ test('problems are listed and nothing is sent until the package is complete', ()
 test('a complete package is created with the owner subject key', async () => {
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(201, versionFixture({ kind: 'PACKAGE' })));
   const onSaved = jest.fn();
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={onSaved} simulation={null} />);
+  render(<Editor onSaved={onSaved} />);
 
   fillPackage();
-  type('Price allocation 1 (INR)', '2000');
+  allocate(1, '2000');
   fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
@@ -164,7 +202,7 @@ test('an existing draft is loaded and saved in place', async () => {
     },
   });
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(200, draft));
-  render(<PackageEditor catalogue={catalogue} draft={draft} onSaved={jest.fn()} simulation={null} />);
+  render(<Editor draft={draft} />);
 
   expect(screen.getByLabelText('Package name')).toHaveValue('Starter');
   type('Package name', 'Starter plus');
@@ -179,14 +217,53 @@ test('an existing draft is loaded and saved in place', async () => {
   });
 });
 
+test('a new draft can start from the values of an existing version but is created as a new record', async () => {
+  const source = versionFixture({
+    kind: 'PACKAGE',
+    state: 'EFFECTIVE',
+    subjectKey: 'package:dma|v3|STARTER',
+    body: {
+      agentType: 'dma',
+      agentVersion: 'v3',
+      packageCode: 'STARTER',
+      displayName: 'Starter',
+      billingPeriodDays: 30,
+      priceInclGstPaise: 200000,
+      gstRatePercent: 18,
+      infrastructureSharePaise: 0,
+      components: [
+        {
+          componentId: 'PROACTIVE_MESSAGE',
+          kind: 'COUNTED',
+          quantity: 30,
+          cadence: 'SPREAD',
+          priceAllocationPaise: 200000,
+          recipe: [],
+          topupAllowed: false,
+        },
+      ],
+    },
+  });
+  global.fetch = jest.fn().mockResolvedValue(fakeResponse(201, versionFixture({ kind: 'PACKAGE', versionNo: 3 })));
+  render(<Editor seed={source} />);
+
+  expect(screen.getByLabelText('Package name')).toHaveValue('Starter');
+  fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+  const [url, init] = jest.mocked(global.fetch).mock.calls[0];
+  expect(url).toBe('/api/admin/pricing/drafts');
+  expect(JSON.parse(String(init?.body))).toMatchObject({ kind: 'PACKAGE', subjectKey: 'package:dma|v3|STARTER' });
+});
+
 test('an owner rejection keeps the form and names the violations', async () => {
   global.fetch = jest
     .fn()
     .mockResolvedValue(fakeResponse(422, { code: 'PRICING_BELOW_FLOOR', minimumCompliantPricePaise: 250000 }));
-  render(<PackageEditor catalogue={catalogue} draft={null} onSaved={jest.fn()} simulation={null} />);
+  render(<Editor />);
 
   fillPackage();
-  type('Price allocation 1 (INR)', '2000');
+  allocate(1, '2000');
   fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Lowest compliant price: INR 2,500.00.');

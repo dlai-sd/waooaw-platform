@@ -16,15 +16,22 @@ import {
   packageFromBody,
 } from '@/lib/pricing-package';
 import { type FormEvent, useState } from 'react';
+import { Breadcrumb } from '@/components/admin/master-detail/Breadcrumb';
 import { type AvailabilityNote, ComponentRow } from './ComponentRow';
 import { ComponentTable } from './ComponentTable';
 import { PackageBuildUp } from './PackageBuildUp';
+import { SaleReadiness } from './SaleReadiness';
 import { PricingMessage, usePricingCommand } from './usePricingCommand';
+
+export type PackageTab = 'details' | 'components' | 'review';
 
 type Props = {
   draft: PricingVersion | null;
+  // A new draft that starts from the values of an existing version.
+  seed?: PricingVersion | null;
   catalogue: PackageCatalogue;
   simulation: Simulation | null;
+  tab?: PackageTab;
   onSaved: (version: PricingVersion) => void;
 };
 
@@ -38,11 +45,15 @@ function allocationStatus(price: number | null, allocated: number): string {
   return `Allocated ${formatInr(allocated)} of ${formatInr(price)}: over by ${formatInr(allocated - price)}.`;
 }
 
-export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) {
+export function PackageEditor({ draft, seed = null, catalogue, simulation, tab = 'details', onSaved }: Props) {
   const target = draft !== null && editable.has(draft.state) ? draft : null;
-  const [state, setState] = useState<PackageState>(() => (draft ? packageFromBody(draft.body) : emptyPackage()));
+  const [state, setState] = useState<PackageState>(() => {
+    const source = draft ?? seed;
+    return source ? packageFromBody(source.body) : emptyPackage();
+  });
   const [problems, setProblems] = useState<string[]>([]);
-  const [selectedKey, setSelectedKey] = useState<string | undefined>(() => state.components[0]?.key);
+  // The component being edited on its own page; null shows the list of components.
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const { busy, message, run, setMessage } = usePricingCommand();
 
   const price = paiseFromInr(state.priceInr);
@@ -51,23 +62,19 @@ export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) 
   const agentTypes = [...new Set(catalogue.agents.map((agent) => agent.agentType))];
   const agentVersions = [...new Set(catalogue.agents.map((agent) => agent.agentVersion))];
   const set = (patch: Partial<PackageState>) => setState((current) => ({ ...current, ...patch }));
-  const selectedIndex = Math.max(
-    0,
-    state.components.findIndex((row) => row.key === selectedKey)
-  );
-  const selected = state.components[selectedIndex];
+  const editingIndex = state.components.findIndex((row) => row.key === editingKey);
+  const editing = editingIndex >= 0 ? state.components[editingIndex] : undefined;
 
   function addComponent() {
     const added = emptyComponent();
     set({ components: [...state.components, added] });
-    setSelectedKey(added.key);
+    setEditingKey(added.key);
   }
 
-  function removeSelected() {
-    if (!selected) return;
-    const remaining = state.components.filter((item) => item.key !== selected.key);
-    set({ components: remaining });
-    setSelectedKey((remaining[selectedIndex] ?? remaining[selectedIndex - 1])?.key);
+  function removeEditing() {
+    if (!editing) return;
+    set({ components: state.components.filter((item) => item.key !== editing.key) });
+    setEditingKey(null);
   }
 
   const availabilityFor = (componentId: string): AvailabilityNote => {
@@ -121,6 +128,9 @@ export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) 
     </div>
   );
 
+  const componentLabel = (row: { componentId: string }, index: number) =>
+    row.componentId.trim() === '' ? `Component ${index + 1}` : row.componentId;
+
   return (
     <form
       aria-label="Package draft"
@@ -128,75 +138,95 @@ export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) 
       noValidate
       onSubmit={(event) => void save(event)}
     >
-      <h3>{target ? `Edit package draft version ${target.versionNo}` : 'New package draft'}</h3>
-      <div className="package-fields">
-        {text('Package code', 'packageCode')}
-        {text('Package name', 'displayName', { wide: true })}
-        {text('Agent type', 'agentType', { list: 'package-agent-types' })}
-        {text('Agent version', 'agentVersion', { list: 'package-agent-versions' })}
-        {text('Billing period (days)', 'billingPeriodDays', { inputMode: 'numeric' })}
-        {text('Price including GST (INR)', 'priceInr', { inputMode: 'decimal' })}
-        {text('GST rate (%)', 'gstRatePercent', { inputMode: 'numeric' })}
-        {text('Infrastructure share (INR)', 'infrastructureInr', { inputMode: 'decimal' })}
-        {text('Target margin for this package (%)', 'targetMarginPct', { inputMode: 'decimal' })}
-        <datalist id="package-agent-types">
-          {agentTypes.map((agentType) => (
-            <option key={agentType} value={agentType} />
-          ))}
-        </datalist>
-        <datalist id="package-agent-versions">
-          {agentVersions.map((agentVersion) => (
-            <option key={agentVersion} value={agentVersion} />
-          ))}
-        </datalist>
-        <div className="package-field package-field-full">
-          <label htmlFor="package-description">Description (the customer maturity this package suits)</label>
-          <textarea
-            id="package-description"
-            maxLength={MAXIMUM_DESCRIPTION}
-            onChange={(event) => set({ description: event.target.value })}
-            rows={3}
-            value={state.description}
-          />
+      {tab === 'details' ? (
+        <div className="package-fields">
+          {text('Package code', 'packageCode')}
+          {text('Package name', 'displayName', { wide: true })}
+          {text('Agent type', 'agentType', { list: 'package-agent-types' })}
+          {text('Agent version', 'agentVersion', { list: 'package-agent-versions' })}
+          {text('Billing period (days)', 'billingPeriodDays', { inputMode: 'numeric' })}
+          {text('Price including GST (INR)', 'priceInr', { inputMode: 'decimal' })}
+          {text('GST rate (%)', 'gstRatePercent', { inputMode: 'numeric' })}
+          {text('Infrastructure share (INR)', 'infrastructureInr', { inputMode: 'decimal' })}
+          {text('Target margin for this package (%)', 'targetMarginPct', { inputMode: 'decimal' })}
+          <datalist id="package-agent-types">
+            {agentTypes.map((agentType) => (
+              <option key={agentType} value={agentType} />
+            ))}
+          </datalist>
+          <datalist id="package-agent-versions">
+            {agentVersions.map((agentVersion) => (
+              <option key={agentVersion} value={agentVersion} />
+            ))}
+          </datalist>
+          <div className="package-field package-field-full">
+            <label htmlFor="package-description">Description (the customer maturity this package suits)</label>
+            <textarea
+              id="package-description"
+              maxLength={MAXIMUM_DESCRIPTION}
+              onChange={(event) => set({ description: event.target.value })}
+              rows={3}
+              value={state.description}
+            />
+          </div>
+          <p className="workbench-hint package-field-full">
+            Margin is a share of the price, from 0 up to but not including 100. A cost of INR 100 at 50% margin sells
+            for INR 200 before GST; markup percentages above 100 are not accepted here.
+          </p>
+          <output aria-live="polite" className="package-field-full">
+            {derived
+              ? `Derived base price ${formatInr(derived.basePaise)} plus GST ${formatInr(derived.gstPaise)}. The owner confirms the cost floor and margin when you simulate.`
+              : 'Enter the price and GST rate to see the derived base price and GST.'}
+          </output>
         </div>
-        <p className="workbench-hint package-field-full">
-          Margin is a share of the price, from 0 up to but not including 100. A cost of INR 100 at 50% margin sells for
-          INR 200 before GST; markup percentages above 100 are not accepted here.
-        </p>
-        <output aria-live="polite" className="package-field-full">
-          {derived
-            ? `Derived base price ${formatInr(derived.basePaise)} plus GST ${formatInr(derived.gstPaise)}. The owner confirms the cost floor and margin when you simulate.`
-            : 'Enter the price and GST rate to see the derived base price and GST.'}
-        </output>
-      </div>
-      <ComponentTable
-        availabilityFor={availabilityFor}
-        components={state.components}
-        onSelect={setSelectedKey}
-        selectedKey={selected?.key}
-      />
-      <button className="secondary-link" onClick={addComponent} type="button">
-        Add component
-      </button>
-      {selected ? (
-        <ComponentRow
-          availability={availabilityFor(selected.componentId)}
-          index={selectedIndex}
-          key={selected.key}
-          onChange={(changed) =>
-            set({ components: state.components.map((item) => (item.key === selected.key ? changed : item)) })
-          }
-          onRemove={removeSelected}
-          row={selected}
-          threads={catalogue.threads}
-        />
       ) : null}
-      <output aria-live="polite">{allocationStatus(price, allocated)}</output>
-      <PackageBuildUp
-        onUseSuggestedPrice={(paise) => set({ priceInr: inrFromPaise(paise) })}
-        simulation={simulation}
-        typedPriceInclGstPaise={price}
-      />
+      {tab === 'components' && editing ? (
+        <>
+          <Breadcrumb
+            trail={[
+              { label: 'Components', onSelect: () => setEditingKey(null) },
+              { label: componentLabel(editing, editingIndex) },
+            ]}
+          />
+          <ComponentRow
+            availability={availabilityFor(editing.componentId)}
+            index={editingIndex}
+            key={editing.key}
+            onChange={(changed) =>
+              set({ components: state.components.map((item) => (item.key === editing.key ? changed : item)) })
+            }
+            onRemove={removeEditing}
+            row={editing}
+            threads={catalogue.threads}
+          />
+          <button className="secondary-link" onClick={() => setEditingKey(null)} type="button">
+            Back to components
+          </button>
+        </>
+      ) : null}
+      {tab === 'components' && !editing ? (
+        <>
+          <div className="master-detail-heading">
+            <h3>Components</h3>
+            <button className="primary-command" onClick={addComponent} type="button">
+              Add component
+            </button>
+          </div>
+          <ComponentTable availabilityFor={availabilityFor} components={state.components} onSelect={setEditingKey} />
+          <output aria-live="polite">{allocationStatus(price, allocated)}</output>
+        </>
+      ) : null}
+      {tab === 'review' ? (
+        <>
+          <output aria-live="polite">{allocationStatus(price, allocated)}</output>
+          <SaleReadiness simulation={simulation} state={state} versionState={draft?.state ?? null} />
+          <PackageBuildUp
+            onUseSuggestedPrice={(paise) => set({ priceInr: inrFromPaise(paise) })}
+            simulation={simulation}
+            typedPriceInclGstPaise={price}
+          />
+        </>
+      ) : null}
       <button className="primary-command" disabled={busy} type="submit">
         {target ? 'Save draft' : 'Create draft'}
       </button>

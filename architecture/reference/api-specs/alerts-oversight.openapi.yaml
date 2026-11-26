@@ -66,10 +66,31 @@ paths:
       responses:
         "200": { description: Blocked messages oldest first, content: { application/json: { schema: { $ref: "#/components/schemas/BlockedMessagesV1" } } } }
         "503": { description: OPERATIONS_WHATSAPP_INACTIVE }
+  /api/v1/operations/blocked-messages/history:
+    get:
+      operationId: listBlockedMessageResolutions
+      summary: Who unblocked, closed or marked a blocked message, when, and why (newest first; the audit trail)
+      responses:
+        "200": { description: Resolutions without recipient or body, content: { application/json: { schema: { $ref: "#/components/schemas/BlockedMessageHistoryV1" } } } }
+        "503": { description: OPERATIONS_WHATSAPP_INACTIVE }
+  /api/v1/operations/customers:
+    get:
+      operationId: listOperationsCustomers
+      summary: People who have signed in, newest activity first, ten at a time by cursor. Founder only. Masked contact details only.
+      parameters:
+        - { name: name, in: query, required: false, schema: { type: string, maxLength: 120 }, description: Name starts with }
+        - { name: contact, in: query, required: false, schema: { type: string, maxLength: 254 }, description: An exact email or mobile number, matched by keyed digest; never returned }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [LOGGED_IN_ONLY, REGISTRATION_STARTED, REGISTERED] } }
+        - { name: cursor, in: query, required: false, schema: { type: string } }
+        - { name: pageSize, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        "200": { description: One page, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDirectoryPageV1" } } } }
+        "400": { description: Invalid filter or cursor }
+        "403": { description: OPERATIONS_FORBIDDEN }
   /api/v1/operations/blocked-messages/{outboxId}/resolve:
     post:
       operationId: resolveBlockedMessage
-      summary: Retry, close with a reason, or mark undeliverable. Idempotent, audited, never deletes.
+      summary: Unblock (RETRY puts the same message back on the queue), close with a reason, or mark undeliverable. Idempotent, audited with who, when and why, never deletes.
       parameters:
         - { name: outboxId, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
@@ -84,9 +105,9 @@ paths:
   /api/v1/operations/pages:
     get:
       operationId: listOperatorPages
-      summary: What became of each page, newest first
+      summary: What became of each page over the last week, newest group first. A standing alert is recorded once an hour and grouped by signal, outcome and reason with a count and first and last time.
       responses:
-        "200": { description: Page outcomes (EMITTED, SUPPRESSED, ACKNOWLEDGED, DELIVERED, FAILED), content: { application/json: { schema: { type: object } } } }
+        "200": { description: "Page groups (outcome EMITTED, SUPPRESSED, ACKNOWLEDGED, DELIVERED, FAILED; count, firstRecordedAt, recordedAt)", content: { application/json: { schema: { type: object } } } }
   /api/v1/operations/pages/{code}/acknowledge:
     post:
       operationId: acknowledgeOperatorPage
@@ -202,7 +223,56 @@ components:
       required: [schemaVersion, items]
       properties:
         schemaVersion: { type: string }
-        items: { type: array, items: { type: object } }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              outboxId: { type: string, format: uuid }
+              relationshipId: { type: string, format: uuid }
+              purpose: { type: string }
+              blockedReason: { type: [string, "null"] }
+              reasonText: { type: string, description: The reason in plain language }
+              canUnblock: { type: boolean, description: False once the relationship has ended or the attempt limit was reached }
+              attemptNumber: { type: integer }
+              blockedSince: { type: string, format: date-time }
+              ageMinutes: { type: number }
+    BlockedMessageHistoryV1:
+      type: object
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              resolutionId: { type: string, format: uuid }
+              outboxId: { type: string, format: uuid }
+              action: { type: string, enum: [RETRY, CLOSE_WITH_REASON, MARK_UNDELIVERABLE] }
+              reason: { type: string }
+              resolvedBy: { type: string }
+              resolvedAt: { type: string, format: date-time }
+    CustomerDirectoryPageV1:
+      type: object
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string }
+        nextCursor: { type: [string, "null"] }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              registrationId: { type: string, format: uuid }
+              displayName: { type: [string, "null"] }
+              maskedEmail: { type: [string, "null"] }
+              maskedMobile: { type: [string, "null"] }
+              status: { type: string, enum: [LOGGED_IN_ONLY, REGISTRATION_STARTED, REGISTERED] }
+              registrationState: { type: string }
+              firstSeenAt: { type: string, format: date-time }
+              lastActiveAt: { type: string, format: date-time }
+              registeredAt: { type: [string, "null"], format: date-time }
     ResolveBlockedRequestV1:
       type: object
       additionalProperties: false

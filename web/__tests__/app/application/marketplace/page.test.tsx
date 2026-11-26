@@ -131,16 +131,16 @@ it('shows the amount from the for-sale package quote and never the descriptor pr
 });
 
 it.each([
-  ['no package is for sale', { kind: 'not-offered' }],
-  ['the billing owner is unavailable', { kind: 'unavailable' }],
-])('shows no amount and no way to hire when %s', async (_name, outcome) => {
+  ['no package is for sale', { kind: 'not-offered' }, 'Hire opens once the monthly price is set up'],
+  ['the billing owner is unavailable', { kind: 'unavailable' }, 'Price cannot be shown right now'],
+])('shows no amount and no way to hire when %s', async (_name, outcome, reason) => {
   jest.mocked(getServerAccessToken).mockResolvedValue('visitor-access-token');
   jest.mocked(browseMarketplaceProfessionals).mockResolvedValue(listing as never);
   jest.mocked(resolveHireQuote).mockResolvedValue(outcome as never);
 
   render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByText('Price is not available right now')).toBeInTheDocument();
+  expect(screen.getByText(reason)).toBeInTheDocument();
   expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Review Hire' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();

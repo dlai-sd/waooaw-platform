@@ -77,16 +77,19 @@ it('hands the server-resolved package and quote version, not an amount of its ow
 });
 
 it.each([
-  ['no package is for sale', { kind: 'not-offered' }],
-  ['the billing owner is unavailable', { kind: 'unavailable' }],
-])('shows no amount and blocks the Hire when %s', async (_name, outcome) => {
+  ['no package is for sale', { kind: 'not-offered' }, 'not-for-sale'],
+  ['the billing owner is unavailable', { kind: 'unavailable' }, 'temporary'],
+])('shows no amount and blocks the Hire when %s', async (_name, outcome, reason) => {
   jest.mocked(resolveHireQuote).mockResolvedValue(outcome as never);
 
   render(await offerPage('hire'));
 
   expect(screen.getByText('Price not available right now')).toBeVisible();
   expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
-  expect(JSON.parse(screen.getByTestId('continuation').textContent ?? '{}')).toMatchObject({ hireUnavailable: true });
+  expect(JSON.parse(screen.getByTestId('continuation').textContent ?? '{}')).toMatchObject({
+    hireUnavailable: true,
+    hireUnavailableReason: reason,
+  });
 });
 
 it('does not resolve a Hire price for a Trial decision', async () => {
