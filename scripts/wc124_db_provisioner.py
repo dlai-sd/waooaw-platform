@@ -68,6 +68,9 @@ ACTOR_SUBJECT_POLICY_EXPRESSION = (
     "(NULLIF(current_setting('app.identity_subject'::text, true), ''::text) COLLATE \"C\")))"
 )
 WHATSAPP_RECOGNITION_POLICY_EXPRESSION = "(((state)::text = 'Completed'::text) AND mobile_verified AND (account_id IS NOT NULL))"
+# WC-172 operator customer directory: a read-only policy for the function owner, which exposes only the paged
+# directory projection and never a raw registrations row.
+OPERATOR_DIRECTORY_POLICY_EXPRESSION = "true"
 
 
 @dataclass(frozen=True)
@@ -665,6 +668,15 @@ SELECT required.relname,
               AND roles = ARRAY['identity_whatsapp_recognizer_owner']::name[]
               AND regexp_replace(qual, E'[\\t\\n\\r ]+', ' ', 'g')
                   = {sql_literal(WHATSAPP_RECOGNITION_POLICY_EXPRESSION)}
+              AND with_check IS NULL
+          ), false)
+          AND NOT COALESCE((
+              required.relname = 'registrations'
+              AND policyname = 'operator_directory_read'
+              AND permissive = 'PERMISSIVE' AND cmd = 'SELECT'
+              AND roles = ARRAY['identity_operator_directory_owner']::name[]
+              AND regexp_replace(qual, E'[\\t\\n\\r ]+', ' ', 'g')
+                  = {sql_literal(OPERATOR_DIRECTORY_POLICY_EXPRESSION)}
               AND with_check IS NULL
           ), false)),
        COALESCE(policy.permissive, ''),
