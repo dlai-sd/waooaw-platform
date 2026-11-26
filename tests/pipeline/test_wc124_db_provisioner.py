@@ -756,6 +756,31 @@ def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(
     assert "AND with_check IS NULL" in queries[0]
     assert "AND NOT COALESCE((" in queries[0]
     assert "((state)::text = ''Completed''::text)" in queries[0]
+    assert "policyname = 'operator_directory_read'" in queries[0]
+    assert "roles = ARRAY['identity_operator_directory_owner']::name[]" in queries[0]
+
+
+def test_every_init_policy_on_a_verified_identity_table_is_one_the_deployment_check_accepts() -> None:
+    # A migration that adds a policy to an identity table the deployment verifies would otherwise pass every earlier
+    # gate and fail only at the Demo provisioner (WC-172 operator_directory_read, run 45798105076).
+    import re
+
+    from wc124_db_provisioner import OPERATOR_DIRECTORY_POLICY_EXPRESSION, REQUIRED_IDENTITY_RELATIONS
+
+    accepted = {"actor_scope", "whatsapp_verified_registration_recognition", "operator_directory_read"}
+    init_directory = Path(__file__).resolve().parents[2] / "infrastructure/postgres/init"
+    pattern = re.compile(r"CREATE\s+POLICY\s+(\w+)\s+ON\s+identity\.(\w+)", re.IGNORECASE)
+    unexpected = sorted(
+        f"{path.name}: {policy} on identity.{table}"
+        for path in init_directory.glob("*.sql")
+        for policy, table in pattern.findall(path.read_text(encoding="utf-8"))
+        if table in REQUIRED_IDENTITY_RELATIONS and policy not in accepted
+    )
+
+    assert unexpected == []
+    assert OPERATOR_DIRECTORY_POLICY_EXPRESSION == "true"
+    migration = (init_directory / "99zzzzzzzz-wc172-03-operator-customer-directory.sql").read_text(encoding="utf-8")
+    assert "FOR SELECT TO identity_operator_directory_owner\n    USING (true);" in migration
 
 
 def test_identity_schema_verifier_fails_when_one_policy_is_missing(
