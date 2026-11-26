@@ -34,7 +34,7 @@ def test_the_roadmap_lists_six_iterations_with_consecutive_reserved_work_contrac
 
 
 def test_every_written_iteration_contract_and_ledger_exists() -> None:
-    written = {"WC-168", "WC-169", "WC-170", "WC-171", "WC-172"}
+    written = {"WC-168", "WC-169", "WC-170", "WC-171", "WC-172", "WC-174"}
     for contract in written:
         assert list((ROOT / "work-contracts").glob(f"{contract}-*.md")), contract
         assert (ROOT / "work-contracts" / f"{contract}-requirements.yaml").exists(), contract

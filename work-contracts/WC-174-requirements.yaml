@@ -1,0 +1,243 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-174
+contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
+contract_digest: ffc54e474f8e76574674ae3095c9814e122bb760bc7cf27e698da8f697ecd6ac
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Executable tests in the Docker runners (Business Platform, DMA agent, web, pipeline and contract suites), the single end-of-build validation pass, the Demo read-back and the slice 6 acceptance report; commands and results in the PR body
+  initial_state: new
+  dependencies: The Founder authorizes the build in the session that starts it; WC-171 and WC-149 merged; the Founder's MD1 to MD5 confirmed; outside approvals (Meta App Review and others) only for the connectors that need them
+  residual_risk: The scope is large and spans the shared kernel, the web and the DMA agent; connectors beyond Meta, media providers and lawful public sources have outside lead times and Founder decisions; real customers and real money stay off
+  completion_rule: Executable evidence at the exact head recorded in the PR body, plus the Demo read-back named in the row; no row grants real customers or real money
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC174-R001
+    source: WC-174 Canonical Requirement Index, R001
+    observable_outcome: The agent's manifest accepts an optional modes declaration (three fixed ids, labels, entries, readiness source, gates) served by the existing manifest operation, digest-bound and immutable per version; admission refuses a fourth mode, markup, duplicates and empty targets; no DMA-only operation is added; a declaration without modes still admits.
+    test_path_or_plan: Contract and admission tests (tests/contract, Business Platform admission tests), adapter and domain-adapter specification and generated client digest tests, a test that the port set is unchanged except for the additive field.
+
+  - <<: *defaults
+    requirement_id: WC174-R002
+    source: WC-174 Canonical Requirement Index, R002
+    observable_outcome: The customer opens any mode at any time with a readiness line; a gate blocks only an action with a side effect and says what to do next; the mode is remembered; deep links work; the modes exist as WhatsApp conversation context.
+    test_path_or_plan: Jest and Playwright tests of the mode shell, Business Platform state tests, conversation hand-off tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R003
+    source: WC-174 Canonical Requirement Index, R003
+    observable_outcome: Choosing an agent shows the fixed platform surfaces then the current mode's entries; existing workbench views map onto Operations with no lost function; old links keep working.
+    test_path_or_plan: Jest and Playwright tests, link redirect tests, WC-171 navigation tests rerun.
+
+  - <<: *defaults
+    requirement_id: WC174-R004
+    source: WC-174 Canonical Requirement Index, R004
+    observable_outcome: A declaration-only fixture agent, packed as its own sealed image, renders its own modes, entries, event categories and hierarchy levels through the same code with no agent name in shared code, and the adapter conformance kit passes for both images with no platform change.
+    test_path_or_plan: Render test with the fixture declaration, a grep test over shared web, Business Platform and Professional Runtime code, and the conformance kit run against the DMA and fixture images.
+
+  - <<: *defaults
+    requirement_id: WC174-R005
+    source: WC-174 Canonical Requirement Index, R005
+    observable_outcome: A shared Calendar block is the base screen with layers, month and list views, keyboard and screen-reader operation and a WhatsApp fallback, carrying owner, evidence state and freshness.
+    test_path_or_plan: Component tests, Playwright at 360, 768 and 1440 in light and dark, axe, block fallback tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R006
+    source: WC-174 Canonical Requirement Index, R006
+    observable_outcome: DMA proposes events as a skill invocation through the existing execution port from the confirmed profile, with source, reason and confidence; reads and model use go through the tool registry and AI runtime, not the image; the Business Platform stores agent-neutral calendar records; the customer chooses which event layers to see, turning one or more on or off at any time and adding their own, with religion and politics layers starting off; the customer accepts, edits, hides or adds events and placeholders; every change is evidence; events never publish by themselves.
+    test_path_or_plan: DMA agent tests for event research and categories, adapter egress-denied tests, Business Platform state and evidence tests, Jest tests of the controls.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R007
+    source: WC-174 Canonical Requirement Index, R007
+    observable_outcome: Themes, content and publish slots appear on the Calendar and can be moved under the item's approval rule, with package limits visible.
+    test_path_or_plan: Business Platform tests of moves and limits, Jest and Playwright tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R008
+    source: WC-174 Canonical Requirement Index, R008
+    observable_outcome: The Induct conversation asks one new question per cycle, opens with what the agent found, shows highlighted labels to confirm or correct, separates inference from fact, resumes across web and WhatsApp, and explains purpose before a sensitive item.
+    test_path_or_plan: DMA conversation scenario tests, Business Platform tests, Jest tests of the label confirmation, WhatsApp hand-off tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R009
+    source: WC-174 Canonical Requirement Index, R009
+    observable_outcome: The DMA induction contract 1.1.0 requires an explicit answer for each listed platform before READY, keeps connection optional, and shows INCOMPLETE, PARTIAL or READY with the next action.
+    test_path_or_plan: DMA contract schema and readiness tests (src/digital-marketing-agent/tests), Business Platform projection tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R010
+    source: WC-174 Canonical Requirement Index, R010
+    observable_outcome: Each platform shows its status; the customer connects by consent through one platform connection interface, the connection is tested and can be repaired or revoked; no password or secret is typed into or shown; the key sits in the one platform custody and is never visible to an agent image, prompt, log or response; Facebook and Instagram through Meta work first; the others say not yet connectable and offer public-only reading.
+    test_path_or_plan: Business Platform connection tests, interface contract tests with a fake custody, Jest and Playwright tests, secret-absence scans of images, prompts, logs and responses; Demo read-back with a tester account.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R011
+    source: WC-174 Canonical Requirement Index, R011
+    observable_outcome: Public enrichment runs as a DMA skill reading only through the governed tool registry with a constitutional check per call; it covers website, public social pages and the Google listing, and registries only where the Founder confirms the lawful basis; each fact carries source, time, confidence and lawful basis; the customer can correct or remove it.
+    test_path_or_plan: DMA agent tests with recorded fixtures, tool-registry and egress-denied tests, terms-of-use guard tests, Business Platform tests of the fact store.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R012
+    source: WC-174 Canonical Requirement Index, R012
+    observable_outcome: The customer confirms the profile and reads the maturity report with evidence, confidence and a correction path; confirmation moves the Goals readiness; the score never excludes the customer.
+    test_path_or_plan: DMA scoring and profile tests, Jest tests, a test that a low score never refuses a hire.
+
+  - <<: *defaults
+    requirement_id: WC174-R013
+    source: WC-174 Canonical Requirement Index, R013
+    observable_outcome: Goals are set for Profile, Content Planner, Content Creation, Publishing and Operations, each versioned with baseline, target, evidence source, cadence and authority state, with a material change needing confirmation and package limits shown.
+    test_path_or_plan: Business Platform goal-version tests, DMA tests, Jest and Playwright tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R014
+    source: WC-174 Canonical Requirement Index, R014
+    observable_outcome: The Content Planner builds monthly master theme, weekly sub-themes, individual themes and stories each approved before the next, from the calendar, the profile and the platform mix.
+    test_path_or_plan: DMA planner tests, Business Platform approval-state tests, Jest tests; Founder wording review of the levels.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R015
+    source: WC-174 Canonical Requirement Index, R015
+    observable_outcome: The plan is a generic N-level plan tree block used by DMA with four levels and by the fixture agent with different levels, with owner, state, approval and calendar placement and the standard fallback.
+    test_path_or_plan: Block schema and fallback tests, component tests, fixture agent render test.
+
+  - <<: *defaults
+    requirement_id: WC174-R016
+    source: WC-174 Canonical Requirement Index, R016
+    observable_outcome: On the accepted DMA B1 draft contract, an approved story becomes platform-ready text and pictures, and short video and audio only where a provider and an accepted customer-asset owner exist, with review checks, rights, likeness and content safety run before the customer sees a draft; model output never approves anything; counted by component.
+    test_path_or_plan: DMA content and review tests, content safety tests, component count tests; B1 contract tests rerun; media only with a Founder-enabled provider and a customer-asset owner.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R017
+    source: WC-174 Canonical Requirement Index, R017
+    observable_outcome: The customer approves an exact version with a preview; any change is a new version; approval, rejection and rework are evidence; the ladder starts at approval of every piece.
+    test_path_or_plan: Business Platform approval and evidence tests, Jest and Playwright tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R018
+    source: WC-174 Canonical Requirement Index, R018
+    observable_outcome: On the accepted DMA B2 publication contract, approved items are scheduled within the purchased post count through a Professional Runtime publication intent, the connection interface and the governed tool services with a separate publication authority; Facebook and Instagram only; on Demo only to a sandbox or tester account; published means reconciled provider evidence; Stop halts it; an expired connection becomes NEEDS_REPAIR and alerts.
+    test_path_or_plan: Business Platform and Professional Runtime publish, reconciliation and stop tests, tool-service tests with a fake provider, alert policy tests, B2 contract tests rerun; Demo read-back publishing one post to a tester account.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R019
+    source: WC-174 Canonical Requirement Index, R019
+    observable_outcome: Media providers and rates are Founder decisions on Pricing, off by default; no generation runs or spends without an authorized rate and the spend chain; the customer sees a plain not-enabled message.
+    test_path_or_plan: Billing engine and Business Platform tests of the gate and the spend chain, Jest tests of the message.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R020
+    source: WC-174 Canonical Requirement Index, R020
+    observable_outcome: Operations shows results against each goal from connected and customer-owned sources, says not measured when no source exists and how to connect one, carries source and freshness on every number, and attributes only WAOOAW's own work.
+    test_path_or_plan: DMA measurement tests, Business Platform projection tests, Jest tests; Demo read-back from the tester account.
+
+  - <<: *defaults
+    requirement_id: WC174-R021
+    source: WC-174 Canonical Requirement Index, R021
+    observable_outcome: A monthly digest and a two-month review give goal versus baseline, what worked, one recommendation and at most one customer request; recommendations are proposals; accepted ones become the next goal versions.
+    test_path_or_plan: DMA review tests, Business Platform goal-version tests, Jest tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R022
+    source: WC-174 Canonical Requirement Index, R022
+    observable_outcome: Goals behind pace, connections needing repair, failed publishes and nearly used components raise alerts through the WC-171 policy, and the operator console shows failed publishes and repairs.
+    test_path_or_plan: Alert policy tests per alert, operator console tests; Demo read-back.
+
+  - <<: *defaults
+    requirement_id: WC174-R023
+    source: WC-174 Canonical Requirement Index, R023
+    observable_outcome: Package counts and prices are unchanged, every count shown equals the owner's count, B1 and B2 activation stays a separate Founder decision, and no mode bypasses a package limit.
+    test_path_or_plan: Billing engine and Business Platform count-equality tests, package limit tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R024
+    source: WC-174 Canonical Requirement Index, R024
+    observable_outcome: Every screen follows the visual system and UX vocabulary and passes the WC-167 R006 layers; labels come from vocabulary keys so a regional language needs no code change.
+    test_path_or_plan: Jest, Playwright at 360, 768 and 1440 in light and dark, axe, lint, strict types, production build, 90 percent changed-line coverage.
+
+  - <<: *defaults
+    requirement_id: WC174-R025
+    source: WC-174 Canonical Requirement Index, R025
+    observable_outcome: Acceptance slice 6 on Demo passes for a synthetic customer through induct, maturity report, goals, a planned month, one approved story, one published post to a tester account, results and a digest, plus the fixture agent's three modes, with one calibration report whose open items have owners.
+    test_path_or_plan: Acceptance harness slice 6 (tests/journey-acceptance) run by the author after the Demo deployment, with the calibration report.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R026
+    source: WC-174 Canonical Requirement Index, R026
+    observable_outcome: After the Demo deployment the ledger rows are set from their read-backs, the roadmap progress record is refreshed, and README, SPRINT-REGISTRY and PROJECT_STATE are refreshed by the state refresh.
+    test_path_or_plan: Ledger validator and platform-state checks in Docker.
+
+  - <<: *defaults
+    requirement_id: WC174-R027
+    source: WC-174 Canonical Requirement Index, R027
+    observable_outcome: The workspace shows the grouped layout (top bar, view chips, two collapsible vertical levels on the left, an icon rail of the three modes then the chosen mode's sub-menus and tools in build order, with a bottom bar and sheets on a phone and the WAOOAW global menu kept in the top header, flyouts on choice, options panel, status bar, Today jump, replayable tour), with sub-menus, tool groups, flyouts and views declared by the agent as data.
+    test_path_or_plan: Component and Playwright tests at 360, 768 and 1440, schema and admission tests for the declared tool groups, fixture agent render test.
+
+  - <<: *defaults
+    requirement_id: WC174-R028
+    source: WC-174 Canonical Requirement Index, R028
+    observable_outcome: The agent's conversation is the platform conversation, docked in every mode and view (a bottom sheet on a phone), one durable conversation shared with WhatsApp, surviving mode and view changes; the agent supplies domain meaning only through its manifest and induction set, with no conversation service of its own; the budget left is shown, metered by the billing engine; WhatsApp gets the next three items and a link.
+    test_path_or_plan: Jest and Playwright tests, conversation hand-off tests, a test that the agent image exposes no conversation endpoint, budget display tests, WhatsApp fallback tests.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R029
+    source: WC-174 Canonical Requirement Index, R029
+    observable_outcome: The conversation knows the mode, view, selection, readiness gap and package limits, opens with the one next step, asks one new question at a time, offers buttons, free text, Do it for me, Let me do it and Explain, and never invents an action the platform does not offer.
+    test_path_or_plan: DMA conversation scenario tests per mode, context contract tests between web, Business Platform and the agent, a test that every offered action exists as a platform command.
+
+  - <<: *defaults
+    requirement_id: WC174-R030
+    source: WC-174 Canonical Requirement Index, R030
+    observable_outcome: Every tool action can be asked in words and every asked action appears on the workspace through the same idempotent commands and evidence; agent changes wait as suggestions until accepted; each item has an author state the customer can change; undo creates a new version and deletes nothing.
+    test_path_or_plan: Business Platform command, idempotency and evidence tests, author-state transition tests, Jest and Playwright tests, a test that no agent change applies without acceptance.
+
+  - <<: *defaults
+    requirement_id: WC174-R031
+    source: WC-174 Canonical Requirement Index, R031
+    observable_outcome: The readiness line always names the one next step with one primary action per mode, computed from the readiness source and gates, with the same text in the conversation.
+    test_path_or_plan: Business Platform projection tests, Jest tests of the line, a test that web and conversation text match.
+
+  - <<: *defaults
+    requirement_id: WC174-R032
+    source: WC-174 Canonical Requirement Index, R032
+    observable_outcome: Per relationship the platform records how each outcome was reached (asked, accepted from a suggestion, or tool) and shows the Founder the share reached with the assistant as a trend toward the maximum possible, with no conversation content in the measure.
+    test_path_or_plan: Business Platform measure tests including a content-absence scan, Founder screen tests.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R033
+    source: WC-174 Canonical Requirement Index, R033
+    observable_outcome: Everything reaches the platform through the existing ports, so DMA ships only as one sealed adapter image plus its manifest; no DMA-only endpoint, table, screen or branch exists in shared parts; the image has no public endpoint, key, direct provider or model call or durable state; customer records are agent-neutral and platform-owned; port changes are additive and compatible.
+    test_path_or_plan: Boundary tests in the pipeline suite (grep for agent names in shared code, image route and egress checks, secret scans, schema ownership check), adapter conformance tests, port-change compatibility tests.
+
+  - <<: *defaults
+    requirement_id: WC174-R034
+    source: WC-174 Canonical Requirement Index, R034
+    observable_outcome: One customer connection interface is the only way any agent obtains a connected account; the as-built key custody sits behind it for AO-M1; no image, prompt, log, evidence record or response holds a key; a swapped fake custody leaves the interface and agent calls unchanged; the Enterprise Architect note is recorded and the DMA publication contract is marked for reconciliation.
+    test_path_or_plan: Interface contract tests with a fake custody swap, secret-absence scans, a documentation check for the note and the reconciliation mark.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R035
+    source: WC-174 Canonical Requirement Index, R035
+    observable_outcome: The adapter conformance kit passes for the DMA image and the fixture agent's image, each an isolated one-artifact deployment with default-deny ingress and egress, with no change to Business Platform, Professional Runtime or web, and usage and cost for both through the same billing engine meters.
+    test_path_or_plan: Conformance kit run against both images, deployment policy tests, billing meter tests for two agents; Demo read-back.
+
+  - <<: *defaults
+    requirement_id: WC174-R036
+    source: WC-174 Canonical Requirement Index, R036
+    observable_outcome: The customer creates their own events, themes at every level, stories, posts and assets by hand or by asking, in any mode; their work has the same states, review checks, approvals, exact-version rules and package counts as agent-made work, is not changed by the agent until handed over, and shows on the calendar and in the conversation.
+    test_path_or_plan: Business Platform command, author-state and count tests, Jest and Playwright tests, DMA review-check tests on customer-authored items, a test that no agent change applies to a customer-owned item.

@@ -9,7 +9,7 @@ Any change to the iterations, milestones, order, scope or Work Contract numbers 
 | Document class | Class 3 Governed (GENESIS Decision Classification). Changes need Founder approval on top of normal pull request review. It cannot override a Class 1 or Class 2 decision |
 | Strategy | **Platform-led, DMA-proved** |
 | Current iteration | **Iteration 1 (WC-168)**: implementation authorized 2026-11-24, in progress |
-| Last updated | 2026-11-25 |
+| Last updated | 2026-11-26 |
 
 ## 1. The landscape in one page
 
@@ -18,6 +18,7 @@ Any change to the iterations, milestones, order, scope or Work Contract numbers 
 - **Agents declare, the platform provides.** An agent supplies a declaration (goals, measures, packages such as Starter, Runner and Winner, alerts, conformance scenarios). The platform supplies everything else. Adding an agent must not need a change to the shared kernel.
 - **Customer journey:** discover, trial or interview, hire and pay, connect accounts, the agent works, approve, see results, renew or stop.
 - **One Work Contract per iteration, one sizable pull request per iteration, one Environment Deployment per iteration.** A repair pull request is allowed only when the Demo read-back fails.
+- **A second track, Agent Operation (section 10), makes every agent usable by a customer: three modes (Induct, Goal Setting, Operations), a calendar as the background screen, and agent menus beside the WAOOAW menu. DMA is the first agent and the model stays generic.** It does not renumber or replace iterations 1 to 6.
 
 ### Which document governs what (do not invent another)
 
@@ -33,6 +34,7 @@ Any change to the iterations, milestones, order, scope or Work Contract numbers 
 | Customer journey acceptance on Demo | `architecture/reference/acceptance/customer-journey-acceptance-architecture.md`, ADR-054, ADR-055 |
 | Settings, flags, staff roles | `standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md` |
 | What each Work Contract delivers | `SPRINT-REGISTRY.md`, then the Work Contract file |
+| Agent modes, calendar and the DMA customer journey | `work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md` (section 10 of this file) |
 | Where the institution stands right now | `constitution/PROJECT_STATE.md` |
 
 Historic planning (the GOAL files, WC-064 to WC-069 "Iteration 1 to 5" for the Founder commercial governance program, the August 2026 platform-first and customer-first sessions) is preserved and is **not** this roadmap. Its numbering is untouched. In this file "Iteration" always means the six iterations below.
@@ -51,6 +53,8 @@ Historic planning (the GOAL files, WC-064 to WC-069 "Iteration 1 to 5" for the F
 Work Contract numbers WC-168 to WC-173 are reserved for this roadmap. All other work takes WC-174 or higher.
 
 Later, after M6: more agents, multi-agent workplace, mobile, retiring legacy projections (PG-27 to PG-30, PG-35 to PG-37).
+
+The Agent Operation track (WC-174, milestone AO-M1) sits beside this table, not inside it: see section 10.
 
 ## 3. What each milestone means
 
@@ -90,6 +94,16 @@ Later, after M6: more agents, multi-agent workplace, mobile, retiring legacy pro
 | Numbering | "lets not tourch historic stuff ... you will use next available number for work contract" |
 | Order | "Does the ordering fit ... yes i am good" and "i am good with this" |
 | Authorization to commit contracts | "Approve committing WC-168 and WC-169 in full and WC-170 as the gated skeleton ... Yes." |
+| Agent operation: credentials (2026-11-26) | Consent and test instead of stored passwords: "yes" |
+| Agent operation: modes (2026-11-26) | "gates but customer can easily hop among them" |
+| Agent operation: calendar events (2026-11-26) | "the agent from research based on customer business profile. Customer can put their own events/placeholders" |
+| Agent operation: scope and roadmap (2026-11-26) | "create a work contract covering full scope we are discussing" and "Approved. add next section in roadmap called WAOOAW Agent operation with DMA and create first milestone under it among with other required details in milestone document" |
+| Agent operation: layout and conversation (2026-11-26) | Reference screens supplied "for inspiration on grouping, layout flow etc"; "dma agent conversation handy/visible all the time and context driven, guided dialouge. We expect maximum time customer to use AI driven outcomes." |
+| Agent operation: sealed images and fixed ports (2026-11-26) | "each agent to be packed in its own image so dont do tangling and juggle with wiring / interfaces/integration of agents once it goes beyond 1+. So dma implementatoin shall follow that adapter etc standards set by waooaw rather bumping or contradicting"; confirmed "yes" to: sealed image per agent, fixed ports, platform parts never learn an agent's name |
+| Agent operation: usage and account keys (2026-11-26) | Usage metering belongs to WAOOAW as common foundation ("i think its shall be owned by waooaw as its common and foundation of all agent"); customer account keys are WAOOAW's, "waooaw owns it and not dma", and stay in one platform custody behind one interface for the first milestone: "yes. To be frank lets keep this as an experiement and see how it goes." |
+| Agent operation: design choices (2026-11-26) | Three modes open any time, always-visible conversation with suggestions held until accepted, calendar as home: "yes". Customers can create their own themes and content ("Along with conversation, we have ability for customers to create themes? contents etc on thier own ?"). A two-level left bar like a code editor's, "if goes well with waooaw's overall themes/placements" |
+| Agent operation: allowance, AI target, platform order (2026-11-26) | Chat allowance configurable on a Founder screen, default 1,000; AI target maximum possible; Facebook, then Instagram, then the rest: "chat=configurable on founder's appropriate screen, default 1000, ai_share=maximum possible, platforms=Facebook, then Instagram, then the rest" |
+| Agent operation: event layers (2026-11-26) | Customers choose one or more calendar layers: "we shall empoer customers to select one or more layer ie religion. art etc" |
 
 ## 7. Constitutional compliance check of how this roadmap was decided
 
@@ -133,3 +147,63 @@ Emergencies (security, production incidents, Founder-assigned urgent fixes) are 
 | 2026-11-25 | WC-169 gains R022 (package editor usable in one view) and R023 (pricing writes survive a dead database connection) after the Founder's Demo read-back: the package screen was one 6,000-pixel column and creating a coupon draft returned 503 on a dead pooled connection that also recurs in the billing engine's scheduled sweep. Founder priority for the synthetic tester: the coupon and the price. Two further billing engine faults found by the log scan (a missing `audit_evidence_log` table, a 503 on the scheduler's own daily scan call) are recorded in the contract (G14) and not fixed. Founder delegated technical decisions to the author and allowed single-pass review by an office where needed | Founder |
 | 2026-11-25 | Founder authorized the WC-170 build for this session ("I authorize the WC-170 build for this session"), with technical decisions delegated to the author, at most one single-pass office review, no sub-agent implementation, Docker validation once after the last story, no CI watching, no Azure or Demo change, no merge, and one Demo deployment by the Founder after the merge. Iteration order, scope and numbers are unchanged | Founder |
 | 2026-11-25 | Founder asked to groom WC-171 and WC-172. WC-171 scope widened to include agent-scoped navigation (a global customer menu for every agent plus an agent context menu whose entries each agent declares, so DMA and later agents have their own menus and screens) together with the alert policy, the operations console and the carried-in defects of WC-170 (B1, B2, B6, B7, B8) and WC-169 (G14). WC-172 groomed as safe to charge real customers: PG-26 lifecycle, tax invoices, payer and funder, price-change policy, WC-170 B5 and B10, UAT promotion, production readiness and a separate written Founder go-live approval. Both contracts are docs only and build is not authorized. Iteration order and numbers are unchanged; WC-173 scope is reviewed later | Founder (2026-11-25 instruction) |
+| 2026-11-26 | New track "WAOOAW Agent Operation with DMA" added as section 10, with its first milestone AO-M1 and Work Contract WC-174 (groomed, docs only, build not authorized). Scope: three modes for every agent (Induct, Goal Setting, Operations) with context menus, a calendar as the background screen, and the DMA customer journey as the first agent. Iterations 1 to 6, their order and their numbers are unchanged; WC-174 is the first number after the reserved range | Founder (2026-11-26: "Approved. add next section in roadmap called WAOOAW Agent operation with DMA and create first milestone under it") |
+
+## 10. WAOOAW Agent Operation with DMA
+
+**Purpose.** Iterations 1 to 6 build the platform around an agent. This track builds what a customer lives with: being known by the agent, setting goals skill by skill, and watching the agent work. It follows the platform-led, DMA-proved rule: the model is generic, DMA is the first agent, and a second agent proves it with a declaration only.
+
+**Founder's model (2026-11-26).**
+
+| Idea | Meaning |
+|---|---|
+| Three modes for every agent | **Induct** (the agent learns the customer and the sources it works from), **Goal Setting** (goals skill by skill, plans on a calendar), **Operations** (the agent works, the customer approves, results are watched and improved) |
+| Gates, not locked doors | A mode shows what it still needs; the customer can open any mode at any time; a gate blocks only an action with a side effect, such as publishing |
+| Calendar as the background screen | Each relationship has a calendar of events that matter to that customer; the agent proposes them from the business profile and the customer adds their own events and placeholders |
+| Menus of the agent's own | The WAOOAW menu stays; the agent's context menu changes with the mode; every agent declares its entries as data |
+| The agent's conversation always in view | The agent's conversation is docked beside the workspace in every mode, knows the context and guides the customer; customers are expected to spend most of their time on AI-driven outcomes, can hand any item over or take it back, and agent changes wait for acceptance |
+| A grouped, planner-style workspace | Tools grouped in build order, choices that appear only when needed, one clear next step, a view switcher over one plan (month, week, platforms, storyboard) |
+| Consent, never stored passwords | Platforms are connected by consent and tested; each platform is present, not present or not yet connectable |
+
+**How it sits beside the iterations.**
+
+| Question | Answer |
+|---|---|
+| Does it change iterations 1 to 6? | No. Order, numbers and milestones M1 to M6 are unchanged |
+| What does it build on? | WC-171 (menus, alerts, operations console), WC-149 (customer account connection), WC-170 (real work and spend), WC-172 (lifecycle and billing) |
+| Does it replace the second agent (WC-173)? | No. WC-174 proves the model with a declaration-only fixture agent packed as its own sealed image; WC-173 later runs a real second agent on the same modes |
+| Does it change how agents are built and wired? | No. It follows the architecture's standards (ADR-049 sealed adapter image per agent, the fixed adapter and domain-adapter ports, ADR-020 tool registry, ADR-052 conversation): DMA adds an image and a manifest, never a platform change |
+| Who decides what is in it? | The Founder, in the contract's reserved items (the remaining modes decisions, lawful public sources, platforms, media providers, package activation) |
+
+### Track table
+
+| Milestone | Work Contract | Capability | Status |
+|---|---|---|---|
+| **AO-M1** | WC-174 | Modes, calendar and the DMA customer journey: induct, goals, plan, create, approve, publish, results | **Groomed 2026-11-26** (docs only, build not authorized) |
+
+Later candidates, not planned and not promised: more connectors (YouTube, LinkedIn, Google Business Profile, the customer's own WhatsApp Business account), video and audio at scale, the second measurement bucket for work done outside WAOOAW, and a real second agent on the modes (with WC-173). Each needs the Founder to place it here first.
+
+### Milestone AO-M1: what it means
+
+| Part | Done when (all of these) |
+|---|---|
+| Contract | WC-174 groomed with 36 requirements and a ledger; the Founder confirmed the modes, the docked conversation, the calendar home, customer-created content and the two-level left bar (2026-11-26); the Founder set the conversation default (1,000 chats per package, configurable), the AI target (maximum possible) and the platform order (Facebook, then Instagram, then the rest) on 2026-11-26; the default that religion and politics layers start off and the presence statuses are still open |
+| Boundaries | DMA is one sealed adapter image behind the existing fixed ports; no agent name, DMA-only endpoint, table or screen exists in the shared platform; customers' account keys sit in one platform custody behind one connection interface (an experiment the Founder will review); a second agent's sealed image passes the same conformance kit with nothing rewired |
+| Workspace and conversation | The workspace follows the grouped layout; the DMA conversation is docked and context driven in every mode and view; every outcome can be reached by asking or by tools with the same evidence; suggestions wait for acceptance; items can be handed over and taken back; the share of AI-driven outcomes is measured |
+| Modes and menus | Any agent declares three modes as data; the customer opens any mode at any time with a readiness line; gates block only side-effect actions; a declaration-only fixture agent renders its own modes through the same code |
+| Calendar | A shared calendar is the base screen; DMA proposes events from the confirmed profile; the customer adds, edits and hides events and placeholders and chooses one or more event layers (festival, sport, art, politics, local, religion, season, their own), with religion and politics starting off |
+| Induct | A focused conversation confirms the business as labels; every platform is answered (present, not present, connected and tested, or not yet connectable); a connected tester account is tested; the maturity report is read and confirmed |
+| Goal setting | Goals for Profile, Content Planner, Content Creation, Publishing and Operations, each with baseline, target, evidence source, cadence and authority state; a month planned as master theme, weekly themes, individual themes and stories |
+| Operate | Approved content is created per platform, approved by exact version and published to a connected sandbox account within the package; results are read against the goals; a monthly digest is produced |
+| Proof | The build merged, one Demo deployment, every requirement read back, acceptance slice 6 passed for a synthetic customer with one calibration report whose open items have owners |
+| Limits | No real customers and no real money (WC-172's separate written go-live approval still governs); connectors beyond Meta, media providers and public registries only where the Founder's decisions and outside approvals exist; anything not yet possible says so on screen |
+
+### How the track runs
+
+The same six steps as section 4 apply: groom ahead, build in one sizable pull request (the contract states a clean split order if the build proves too large), one Environment Deployment of Demo, read back, prove, close. The build starts only when the Founder authorizes it for this contract.
+
+### Track progress record (update at milestone close, not in between)
+
+| Milestone | Merged | Deployed | Read back | Proof run |
+|---|---|---|---|---|
+| AO-M1 | no | no | no | no |

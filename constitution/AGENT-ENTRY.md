@@ -41,9 +41,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-25 — WC-172 Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED delivered
-Latest completed sprint: WC-172 — Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED (PR #647 merged as 9024d3de1a)
-Latest recorded Work Contract: WC-172 — Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED (merged PR #647, PR #645)
+Last update: 2026-11-26 — WC-172 Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED delivered
+Latest completed sprint: WC-172 — Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED (PR #648 merged as 14d45dc025)
+Latest recorded Work Contract: WC-174 — Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
