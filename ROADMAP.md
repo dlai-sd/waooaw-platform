@@ -99,6 +99,8 @@ The Agent Operation track (WC-174, milestone AO-M1) sits beside this table, not 
 | Agent operation: calendar events (2026-11-26) | "the agent from research based on customer business profile. Customer can put their own events/placeholders" |
 | Agent operation: scope and roadmap (2026-11-26) | "create a work contract covering full scope we are discussing" and "Approved. add next section in roadmap called WAOOAW Agent operation with DMA and create first milestone under it among with other required details in milestone document" |
 | Agent operation: layout and conversation (2026-11-26) | Reference screens supplied "for inspiration on grouping, layout flow etc"; "dma agent conversation handy/visible all the time and context driven, guided dialouge. We expect maximum time customer to use AI driven outcomes." |
+| Agent operation: sealed images and fixed ports (2026-11-26) | "each agent to be packed in its own image so dont do tangling and juggle with wiring / interfaces/integration of agents once it goes beyond 1+. So dma implementatoin shall follow that adapter etc standards set by waooaw rather bumping or contradicting"; confirmed "yes" to: sealed image per agent, fixed ports, platform parts never learn an agent's name |
+| Agent operation: usage and account keys (2026-11-26) | Usage metering belongs to WAOOAW as common foundation ("i think its shall be owned by waooaw as its common and foundation of all agent"); customer account keys stay in one platform custody behind one interface for the first milestone: "yes. To be frank lets keep this as an experiement and see how it goes." |
 
 ## 7. Constitutional compliance check of how this roadmap was decided
 
@@ -166,7 +168,8 @@ Emergencies (security, production incidents, Founder-assigned urgent fixes) are 
 |---|---|
 | Does it change iterations 1 to 6? | No. Order, numbers and milestones M1 to M6 are unchanged |
 | What does it build on? | WC-171 (menus, alerts, operations console), WC-149 (customer account connection), WC-170 (real work and spend), WC-172 (lifecycle and billing) |
-| Does it replace the second agent (WC-173)? | No. WC-174 proves the model with a declaration-only fixture agent; WC-173 later runs a real second agent on the same modes |
+| Does it replace the second agent (WC-173)? | No. WC-174 proves the model with a declaration-only fixture agent packed as its own sealed image; WC-173 later runs a real second agent on the same modes |
+| Does it change how agents are built and wired? | No. It follows the architecture's standards (ADR-049 sealed adapter image per agent, the fixed adapter and domain-adapter ports, ADR-020 tool registry, ADR-052 conversation): DMA adds an image and a manifest, never a platform change |
 | Who decides what is in it? | The Founder, in the contract's reserved items (MD1 to MD5, lawful public sources, platforms, media providers, package activation) |
 
 ### Track table
@@ -181,7 +184,8 @@ Later candidates, not planned and not promised: more connectors (YouTube, Linked
 
 | Part | Done when (all of these) |
 |---|---|
-| Contract | WC-174 groomed with 32 requirements and a ledger; the Founder confirmed MD1 to MD9 |
+| Contract | WC-174 groomed with 35 requirements and a ledger; the Founder confirmed MD1 to MD9 |
+| Boundaries | DMA is one sealed adapter image behind the existing fixed ports; no agent name, DMA-only endpoint, table or screen exists in the shared platform; customers' account keys sit in one platform custody behind one connection interface (an experiment the Founder will review); a second agent's sealed image passes the same conformance kit with nothing rewired |
 | Workspace and conversation | The workspace follows the grouped layout; the DMA conversation is docked and context driven in every mode and view; every outcome can be reached by asking or by tools with the same evidence; suggestions wait for acceptance; items can be handed over and taken back; the share of AI-driven outcomes is measured |
 | Modes and menus | Any agent declares three modes as data; the customer opens any mode at any time with a readiness line; gates block only side-effect actions; a declaration-only fixture agent renders its own modes through the same code |
 | Calendar | A shared calendar is the base screen; DMA proposes events from the confirmed profile; the customer adds, edits and hides events and placeholders; sensitive categories stay off until chosen |
