@@ -1,11 +1,11 @@
 schema: waooaw.process-control/v2
-revision: 8
-version: r008-2dac49b10f38
+revision: 9
+version: r009-edc6c5f86bb9
 authoritative_ref: origin/main
 bootstrap_first: constitution/BOOTSTRAP.md
 source_digests:
   .githooks/pre-push: 67981f07886a6d0084a42d74dc5b1b426ad95467da75a672a774c9fe41a6cc68
-  .github/agent-context/office-platform-it-expert.md: 466c13b4ad93ec95455b27a5c81cef303577018d0324bf218f3a6db75696ed31
+  .github/agent-context/office-platform-it-expert.md: 298c0eba5143ad93242f1e0e458d2f063713e33086c0268ccea2ee54d84b64d9
   .github/copilot-instructions.md: 27da05f7128fd73e5b583823a5d53b4904140cd95055e328c2cc0d10c001104a
   architecture/reference/dockerfiles/Dockerfile.test-runner: 855d9ae729104b7730ad903c30dafcbcdaa143b17d7f98b847f5c7825725e2dd
   constitution/BOOTSTRAP.md: 0ed4085f6e7f7375900e983c41eafd95353e7eb7b23a2ef26f802b1a7a8e0437

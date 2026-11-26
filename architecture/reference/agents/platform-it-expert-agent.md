@@ -1,10 +1,10 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.4.2
-**Date:** 2026-10-29
+**Specification version:** 1.4.3
+**Date:** 2026-11-26
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.4.2 PROPOSED — §2.5 Idempotent Init-Chain SQL Standard (v1.4.1, IB-532/WC-124) plus
+**Status:** v1.4.3 PROPOSED — Skill 24 Synthetic-Customer Integration Testing (v1.4.3, WC-168) is added on Founder direction and pending Founder review and merge; §2.5 Idempotent Init-Chain SQL Standard (v1.4.1, IB-532/WC-124) plus
 the SECURITY DEFINER ownership-handoff rule (v1.4.2, Demo Google login 42501) pending Founder review and merge; Skills 18-23 (v1.4.0, PR #536) likewise pending;
 Skills 1-17 remain active under v1.3.8
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
@@ -189,7 +189,7 @@ tokens, cookies or transaction payloads around these calls.
 
 Both are form checks, not substitutes for Skill 5 behavioural tests of the schema itself.
 
-## 3. Skill Catalogue — 23 SDLC Skills
+## 3. Skill Catalogue — 24 SDLC Skills
 
 ---
 
@@ -1331,6 +1331,38 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 
 **Professional stop:** Stop when only an aggregate `Failed` status is available; retrieve owning execution evidence before RCA or retry.
 
+### Skill 24: Synthetic-Customer Integration Testing
+
+**Trigger:** A deployed Demo build must be tested as a real customer or Founder would use it (registration, sign-in, Trial, Hire, customer pages, Founder two-factor flows) and no real customer account may be used.
+
+**Output:** A defect table (screen, symptom, root cause, proposed fix, evidence) from throwaway customers, followed by the fixes tested in Docker and one live re-run.
+
+**Authority:** Demo only; never UAT or Production. Creating a throwaway customer starts a short-lived Container Apps job and writes to the Demo realm, so it needs the Founder's current-session approval. The run follows ADR-054 and ADR-055: customers are run-scoped, marked synthetic through the platform marker route and deleted afterwards.
+
+**Tools and tests (all repository-owned; read `architecture/reference/runbooks/demo-synthetic-customer.md` before use):**
+
+| Need | Use | Notes |
+|---|---|---|
+| Create, list, delete throwaway customers | `python3 scripts/demo_synthetic_customer.py create --count N`, `list`, `delete --run-id <id>` or `delete --all` | Needs a logged-in `az` and the acceptance vault secret `acceptance-keycloak-provisioner-client-secret`. Sign-in details go to `/workspaces/.synthetic-customers/<run>.json` (mode 600, outside the repository; `SYNTHETIC_CUSTOMER_DIRECTORY` overrides). `create` reads `synthetic_idp` back and fails loudly if the realm did not store it. |
+| Walk every customer and Founder page in a browser | `scripts/run_demo_customer_walk.sh` (`tests/demo-customer-walk/walk.mjs`) | Records status, headings, tabs, buttons, console errors, failed requests and a screenshot per page. |
+| Which Founder pages can start two-factor sign-in | `tests/demo-customer-walk/stepup.mjs`, run by the same launcher | Finds pages that return 400 instead of starting sign-in. |
+| One customer-journey acceptance journey with throwaway customers | `scripts/run_acceptance_with_synthetic_customers.sh JOURNEY` | Runs the journey harness locally in Docker against the customers. |
+| Utility and realm-profile contract | `tests/pipeline/test_demo_synthetic_customer.py`, `tests/pipeline/test_acceptance_infrastructure.py` | Docker; run after any change to the utility or the realm user profile. |
+| Founder two-factor behaviour | `web/lib/oidc-transaction.test.ts`, `web/lib/step-up-resume.test.tsx`, `web/components/admin/StepUpCommand.test.tsx` and the `.test.tsx` files beside the Operations, Access approvals, Agent operation, Providers and Pricing authorize components | Docker web suite; pins the return-page allow-list and action resume. |
+
+**Procedure:**
+1. Confirm the target build is deployed and, for customer pages, that the realm change declaring `synthetic_idp` has been imported by that deployment.
+2. Obtain the Founder's approval, create the smallest number of customers, and keep the sign-in file private; never print or commit it.
+3. Walk the pages and journeys, and collect every defect in one pass with its root cause and evidence. Do not fix between observations.
+4. Delete the customers (`delete --all`) and confirm no `job-demo-synthetic-customers` job or synthetic user remains.
+5. Fix all defects together, cover each in the Docker suites above, and re-run the live walk once after the next deployment.
+
+**Evidence requirement:** Run id, build SHA, defect table, deletion confirmation, Docker results per suite, and the live walk output.
+
+**Boundary:** This skill tests application behaviour after deployment. A defect inside the deployment workflow is not diagnosed with synthetic customers; use Skills 17, 22 and 23 and the Deployment Workflow Fixes route in the office card.
+
+**Professional stop:** Stop when approval is missing, when the target is not Demo, when the realm change is not deployed (customer pages are expected to deny password users), or when a throwaway customer cannot be deleted.
+
 ## 4. GitHub Component Integration Map
 
 | GitHub Component | Platform IT Expert Usage |
@@ -1742,6 +1774,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.4.0 | 2026-10-19 | Founder / Platform IT Expert | Added Skills 18-23 for workflow state machines, IaC lifecycle propagation, secret consumption, same-context connectivity, failure injection, and automated incident evidence; no new provider authority |
 | 1.4.1 | 2026-10-20 | Founder / Platform IT Expert | Added §2.5 Idempotent Init-Chain SQL Standard with the `wc124_init_chain_lint.py` and `wc124_init_chain_local.sh` executable gates after WC-124 gap B showed 31 of 69 init files failed a second pass; no capability or Decision Space change |
 | 1.4.2 | 2026-10-29 | Founder / Platform IT Expert | Added the §2.5 SECURITY DEFINER ownership-handoff rule, the OIDC reservation probe, the `wc123:session-contract` gate and the `run_auth_preview.sh` local-reproduction procedure (including `AUTH_PREVIEW_IDP=local` and `verify-social`), plus flag-controlled `WAOOAW_DIAGNOSTIC_DETAIL` failure logging, after the Demo Google sign-in 42501 regression; no capability or Decision Space change |
+| 1.4.3 | 2026-11-26 | Founder / Platform IT Expert | Added Skill 24 Synthetic-Customer Integration Testing for the throwaway-customer utility, the browser walk, the journey-acceptance launcher and the Docker suites that cover them; Demo only, no new provider, spend, Production or merge authority |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
@@ -1749,4 +1782,5 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 
 **Lifecycle status:** v1.3.8 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active.
 v1.4.0 and Skills 18–23 are PROPOSED in PR #536 and become active only after Founder review and merge;
+Skill 24 (v1.4.3) is PROPOSED in WC-168 on Founder direction and becomes active only after Founder review and merge;
 they add no deployment, provider, spend, Production, acceptance, or merge authority.
