@@ -112,6 +112,13 @@ if spec["action"] == "create":
                                 {"userId": "synthetic-" + user["username"], "userName": user["username"]})
             if linked != 204:
                 print("SYN ERROR link", user["username"], linked, body.replace("\n", " ")[:160], flush=True)
+            # Keycloak silently drops attributes the realm user profile does not declare, so read it back.
+            status, text = call("GET", f"/admin/realms/{realm}/users/{found[0]['id']}")
+            stored = (json.loads(text) if status == 200 else {}).get("attributes") or {}
+            if stored.get("synthetic_idp") != [spec["idp"]]:
+                print("SYN ERROR attribute", user["username"], "synthetic_idp was not stored; the realm user profile lacks it", flush=True)
+            else:
+                print("SYN ATTRIBUTE", user["username"], "synthetic_idp", spec["idp"], flush=True)
         print("SYN USER", label, user["username"], "created", created, "id", found[0]["id"] if found else "", flush=True)
 elif spec["action"] == "list":
     for user in synthetic_members():
@@ -170,7 +177,9 @@ def job_spec(action: str, **extra: Any) -> dict[str, Any]:
 
 def parse_job_lines(lines: list[str]) -> list[list[str]]:
     return [
-        line.split() for line in lines if line.startswith("SYN ") and line.split()[1] in ("USER", "DELETED", "COMPLETE", "ERROR")
+        line.split()
+        for line in lines
+        if line.startswith("SYN ") and line.split()[1] in ("USER", "DELETED", "COMPLETE", "ERROR", "ATTRIBUTE")
     ]
 
 
@@ -373,6 +382,11 @@ def create(count: int, run_id: str, harness_private: Path | None) -> Path:
     lines = run_in_network(job_spec("create", users=customers), provisioner_client_secret())
     # Create lines read: SYN USER <label> <username> created <status> id <id>
     created = {line[3]: (line[5], line[7]) for line in lines if line[:2] == ["SYN", "USER"] and len(line) >= 8}
+    problems = [" ".join(line) for line in lines if line[:2] == ["SYN", "ERROR"]]
+    if problems:
+        # A half-made customer cannot pass the customer identity proof, so remove it instead of returning it.
+        run_in_network(job_spec("delete", run_prefix=f"{PREFIX}{run_id}-"), provisioner_client_secret())
+        raise UtilityError("customer creation reported: " + " | ".join(problems))
     for customer in customers.values():
         status, user_id = created.get(customer["username"], ("", ""))
         if not user_id:
