@@ -22,15 +22,20 @@ afterEach(() => {
   global.fetch = originalFetch;
 });
 
-test('an empty kind invites the first draft and offers no workflow', () => {
+test('an empty kind invites a new draft and offers no form or workflow until asked', () => {
   render(<KindWorkspace isFounder={false} kind="RATE" versions={[]} />);
 
-  expect(screen.getByText('No versions yet. Create the first draft below.')).toBeInTheDocument();
+  expect(screen.getByText(/No versions yet/)).toBeInTheDocument();
+  expect(screen.queryByRole('form', { name: 'Thread rate draft' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'New draft' }));
+
   expect(screen.getByRole('form', { name: 'Thread rate draft' })).toBeInTheDocument();
   expect(screen.queryByRole('region', { name: /Workflow/ })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Thread rate' }));
+  expect(screen.getByRole('button', { name: 'New draft' })).toBeInTheDocument();
 });
 
-test('opening an effective version prefills a new draft and offers a blank start', () => {
+test('an effective version is read only and a new version starts from its values', () => {
   const effective = versionFixture({
     state: 'EFFECTIVE',
     seed: true,
@@ -42,18 +47,21 @@ test('opening an effective version prefills a new draft and offers a blank start
   expect(screen.getByRole('rowheader', { name: 'thread:llm (seed)' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Open thread:llm version 2' }));
 
+  expect(screen.queryByRole('form', { name: 'Thread rate draft' })).toBeNull();
+  expect(screen.getByRole('list', { name: 'Progress' })).toBeInTheDocument();
+  expect(screen.getByText('Billing unit').nextElementSibling).toHaveTextContent('token');
+  fireEvent.click(screen.getByRole('button', { name: 'New version from this' }));
+
   expect(screen.getByLabelText('Thread identifier')).toHaveValue('llm');
   expect(screen.getByRole('button', { name: 'Create draft' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Start a blank draft' }));
-  expect(screen.getByLabelText('Thread identifier')).toHaveValue('');
-  expect(screen.queryByRole('button', { name: 'Start a blank draft' })).toBeNull();
 });
 
-test('a saved draft joins the list, is selected and shows its workflow', async () => {
+test('a saved draft joins the list, opens on its own page and shows its workflow', async () => {
   const created = versionFixture({ versionNo: 1, body: rateBody });
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(201, created));
   render(<KindWorkspace isFounder={false} kind="RATE" versions={[]} />);
 
+  fireEvent.click(screen.getByRole('button', { name: 'New draft' }));
   for (const [label, value] of Object.entries({
     'Thread identifier': 'llm',
     Provider: 'p',
@@ -68,13 +76,14 @@ test('a saved draft joins the list, is selected and shows its workflow', async (
   fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
 
   expect(await screen.findByRole('region', { name: 'Workflow for version 1' })).toBeInTheDocument();
-  const table = within(screen.getByRole('table', { name: 'Thread rate versions' }));
-  expect(table.getByText('DRAFT')).toBeInTheDocument();
   expect(screen.getByRole('form', { name: 'Thread rate draft' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Thread rate' }));
+  const table = within(screen.getByRole('table', { name: 'Thread rate versions' }));
+  expect(table.getByText('DRAFT')).toBeInTheDocument();
 });
 
-test('a workflow change updates the row in place', async () => {
+test('a workflow change is shown on the version page and in the list', async () => {
   const draft = versionFixture({ body: rateBody });
   const discarded = { ...draft, state: 'DISCARDED' };
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(200, discarded));
@@ -84,9 +93,9 @@ test('a workflow change updates the row in place', async () => {
   fireEvent.change(screen.getByLabelText('Reason for discarding'), { target: { value: 'wrong' } });
   fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
 
-  await waitFor(() =>
-    expect(screen.getByRole('table', { name: 'Thread rate versions' })).toHaveTextContent('DISCARDED')
-  );
+  await waitFor(() => expect(screen.getByText(/was discarded/)).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Thread rate' }));
+  expect(screen.getByRole('table', { name: 'Thread rate versions' })).toHaveTextContent('DISCARDED');
   expect(screen.getAllByRole('row')).toHaveLength(2);
   expect(jest.mocked(global.fetch).mock.calls[0][0]).toBe(`/api/admin/pricing/drafts/${versionId}/discard`);
 });

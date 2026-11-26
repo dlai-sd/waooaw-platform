@@ -6,7 +6,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PackageWorkspace } from './PackageWorkspace';
 
 const replace = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }));
+const push = jest.fn();
+jest.mock('next/navigation', () => ({ useRouter: () => ({ replace, push }) }));
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
 const originalFetch = global.fetch;
@@ -36,13 +37,17 @@ const body = {
 afterEach(() => {
   global.fetch = originalFetch;
   replace.mockClear();
+  push.mockClear();
 });
 
-test('creating a package moves the page to its own address and shows the workflow', async () => {
+const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name }));
+
+test('creating a package moves the page to its own address and shows the workflow on the review tab', async () => {
   const created = versionFixture({ kind: 'PACKAGE', body, subjectKey: 'package:dma|v3|STARTER' });
   global.fetch = jest.fn().mockResolvedValue(fakeResponse(201, created));
   render(<PackageWorkspace catalogue={catalogue} isFounder={false} version={null} />);
 
+  expect(screen.getByRole('heading', { name: 'New package' })).toBeInTheDocument();
   expect(screen.queryByRole('region', { name: /Workflow/ })).toBeNull();
   fireEvent.change(screen.getByLabelText('Agent type'), { target: { value: 'dma' } });
   fireEvent.change(screen.getByLabelText('Agent version'), { target: { value: 'v3' } });
@@ -51,14 +56,26 @@ test('creating a package moves the page to its own address and shows the workflo
   fireEvent.change(screen.getByLabelText('Billing period (days)'), { target: { value: '30' } });
   fireEvent.change(screen.getByLabelText('Price including GST (INR)'), { target: { value: '2000' } });
   fireEvent.change(screen.getByLabelText('GST rate (%)'), { target: { value: '18' } });
+  openTab('Components');
+  fireEvent.click(screen.getByRole('button', { name: 'Edit component 1' }));
   fireEvent.change(screen.getByLabelText('Price allocation 1 (INR)'), { target: { value: '2000' } });
   fireEvent.click(screen.getByRole('button', { name: 'Create draft' }));
 
   await waitFor(() => expect(replace).toHaveBeenCalledWith(`/admin/pricing/packages/${versionId}`));
+  openTab('Review and sale');
   expect(screen.getByRole('region', { name: 'Workflow for version 2' })).toBeInTheDocument();
 });
 
-test('an existing package does not navigate when saved and a simulation flags components in the editor', async () => {
+test('an authorized package is read as a record with a way to start a new version from it', () => {
+  const authorized = versionFixture({ kind: 'PACKAGE', body, state: 'AUTHORIZED' });
+  render(<PackageWorkspace catalogue={catalogue} isFounder version={authorized} />);
+
+  expect(screen.getByRole('list', { name: 'Progress' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'New version from this' }));
+  expect(push).toHaveBeenCalledWith(`/admin/pricing/packages/new?from=${versionId}`);
+});
+
+test('an existing package does not navigate when saved and a simulation flags the package on the review tab', async () => {
   const draft = versionFixture({ kind: 'PACKAGE', body });
   const simulation = {
     ...simulationFixture,
@@ -71,8 +88,9 @@ test('an existing package does not navigate when saved and a simulation flags co
     .mockResolvedValueOnce(fakeResponse(200, { ...draft, state: 'SIMULATED' }));
   render(<PackageWorkspace catalogue={catalogue} isFounder version={draft} />);
 
+  openTab('Review and sale');
   fireEvent.click(screen.getByRole('button', { name: 'Simulate' }));
-  expect(await screen.findByText(/Not available: cannot go on sale/)).toBeInTheDocument();
+  expect(await screen.findByText(/Not available yet: PROACTIVE_MESSAGE/)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
@@ -99,6 +117,7 @@ test('saving a draft clears an older build-up so it never describes numbers the 
     .mockResolvedValueOnce(fakeResponse(200, { ...draft, state: 'SIMULATED' }));
   render(<PackageWorkspace catalogue={catalogue} isFounder version={draft} />);
 
+  openTab('Review and sale');
   fireEvent.click(screen.getByRole('button', { name: 'Simulate' }));
   expect(await screen.findByRole('table', { name: 'Cost lines' })).toBeInTheDocument();
 

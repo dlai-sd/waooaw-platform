@@ -18,13 +18,12 @@ const row = (key: string, componentId: string, patch: Partial<ComponentRowState>
   ...patch,
 });
 
-test('each component is one row with its numbers, and the selected one is marked', () => {
+test('each component is one row with its numbers', () => {
   render(
     <ComponentTable
       availabilityFor={(id) => (id === 'AD_BOOST' ? 'UNAVAILABLE' : 'CHECKED')}
       components={[row('a', 'CONTENT_DRAFT'), row('b', 'AD_BOOST', { allocationInr: '200', recipe: [] })]}
       onSelect={jest.fn()}
-      selectedKey="b"
     />
   );
 
@@ -37,22 +36,18 @@ test('each component is one row with its numbers, and the selected one is marked
   expect(rows[2]).toHaveTextContent('AD_BOOST');
   expect(rows[2]).toHaveTextContent('None yet');
   expect(rows[2]).toHaveTextContent('Not available');
-  expect(rows[2]).toHaveAttribute('aria-current', 'true');
-  expect(rows[1]).not.toHaveAttribute('aria-current');
 });
 
-test('choosing Edit selects that component, and an unfinished row says so instead of hiding', () => {
+test('choosing Edit opens that component, and an unfinished row says so instead of hiding', () => {
   const onSelect = jest.fn();
   render(
     <ComponentTable
       availabilityFor={() => 'UNCHECKED'}
       components={[row('a', 'CONTENT_DRAFT'), row('b', '', { quantity: '', allocationInr: '', recipe: [] })]}
       onSelect={onSelect}
-      selectedKey="a"
     />
   );
 
-  expect(screen.getByRole('button', { name: 'Edit component 1' })).toHaveTextContent('Editing');
   expect(screen.getByText('New component')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Edit component 2' }));
   expect(onSelect).toHaveBeenCalledWith('b');

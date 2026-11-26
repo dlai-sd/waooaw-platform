@@ -37,13 +37,17 @@ _DDL = [
         customer_id TEXT NOT NULL,
         thread_type TEXT NOT NULL
     )""",
+    """CREATE TABLE IF NOT EXISTS customer_wallets (
+        id TEXT PRIMARY KEY,
+        organisation_id TEXT NOT NULL
+    )""",
     """CREATE TABLE IF NOT EXISTS wallet_buckets (
         id TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
+        wallet_id TEXT NOT NULL,
         employment_contract_id TEXT NOT NULL,
         thread_type TEXT NOT NULL,
         balance_paise INTEGER NOT NULL DEFAULT 0,
-        is_active INTEGER NOT NULL DEFAULT 1
+        period_end TEXT NOT NULL
     )""",
     """CREATE TABLE IF NOT EXISTS topup_orders (
         id TEXT PRIMARY KEY,
@@ -149,14 +153,21 @@ def mock_settings():
 
 
 async def _ins_bucket(sf, bucket_id, customer_id, ec_id, thread_type, balance, is_active=True):
+    # A bucket belongs to a wallet, the wallet to its organisation (the customer); "active" means its period has not ended.
     async with sf() as session:
+        wallet_id = str(uuid.uuid4())
+        await session.execute(
+            text("INSERT INTO customer_wallets (id, organisation_id) VALUES (:wid, :cid)").bindparams(
+                wid=wallet_id, cid=str(customer_id)
+            )
+        )
         await session.execute(
             text(
-                "INSERT INTO wallet_buckets (id, customer_id, employment_contract_id, thread_type, balance_paise, is_active) "
-                "VALUES (:id, :cid, :ec_id, :tt, :bal, :active)"
+                "INSERT INTO wallet_buckets (id, wallet_id, employment_contract_id, thread_type, balance_paise, period_end) "
+                "VALUES (:id, :wid, :ec_id, :tt, :bal, :period_end)"
             ).bindparams(
-                id=str(bucket_id), cid=str(customer_id), ec_id=str(ec_id),
-                tt=thread_type, bal=balance, active=1 if is_active else 0,
+                id=str(bucket_id), wid=wallet_id, ec_id=str(ec_id),
+                tt=thread_type, bal=balance, period_end="9999-12-31" if is_active else "2000-01-01",
             )
         )
         await session.commit()

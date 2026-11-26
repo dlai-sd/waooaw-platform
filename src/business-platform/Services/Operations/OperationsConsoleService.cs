@@ -31,10 +31,46 @@ public sealed record BlockedMessageView(
     string Purpose,
     string? TemplateCategory,
     string? BlockedReason,
+    string ReasonText,
+    bool CanUnblock,
     int AttemptNumber,
     DateTimeOffset BlockedSince,
     double AgeMinutes
 );
+
+/// <summary>An operator's resolution of a blocked message, as the audit trail shows it. No recipient, no payload.</summary>
+public sealed record BlockedMessageHistoryView(
+    Guid ResolutionId,
+    Guid OutboxId,
+    string Action,
+    string Reason,
+    string ResolvedBy,
+    DateTimeOffset ResolvedAt
+);
+
+/// <summary>Plain-language reasons for the codes a blocked message can carry, so nobody has to read the database.</summary>
+public static class BlockedReasonText
+{
+    public const int AttemptLimit = 12;
+
+    public static string Describe(string? code) =>
+        code switch
+        {
+            null or "" => "No reason was recorded.",
+            "PROVIDER_REJECTED" => "WhatsApp refused the message.",
+            "ATTEMPT_LIMIT_REACHED" => "Sending failed 12 times, so it stopped trying.",
+            "CURRENT_ELIGIBILITY_DENIED" =>
+                "The customer is no longer allowed to receive this message.",
+            "RELATIONSHIP_ROUTE_RETIRED" =>
+                "The agent relationship this message belonged to has ended.",
+            "DISPATCH_AUTHORITY_DENIED" => "The platform was not allowed to send it just now.",
+            _ => $"The sender stopped it ({code}).",
+        };
+
+    /// <summary>Unblocking puts the same message back on the queue; it is pointless for a relationship that has ended or after the attempt limit.</summary>
+    public static bool CanUnblock(string? code, int attemptNumber) =>
+        code is not "RELATIONSHIP_ROUTE_RETIRED" && attemptNumber < AttemptLimit;
+}
 
 public sealed record BlockedMessageResolutionView(
     Guid ResolutionId,
@@ -171,9 +207,41 @@ public sealed class OperationsConsoleService(
                 value.Purpose,
                 value.TemplateCategory,
                 value.BlockedReason,
+                BlockedReasonText.Describe(value.BlockedReason),
+                BlockedReasonText.CanUnblock(value.BlockedReason, value.AttemptNumber),
                 value.AttemptNumber,
                 value.UpdatedAt,
                 Math.Round((now - value.UpdatedAt).TotalMinutes, 1)
+            ))
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyList<BlockedMessageHistoryView>> ListResolutionsAsync(
+        int limit,
+        CancellationToken cancellationToken
+    )
+    {
+        using var scope = tenantExecution.Begin();
+        using var tenantOverride = tenantExecution.BeginDatabaseTenantOverride(
+            tenantExecution.ServiceTenantId!.Value
+        );
+        await using var db = await conversationFactory.CreateDbContextAsync(cancellationToken);
+        var environment = options.Value.Environment;
+        return (
+            await db
+                .OutboxResolutions.AsNoTracking()
+                .Where(value => value.Environment == environment)
+                .OrderByDescending(value => value.ResolvedAt)
+                .Take(Math.Clamp(limit, 1, 100))
+                .ToListAsync(cancellationToken)
+        )
+            .Select(value => new BlockedMessageHistoryView(
+                value.ResolutionId,
+                value.OutboxId,
+                value.Action,
+                value.Reason,
+                value.ResolvedBy,
+                value.ResolvedAt
             ))
             .ToArray();
     }
@@ -218,7 +286,10 @@ public sealed class OperationsConsoleService(
             ) ?? throw new KeyNotFoundException("Message not found.");
         if (row.State != "BLOCKED")
             throw new BlockedMessageStateException();
-        if (action == BlockedMessageActions.Retry && row.AttemptNumber >= 12)
+        if (
+            action == BlockedMessageActions.Retry
+            && !BlockedReasonText.CanUnblock(row.BlockedReason, row.AttemptNumber)
+        )
             throw new BlockedMessageStateException();
         var resolution = new ConversationOutboxResolution
         {
@@ -250,9 +321,20 @@ public sealed class OperationsConsoleService(
     }
 }
 
+public sealed record PageGroup(
+    string Signal,
+    string Outcome,
+    string? Reason,
+    int Count,
+    DateTimeOffset FirstRecordedAt,
+    DateTimeOffset LastRecordedAt
+);
+
 /// <summary>
 /// Records what became of a page (WC171-R008, O4). A page handed to the log pipeline is EMITTED: that proves the platform
 /// raised it, not that a person received it. An acknowledgement stops the repeat paging, never the signal itself.
+/// A standing alert is recorded once per <see cref="RepeatInterval"/>, not once per 30-second check, so the Pages list
+/// stays readable; the alert itself keeps showing in the log pipeline every check.
 /// </summary>
 public sealed class OperatorPageService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -260,6 +342,8 @@ public sealed class OperatorPageService(
 )
 {
     public static readonly TimeSpan AcknowledgementWindow = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan RepeatInterval = TimeSpan.FromMinutes(60);
+    public static readonly TimeSpan GroupingHorizon = TimeSpan.FromDays(7);
 
     public async Task<bool> IsAcknowledgedAsync(string code, CancellationToken cancellationToken)
     {
@@ -277,7 +361,10 @@ public sealed class OperatorPageService(
             );
     }
 
-    /// <summary>Records one page for a signal; when it is acknowledged the page is suppressed and the reason says so.</summary>
+    /// <summary>
+    /// Records one page for a signal; when it is acknowledged the page is suppressed and the reason says so. A page of the
+    /// same outcome already recorded inside <see cref="RepeatInterval"/> is not written again.
+    /// </summary>
     public async Task<string> RecordAsync(
         string code,
         bool acknowledged,
@@ -285,7 +372,21 @@ public sealed class OperatorPageService(
     )
     {
         var outcome = acknowledged ? "SUPPRESSED" : "EMITTED";
+        var now = clock.GetUtcNow();
+        var since = now - RepeatInterval;
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var alreadyRecorded = await db
+            .AlertDeliveries.AsNoTracking()
+            .AnyAsync(
+                value =>
+                    value.Signal == code
+                    && value.Channel == AlertChannels.OperatorPage
+                    && value.Outcome == outcome
+                    && value.RecordedAt >= since,
+                cancellationToken
+            );
+        if (alreadyRecorded)
+            return outcome;
         db.AlertDeliveries.Add(
             new AlertDelivery
             {
@@ -294,7 +395,7 @@ public sealed class OperatorPageService(
                 Channel = AlertChannels.OperatorPage,
                 Outcome = outcome,
                 Reason = acknowledged ? "ESCALATION_ACKNOWLEDGED" : "HANDED_TO_MONITORING",
-                RecordedAt = clock.GetUtcNow(),
+                RecordedAt = now,
             }
         );
         await db.SaveChangesAsync(cancellationToken);
@@ -322,18 +423,47 @@ public sealed class OperatorPageService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AlertDelivery>> RecentAsync(
+    /// <summary>Pages grouped by signal, outcome and reason over the last week, newest group first: a flood collapses into one line with a count.</summary>
+    public async Task<IReadOnlyList<PageGroup>> RecentGroupedAsync(
         int limit,
         CancellationToken cancellationToken
     )
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db
+        var since = clock.GetUtcNow() - GroupingHorizon;
+        var groups = await db
             .AlertDeliveries.AsNoTracking()
-            .Where(value => value.Channel == AlertChannels.OperatorPage)
-            .OrderByDescending(value => value.RecordedAt)
+            .Where(value =>
+                value.Channel == AlertChannels.OperatorPage && value.RecordedAt >= since
+            )
+            .GroupBy(value => new
+            {
+                value.Signal,
+                value.Outcome,
+                value.Reason,
+            })
+            .Select(group => new
+            {
+                group.Key.Signal,
+                group.Key.Outcome,
+                group.Key.Reason,
+                Count = group.Count(),
+                First = group.Min(value => value.RecordedAt),
+                Last = group.Max(value => value.RecordedAt),
+            })
+            .OrderByDescending(value => value.Last)
             .Take(limit)
             .ToListAsync(cancellationToken);
+        return groups
+            .Select(value => new PageGroup(
+                value.Signal,
+                value.Outcome,
+                value.Reason,
+                value.Count,
+                value.First,
+                value.Last
+            ))
+            .ToArray();
     }
 }
 

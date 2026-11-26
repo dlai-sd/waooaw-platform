@@ -131,7 +131,11 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                         <small>Monthly price including GST. Final terms are shown before you accept.</small>
                       </p>
                     ) : hireOffered ? (
-                      <p>Price is not available right now</p>
+                      <p>
+                        {quoted.kind === 'unavailable'
+                          ? 'Price cannot be shown right now'
+                          : 'Hire opens once the monthly price is set up'}
+                      </p>
                     ) : null}
                     {professional.trialTerms ? (
                       <p>
@@ -158,6 +162,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                   <DisclosureContinuation
                     disclosureRevision={professional.disclosureRevision}
                     hireUnavailable={hireOffered && !quote}
+                    hireUnavailableReason={quoted.kind === 'unavailable' ? 'temporary' : 'not-for-sale'}
                     packageCode={quote?.packageCode}
                     priceInrPaise={quote?.grossAmountInrPaise}
                     professionalType={professional.professionalType}

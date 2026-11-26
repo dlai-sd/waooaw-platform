@@ -37,6 +37,7 @@ public sealed record SpendDiscrepancyResolveRequest(
 public sealed class OperationsController(
     OperationsConsoleService console,
     OperatorPageService pages,
+    ICustomerDirectory customers,
     RealWorkTimelineService timeline,
     ISpendChainReader spendChain,
     TimeProvider clock
@@ -131,7 +132,7 @@ public sealed class OperationsController(
     {
         if (!CanRead())
             return Forbidden();
-        var items = await pages.RecentAsync(50, cancellationToken);
+        var items = await pages.RecentGroupedAsync(50, cancellationToken);
         return Ok(
             new
             {
@@ -141,10 +142,36 @@ public sealed class OperationsController(
                     signal = value.Signal,
                     outcome = value.Outcome,
                     reason = value.Reason,
-                    recordedAt = value.RecordedAt,
+                    count = value.Count,
+                    firstRecordedAt = value.FirstRecordedAt,
+                    recordedAt = value.LastRecordedAt,
                 }),
             }
         );
+    }
+
+    [HttpGet("blocked-messages/history")]
+    public async Task<IActionResult> ListResolutionsAsync(CancellationToken cancellationToken)
+    {
+        if (!CanRead())
+            return Forbidden();
+        try
+        {
+            return Ok(
+                new
+                {
+                    schemaVersion = "1.0.0",
+                    items = await console.ListResolutionsAsync(50, cancellationToken),
+                }
+            );
+        }
+        catch (WhatsAppCapabilityUnavailableException unavailable)
+        {
+            return StatusCode(
+                503,
+                new { code = "OPERATIONS_WHATSAPP_INACTIVE", reason = unavailable.ReasonCode }
+            );
+        }
     }
 
     [HttpPost("pages/{code}/acknowledge")]
@@ -173,6 +200,44 @@ public sealed class OperationsController(
                     OperatorPageService.AcknowledgementWindow.TotalMinutes,
             }
         );
+    }
+
+    /// <summary>Who has signed in and who has registered; the Founder reads it, masked contact details only (never a raw email or number).</summary>
+    [HttpGet("customers")]
+    public async Task<IActionResult> ListCustomersAsync(
+        [FromQuery] string? name,
+        [FromQuery] string? contact,
+        [FromQuery] string? status,
+        [FromQuery] string? cursor,
+        [FromQuery] int? pageSize,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!IsRole(PlatformRoles.Founder))
+            return Forbidden();
+        try
+        {
+            var page = await customers.ListAsync(
+                name,
+                contact,
+                status,
+                cursor,
+                pageSize,
+                cancellationToken
+            );
+            return Ok(
+                new
+                {
+                    schemaVersion = "1.0.0",
+                    items = page.Items,
+                    nextCursor = page.NextCursor,
+                }
+            );
+        }
+        catch (CustomerDirectoryFilterException)
+        {
+            return Problem(statusCode: 400, title: "Invalid customer filter");
+        }
     }
 
     [HttpGet("relationships/{relationshipId:guid}/work-timeline")]

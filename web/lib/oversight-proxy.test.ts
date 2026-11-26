@@ -34,6 +34,8 @@ describe('oversight route allow-list', () => {
     ['GET', ['blocked-messages']],
     ['POST', ['blocked-messages', id, 'resolve']],
     ['GET', ['pages']],
+    ['GET', ['customers']],
+    ['GET', ['blocked-messages', 'history']],
     ['POST', ['pages', 'DEAD_LETTER_AGE_BREACH', 'acknowledge']],
     ['GET', ['relationships', id, 'work-timeline']],
     ['GET', ['relationships', id, 'spend-chain']],
@@ -93,6 +95,32 @@ describe('proxyOversight', () => {
     expect(url).toBe(`http://localhost:5001/api/v1/operations/blocked-messages/${id}/resolve?tenantId=${id}`);
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer token');
     expect((init.headers as Record<string, string>)['Idempotency-Key']).toBe(key);
+  });
+
+  it('forwards customer filters in their own shape and drops anything else', async () => {
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ items: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      );
+    await proxyOversight(
+      new NextRequest(
+        'http://localhost/api/operations/customers?name=Asha%20Rao&contact=asha%40example.com&status=REGISTERED&cursor=abc_-1&pageSize=10&limit=%3Bdrop',
+        { method: 'GET' }
+      ),
+      'token',
+      '/api/v1/operations',
+      operationsRoutes,
+      ['customers']
+    );
+    const [url] = fetchMock.mock.calls[0] as [string];
+    const forwarded = new URL(url).searchParams;
+    expect(forwarded.get('name')).toBe('Asha Rao');
+    expect(forwarded.get('contact')).toBe('asha@example.com');
+    expect(forwarded.get('status')).toBe('REGISTERED');
+    expect(forwarded.get('cursor')).toBe('abc_-1');
+    expect(forwarded.get('pageSize')).toBe('10');
+    expect(forwarded.has('limit')).toBe(false);
   });
 
   it('refuses a write with no body or a body that is too large', async () => {

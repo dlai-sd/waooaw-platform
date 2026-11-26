@@ -320,10 +320,12 @@ class MeterService(IMeterService):
                 balance_row = await session.execute(
                     text(
                         """
-                        SELECT balance_paise
-                        FROM   wallet_buckets
-                        WHERE  customer_id = :customer_id
-                          AND  thread_type  = :thread_type
+                        SELECT wb.balance_paise
+                        FROM   wallet_buckets wb
+                        JOIN   customer_wallets cw ON cw.id = wb.wallet_id
+                        WHERE  cw.organisation_id = :customer_id
+                          AND  wb.thread_type  = :thread_type
+                          AND  wb.period_end >= CURRENT_DATE
                         LIMIT  1
                         """
                     ).bindparams(
@@ -437,10 +439,12 @@ class MeterService(IMeterService):
             bucket_row = await session.execute(
                 text(
                     """
-                    SELECT balance_paise
-                    FROM   wallet_buckets
-                    WHERE  customer_id = :customer_id
-                      AND  thread_type  = :thread_type
+                    SELECT wb.balance_paise
+                    FROM   wallet_buckets wb
+                    JOIN   customer_wallets cw ON cw.id = wb.wallet_id
+                    WHERE  cw.organisation_id = :customer_id
+                      AND  wb.thread_type  = :thread_type
+                      AND  wb.period_end >= CURRENT_DATE
                     LIMIT  1
                     """
                 ).bindparams(
@@ -756,9 +760,10 @@ class MeterService(IMeterService):
                 cust_row = await session.execute(
                     text(
                         """
-                        SELECT DISTINCT customer_id
-                        FROM   wallet_buckets
-                        WHERE  is_active = TRUE
+                        SELECT DISTINCT cw.organisation_id AS customer_id
+                        FROM   wallet_buckets wb
+                        JOIN   customer_wallets cw ON cw.id = wb.wallet_id
+                        WHERE  wb.period_end >= CURRENT_DATE
                         """
                     )
                 )

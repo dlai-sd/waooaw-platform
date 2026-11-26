@@ -27,8 +27,10 @@ export const alertControlRoutes: readonly Route[] = [
 export const operationsRoutes: readonly Route[] = [
   { method: 'GET', pattern: /^overview$/ },
   { method: 'GET', pattern: /^blocked-messages$/ },
+  { method: 'GET', pattern: /^blocked-messages\/history$/ },
   { method: 'POST', pattern: new RegExp(`^blocked-messages/${id}/resolve$`) },
   { method: 'GET', pattern: /^pages$/ },
+  { method: 'GET', pattern: /^customers$/ },
   { method: 'POST', pattern: new RegExp(`^pages/${code}/acknowledge$`) },
   { method: 'GET', pattern: new RegExp(`^relationships/${id}/work-timeline$`) },
   { method: 'GET', pattern: new RegExp(`^relationships/${id}/spend-chain$`) },
@@ -40,7 +42,19 @@ export function oversightRouteAllowed(routes: readonly Route[], method: string, 
   return routes.some((route) => route.method === method && route.pattern.test(path));
 }
 
-const forwardedQuery = ['relationshipId', 'includeSnoozed', 'limit', 'tenantId'] as const;
+const defaultQueryValue = /^[A-Za-z0-9-]{1,64}$/;
+// Only these query values are forwarded, each with the narrowest shape it may have.
+const forwardedQuery: Record<string, RegExp> = {
+  relationshipId: defaultQueryValue,
+  includeSnoozed: defaultQueryValue,
+  limit: defaultQueryValue,
+  tenantId: defaultQueryValue,
+  name: /^[\p{L}\p{N} .'-]{1,120}$/u,
+  contact: /^[A-Za-z0-9@.+_ -]{1,254}$/,
+  status: /^[A-Z_]{1,32}$/,
+  cursor: /^[A-Za-z0-9_-]{1,200}$/,
+  pageSize: /^[0-9]{1,2}$/,
+};
 
 export async function proxyOversight(
   request: NextRequest,
@@ -70,9 +84,9 @@ export async function proxyOversight(
     if (key && new RegExp(`^${id}$`).test(key)) headers['Idempotency-Key'] = key;
   }
   const query = new URLSearchParams();
-  for (const name of forwardedQuery) {
+  for (const [name, pattern] of Object.entries(forwardedQuery)) {
     const value = request.nextUrl.searchParams.get(name);
-    if (value && /^[A-Za-z0-9-]{1,64}$/.test(value)) query.set(name, value);
+    if (value && pattern.test(value)) query.set(name, value);
   }
   const suffix = query.size > 0 ? `?${query.toString()}` : '';
   let upstream: Response;

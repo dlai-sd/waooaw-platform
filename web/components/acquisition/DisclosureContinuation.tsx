@@ -19,6 +19,7 @@ export function DisclosureContinuation({
   packageCode,
   quoteVersion,
   hireUnavailable = false,
+  hireUnavailableReason,
   trialAvailable,
   trialDurationDays,
 }: {
@@ -31,6 +32,7 @@ export function DisclosureContinuation({
   packageCode?: string;
   quoteVersion?: string;
   hireUnavailable?: boolean;
+  hireUnavailableReason?: 'not-for-sale' | 'temporary';
   trialAvailable: boolean;
   trialDurationDays?: number;
 }) {
@@ -144,7 +146,11 @@ export function DisclosureContinuation({
             Review Hire
           </button>
           {hireUnavailable ? (
-            <p aria-live="polite">Hire pricing is not available right now, so nothing can be hired or charged.</p>
+            <p aria-live="polite">
+              {hireUnavailableReason === 'temporary'
+                ? 'The Hire price cannot be shown right now, so Hire is paused. Nothing is charged. Please try again in a few minutes.'
+                : 'Hire is not open for this professional yet because its monthly price has not been set up. Nothing is charged.'}
+            </p>
           ) : null}
           <Link className="text-command" href="/marketplace">
             Not now

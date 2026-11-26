@@ -23,12 +23,46 @@ export type BlockedMessage = {
   purpose: string;
   templateCategory?: string | null;
   blockedReason?: string | null;
+  reasonText: string;
+  canUnblock: boolean;
   attemptNumber: number;
   blockedSince: string;
   ageMinutes: number;
 };
 
-export type PageRecord = { signal: string; outcome: string; reason?: string | null; recordedAt: string };
+export type ResolutionRecord = {
+  resolutionId: string;
+  outboxId: string;
+  action: ResolveAction;
+  reason: string;
+  resolvedBy: string;
+  resolvedAt: string;
+};
+
+export type PageRecord = {
+  signal: string;
+  outcome: string;
+  reason?: string | null;
+  count: number;
+  firstRecordedAt: string;
+  recordedAt: string;
+};
+
+export type CustomerStatus = 'LOGGED_IN_ONLY' | 'REGISTRATION_STARTED' | 'REGISTERED';
+
+export type CustomerEntry = {
+  registrationId: string;
+  displayName?: string | null;
+  maskedEmail?: string | null;
+  maskedMobile?: string | null;
+  status: CustomerStatus;
+  registrationState: string;
+  firstSeenAt: string;
+  lastActiveAt: string;
+  registeredAt?: string | null;
+};
+
+export type CustomerFilters = { name?: string; contact?: string; status?: CustomerStatus | ''; cursor?: string };
 
 export type ResolveAction = 'RETRY' | 'CLOSE_WITH_REASON' | 'MARK_UNDELIVERABLE';
 
@@ -69,6 +103,15 @@ async function call<T>(
 export const readOverview = () => call<OverviewView>('GET', 'overview');
 export const readBlocked = () => call<{ items: BlockedMessage[] }>('GET', 'blocked-messages');
 export const readPages = () => call<{ items: PageRecord[] }>('GET', 'pages');
+export const readResolutions = () => call<{ items: ResolutionRecord[] }>('GET', 'blocked-messages/history');
+export const readCustomers = (filters: CustomerFilters) => {
+  const query = new URLSearchParams({ pageSize: '10' });
+  if (filters.name?.trim()) query.set('name', filters.name.trim());
+  if (filters.contact?.trim()) query.set('contact', filters.contact.trim());
+  if (filters.status) query.set('status', filters.status);
+  if (filters.cursor) query.set('cursor', filters.cursor);
+  return call<{ items: CustomerEntry[]; nextCursor?: string | null }>('GET', `customers?${query.toString()}`);
+};
 export type TimelineView = {
   emergencyStopActive: boolean;
   workItems: Array<{
@@ -106,7 +149,9 @@ export const operationsCopy = {
   inactive: 'WhatsApp is not active in this environment, so there are no messages to show.',
   noBlocked: 'No blocked messages.',
   noPages: 'No pages recorded.',
-  resolved: 'Resolved. The message was kept; only its status changed.',
+  noCustomers: 'No customers match these filters.',
+  resolved:
+    'Done. The message was kept; only its status changed, and your name, the time and the reason were recorded.',
   failed: 'That change could not be completed. Nothing was changed.',
   emitted: 'Handed to monitoring (a person receiving it is not proven here)',
 } as const;

@@ -145,6 +145,7 @@ export default async function MarketplaceOfferPage({
           <DisclosureContinuation
             disclosureRevision={disclosure.disclosureRevision}
             hireUnavailable={intent === 'hire' && !quote}
+            hireUnavailableReason={quoted?.kind === 'unavailable' ? 'temporary' : 'not-for-sale'}
             initialIntent={intent}
             packageCode={quote?.packageCode}
             priceInrPaise={quote?.grossAmountInrPaise}

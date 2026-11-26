@@ -18,8 +18,8 @@ export default async function OperationsPage() {
         <p className="eyebrow">Operations</p>
         <h1 id="operations-title">What needs attention</h1>
         <p>
-          Blocked messages, alert delivery and service health, without database access. Only the Founder can resolve a
-          blocked message; resolving never deletes it.
+          Blocked messages, alert delivery, customers and service health, without database access. Only the Founder can
+          unblock or close a blocked message; nothing is ever deleted.
         </p>
       </header>
       <OperationsConsole canResolve={access.founder} />

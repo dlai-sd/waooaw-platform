@@ -518,7 +518,12 @@ public sealed class OperationsConsoleTests
         InMemoryEmploymentRelationshipFactory Relationships
     );
 
-    private static Harness Create(string[] roles, bool stepUp = true, bool whatsAppActive = true)
+    private static Harness Create(
+        string[] roles,
+        bool stepUp = true,
+        bool whatsAppActive = true,
+        ICustomerDirectory? directory = null
+    )
     {
         var conversations = new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N"));
         var relationships = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -570,6 +575,7 @@ public sealed class OperationsConsoleTests
         var controller = new OperationsController(
             console,
             pages,
+            directory ?? Mock.Of<ICustomerDirectory>(),
             new RealWorkTimelineService(
                 new InMemoryRealWorkLedger(),
                 new RealWorkDecisionService(
@@ -884,6 +890,176 @@ public sealed class OperationsConsoleTests
         Assert.IsType<ConflictObjectResult>(
             await founder.Controller.ResolveBlockedAsync(other, request, key, default)
         );
+    }
+
+    [Fact]
+    public async Task AStandingPageIsRecordedOnceAnHourAndAFloodReadsAsOneLineWithACount()
+    {
+        var harness = Create(["founder"]);
+        await using (var db = harness.Relationships.CreateDbContext())
+        {
+            for (var minute = 0; minute < 3; minute++)
+                db.AlertDeliveries.Add(
+                    new AlertDelivery
+                    {
+                        Signal = "DEAD_LETTER_AGE_BREACH",
+                        AlertClass = AlertClasses.Operations,
+                        Channel = AlertChannels.OperatorPage,
+                        Outcome = "EMITTED",
+                        Reason = "HANDED_TO_MONITORING",
+                        RecordedAt = Now.AddHours(-3).AddMinutes(minute),
+                    }
+                );
+            await db.SaveChangesAsync();
+        }
+
+        for (var check = 0; check < 5; check++)
+            await harness.Pages.RecordAsync("DEAD_LETTER_AGE_BREACH", false, default);
+
+        var listed = Json(
+                Assert
+                    .IsType<OkObjectResult>(await harness.Controller.ListPagesAsync(default))
+                    .Value
+            )
+            .GetProperty("items");
+        var line = Assert.Single(listed.EnumerateArray());
+        Assert.Equal(4, line.GetProperty("count").GetInt32());
+        Assert.Equal(Now, line.GetProperty("recordedAt").GetDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task ABlockedMessageSaysWhyInPlainLanguageAndAnEndedRelationshipCannotBeUnblocked()
+    {
+        var harness = Create(["founder"]);
+        var rejected = await Block(harness);
+        var retired = await Block(harness, "RELATIONSHIP_ROUTE_RETIRED");
+
+        var items = Json(
+                Assert
+                    .IsType<OkObjectResult>(await harness.Controller.ListBlockedAsync(default))
+                    .Value
+            )
+            .GetProperty("items")
+            .EnumerateArray()
+            .ToDictionary(value => value.GetProperty("outboxId").GetGuid());
+
+        Assert.Equal(
+            "WhatsApp refused the message.",
+            items[rejected].GetProperty("reasonText").GetString()
+        );
+        Assert.True(items[rejected].GetProperty("canUnblock").GetBoolean());
+        Assert.False(items[retired].GetProperty("canUnblock").GetBoolean());
+        Assert.Equal(
+            409,
+            Assert
+                .IsType<ConflictObjectResult>(
+                    await harness.Controller.ResolveBlockedAsync(
+                        retired,
+                        new BlockedMessageResolveRequest("1.0.0", "RETRY", "Try once more"),
+                        Guid.NewGuid().ToString(),
+                        default
+                    )
+                )
+                .StatusCode
+        );
+    }
+
+    [Fact]
+    public async Task AnUnblockLeavesWhoWhenAndWhyInTheResolutionHistory()
+    {
+        var harness = Create(["founder"]);
+        var outbox = await Block(harness);
+        await harness.Controller.ResolveBlockedAsync(
+            outbox,
+            new BlockedMessageResolveRequest("1.0.0", "RETRY", "Template approved now"),
+            Guid.NewGuid().ToString(),
+            default
+        );
+
+        var entry = Assert.Single(
+            Json(
+                    Assert
+                        .IsType<OkObjectResult>(
+                            await harness.Controller.ListResolutionsAsync(default)
+                        )
+                        .Value
+                )
+                .GetProperty("items")
+                .EnumerateArray()
+        );
+
+        Assert.Equal("RETRY", entry.GetProperty("action").GetString());
+        Assert.Equal("Template approved now", entry.GetProperty("reason").GetString());
+        Assert.Equal("founder-subject", entry.GetProperty("resolvedBy").GetString());
+        Assert.Equal(Now, entry.GetProperty("resolvedAt").GetDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task OnlyTheFounderReadsTheCustomersAndABadFilterIsRefused()
+    {
+        var directory = new Mock<ICustomerDirectory>();
+        directory
+            .Setup(value =>
+                value.ListAsync("Asha", null, "REGISTERED", null, 10, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(new CustomerDirectoryPage([], "next-cursor"));
+        directory
+            .Setup(value =>
+                value.ListAsync("bad", null, null, null, null, It.IsAny<CancellationToken>())
+            )
+            .ThrowsAsync(new CustomerDirectoryFilterException());
+        var founder = Create(["founder"], directory: directory.Object);
+
+        var page = Json(
+            Assert
+                .IsType<OkObjectResult>(
+                    await founder.Controller.ListCustomersAsync(
+                        "Asha",
+                        null,
+                        "REGISTERED",
+                        null,
+                        10,
+                        default
+                    )
+                )
+                .Value
+        );
+        Assert.Equal("next-cursor", page.GetProperty("nextCursor").GetString());
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await founder.Controller.ListCustomersAsync(
+                        "bad",
+                        null,
+                        null,
+                        null,
+                        null,
+                        default
+                    )
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            403,
+            Assert
+                .IsType<ObjectResult>(
+                    await Create(["operations_authority"])
+                        .Controller.ListCustomersAsync(null, null, null, null, null, default)
+                )
+                .StatusCode
+        );
+    }
+
+    [Fact]
+    public void ACustomerCursorRoundTripsAndAForgedOneIsRejected()
+    {
+        var id = Guid.NewGuid();
+        var cursor = CustomerDirectoryService.EncodeCursor(Now, id);
+
+        Assert.Equal((Now, id), CustomerDirectoryService.DecodeCursor(cursor));
+        Assert.Null(CustomerDirectoryService.DecodeCursor("not-a-cursor"));
+        Assert.Null(CustomerDirectoryService.DecodeCursor(""));
     }
 
     [Fact]

@@ -278,7 +278,24 @@ describe('DisclosureContinuation', () => {
 
     expect(screen.getByRole('button', { name: 'Review Hire' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
-    expect(screen.getByText(/Hire pricing is not available right now/)).toBeVisible();
+    expect(screen.getByText(/monthly price has not been set up/)).toBeVisible();
+  });
+
+  it('says the price is only temporarily unavailable when the quote could not be fetched', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        hireUnavailable
+        hireUnavailableReason="temporary"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
+
+    expect(screen.getByText(/cannot be shown right now/)).toBeVisible();
+    expect(screen.queryByText(/has not been set up/)).not.toBeInTheDocument();
   });
 
   it('never continues a Hire when its price is unavailable, even if reached directly', () => {

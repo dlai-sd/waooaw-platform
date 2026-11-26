@@ -9,7 +9,6 @@ import type { AvailabilityNote } from './ComponentRow';
 
 type Props = {
   components: ComponentRowState[];
-  selectedKey: string | undefined;
   availabilityFor: (componentId: string) => AvailabilityNote;
   onSelect: (key: string) => void;
 };
@@ -20,8 +19,8 @@ const availabilityShort: Record<AvailabilityNote, string> = {
   UNCHECKED: 'Not checked',
 };
 
-// Every component is one row; the Founder picks one row to edit in the panel below, so the page stays short.
-export function ComponentTable({ components, selectedKey, availabilityFor, onSelect }: Props) {
+// Every component is one row; Edit opens that component on its own page.
+export function ComponentTable({ components, availabilityFor, onSelect }: Props) {
   return (
     <div className="package-table-wrap">
       <table aria-label="Package components" className="package-components-table">
@@ -46,15 +45,10 @@ export function ComponentTable({ components, selectedKey, availabilityFor, onSel
         </thead>
         <tbody>
           {components.map((row, index) => {
-            const selected = row.key === selectedKey;
             const allocation = paiseFromInr(row.allocationInr);
             const ingredients = row.recipe.map((entry) => entry.threadId).filter((id) => id !== '');
             return (
-              <tr
-                aria-current={selected ? 'true' : undefined}
-                className={selected ? 'package-row-selected' : undefined}
-                key={row.key}
-              >
+              <tr key={row.key}>
                 <td>{index + 1}</td>
                 <th scope="row">{row.componentId.trim() === '' ? 'New component' : row.componentId}</th>
                 <td>{row.kind}</td>
@@ -66,12 +60,11 @@ export function ComponentTable({ components, selectedKey, availabilityFor, onSel
                 <td>
                   <button
                     aria-label={`Edit component ${index + 1}`}
-                    aria-pressed={selected}
                     className="secondary-link"
                     onClick={() => onSelect(row.key)}
                     type="button"
                   >
-                    {selected ? 'Editing' : 'Edit'}
+                    Edit
                   </button>
                 </td>
               </tr>
