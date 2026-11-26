@@ -18,7 +18,11 @@ import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getWorkbench } from '@/lib/api/workbench';
+import { getOperationFrame } from '@/lib/api/operation';
+import type { ModeId } from '@/lib/agent-operation';
+import { operationMessages } from '@/lib/operation-i18n';
 import { workbenchMessages } from '@/lib/workbench-i18n';
+import { OperationWorkspace } from '@/components/operation/OperationWorkspace';
 import { WorkbenchShell } from '@/components/workbench/WorkbenchShell';
 
 export default async function RelationshipPage({
@@ -26,7 +30,7 @@ export default async function RelationshipPage({
   searchParams,
 }: {
   params: Promise<{ relationshipId: string }>;
-  searchParams?: Promise<{ handoff?: string | string[]; surface?: string | string[] }>;
+  searchParams?: Promise<{ handoff?: string | string[]; surface?: string | string[]; mode?: string | string[] }>;
 }) {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/login');
@@ -60,12 +64,33 @@ export default async function RelationshipPage({
   const workbench = await getWorkbench(relationshipId, accessToken);
   if (workbench.state === 'available') {
     const { locale } = await getRequestI18n();
+    const mode = query?.mode;
+    // An old link (a named workbench surface or a handoff) keeps opening the workbench; otherwise an agent that declares
+    // its modes opens on its calendar with its mode menu beside it.
+    const legacyLink = (typeof surface === 'string' && typeof mode !== 'string') || typeof handoff === 'string';
+    const frame = legacyLink ? null : await getOperationFrame(relationshipId, accessToken);
+    if (frame) {
+      return (
+        <OperationWorkspace
+          copy={operationMessages(locale)}
+          initialFrame={frame}
+          initialMode={
+            typeof mode === 'string' && ['INDUCT', 'GOALS', 'OPERATIONS'].includes(mode) ? (mode as ModeId) : null
+          }
+          initialSurface={typeof surface === 'string' ? surface : null}
+          relationshipId={relationshipId}
+          today={new Date().toISOString().slice(0, 10)}
+          workbenchHref={`/relationships/${encodeURIComponent(relationshipId)}?surface=overview`}
+        />
+      );
+    }
     return (
       <WorkbenchShell
         copy={workbenchMessages(locale)}
         handoffToken={typeof handoff === 'string' ? handoff : undefined}
         initial={workbench.snapshot}
         initialSurface={typeof surface === 'string' ? surface : undefined}
+        operationHref={`/relationships/${encodeURIComponent(relationshipId)}`}
         relationshipId={relationshipId}
       />
     );

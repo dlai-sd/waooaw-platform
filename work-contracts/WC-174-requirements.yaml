@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-174
 contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
-contract_digest: ffc54e474f8e76574674ae3095c9814e122bb760bc7cf27e698da8f697ecd6ac
+contract_digest: b1e5320ea76df2f902fb8decca80af0758e6bb49a2262bf601fbf45c4e609535
 implementation_scope: true
 result: PLANNED
 

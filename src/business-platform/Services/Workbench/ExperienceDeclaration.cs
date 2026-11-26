@@ -90,6 +90,15 @@ public static class ExperienceNavigationRules
     )
     {
         "connections",
+        "calendar",
+        "presence",
+        "profile",
+        "goals",
+        "plan_tree",
+        "approvals",
+        "published",
+        "results",
+        "improve",
     };
 
     public static readonly IReadOnlySet<string> Icons = new HashSet<string>(StringComparer.Ordinal)
@@ -129,6 +138,60 @@ public static class ExperienceNavigationRules
 
     private static readonly char[] Markup = ['<', '>', '&', '{', '}', '[', ']', '`', '\\'];
 
+    /// <summary>WC-174: the three fixed mode ids every agent has. An agent never invents a fourth.</summary>
+    public static readonly IReadOnlyList<string> ModeIds = ["INDUCT", "GOALS", "OPERATIONS"];
+
+    public static readonly IReadOnlySet<string> ReadinessSources = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "INDUCTION_SUMMARY",
+        "GOAL_COVERAGE",
+        "OPERATION_STATUS",
+    };
+
+    public static readonly IReadOnlySet<string> GateActions = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "PUBLISH",
+        "SCHEDULE",
+        "GENERATE_MEDIA",
+    };
+
+    public static readonly IReadOnlySet<string> ToolCommands = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "ADD_EVENT",
+        "ADD_PLACEHOLDER",
+        "ADD_PLAN_NODE",
+        "ADD_CONTENT",
+        "ADD_SLOT",
+        "ADD_NOTE",
+    };
+
+    public static readonly IReadOnlySet<string> Connectors = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        "META_FACEBOOK",
+        "META_INSTAGRAM",
+        "NONE",
+    };
+
+    public static readonly IReadOnlySet<string> Views = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "MONTH",
+        "WEEK",
+        "PLATFORMS",
+        "STORYBOARD",
+    };
+
+    public const int MaximumPlanLevels = 6;
+    public const int MaximumLayers = 16;
+    public const int MaximumPlatforms = 16;
+
     public static bool IsIdentifier(string value) =>
         value.Length is >= 3 and <= 64
         && char.IsAsciiLetterUpper(value[0])
@@ -142,6 +205,57 @@ public static class ExperienceNavigationRules
         && value.IndexOfAny(Markup) < 0
         && !value.Any(char.IsControl);
 }
+
+public sealed record ExperienceFlyoutOption(string OptionId, string LabelKey, string Label);
+
+public sealed record ExperienceTool(
+    string ToolId,
+    string LabelKey,
+    string Label,
+    string Icon,
+    string Command,
+    string? PlanLevel,
+    string? ComponentId,
+    IReadOnlyList<ExperienceFlyoutOption> Flyout
+);
+
+public sealed record ExperienceToolGroup(
+    string GroupId,
+    string LabelKey,
+    string Label,
+    IReadOnlyList<ExperienceTool> Tools
+);
+
+/// <summary>A gate blocks one action with a side effect until a mode is ready; it never blocks opening a screen (MD2).</summary>
+public sealed record ExperienceModeGate(string Action, string RequiresMode, string MessageKey);
+
+/// <summary>One of the three fixed modes, declared as data (WC174-R001).</summary>
+public sealed record ExperienceMode(
+    string ModeId,
+    string LabelKey,
+    string Label,
+    string ReadinessSource,
+    IReadOnlyList<ExperienceNavigationEntry> Entries,
+    IReadOnlyList<ExperienceToolGroup> ToolGroups,
+    IReadOnlyList<ExperienceModeGate> Gates
+);
+
+public sealed record ExperienceEventLayer(
+    string LayerId,
+    string LabelKey,
+    string Label,
+    bool Sensitive,
+    bool DefaultOn
+);
+
+public sealed record ExperiencePlanLevel(string LevelId, string LabelKey, string Label);
+
+public sealed record ExperiencePlatform(
+    string PlatformId,
+    string LabelKey,
+    string Label,
+    string Connector
+);
 
 public sealed record ExperienceComponent(
     string ComponentId,
@@ -173,6 +287,17 @@ public sealed record ExperienceDeclaration(
 {
     /// <summary>Optional entries after the fixed surfaces; a declaration without them shows only the fixed surfaces.</summary>
     public IReadOnlyList<ExperienceNavigationEntry> Navigation { get; init; } = [];
+
+    /// <summary>WC-174: optional modes; a declaration without them shows the WC-171 menu (WC174-R001).</summary>
+    public IReadOnlyList<ExperienceMode> Modes { get; init; } = [];
+
+    public IReadOnlyList<ExperienceEventLayer> EventLayers { get; init; } = [];
+
+    public IReadOnlyList<ExperiencePlanLevel> PlanLevels { get; init; } = [];
+
+    public IReadOnlyList<ExperiencePlatform> Platforms { get; init; } = [];
+
+    public IReadOnlyList<string> Views { get; init; } = [];
 
     public ExperienceGoalType? GoalTypeForMeasure(string measureId) =>
         GoalTypes.FirstOrDefault(type =>
@@ -370,6 +495,11 @@ public static class ExperienceManifestScanner
         );
         if (navigationMalformed)
             reasons.Add("EXPERIENCE_NAVIGATION_INVALID");
+        var planLevels = ReadPlanLevels(section, reasons);
+        var eventLayers = ReadEventLayers(section, reasons);
+        var platforms = ReadPlatforms(section, reasons);
+        var views = ReadViews(section, reasons);
+        var modes = ReadModes(section, domainBlocks, audiences, planLevels, reasons);
         if (
             alerts.Any(alert =>
                 AlertPolicy.ValidateDeclaration(alert.Severity, alert.Channels).Count > 0
@@ -461,6 +591,11 @@ public static class ExperienceManifestScanner
         )
         {
             Navigation = navigation,
+            Modes = modes,
+            EventLayers = eventLayers,
+            PlanLevels = planLevels,
+            Platforms = platforms,
+            Views = views,
         };
         return new ExperienceScanResult(
             ExperienceScanResult.Compatible,
@@ -487,6 +622,18 @@ public static class ExperienceManifestScanner
             || raw.ValueKind == JsonValueKind.Null
         )
             return [];
+        return ReadEntries(raw, domainBlocks, audiences, reasons, out malformed);
+    }
+
+    private static IReadOnlyList<ExperienceNavigationEntry> ReadEntries(
+        JsonElement raw,
+        IReadOnlyList<ExperienceDomainBlock> domainBlocks,
+        IReadOnlyList<string> audiences,
+        SortedSet<string> reasons,
+        out bool malformed
+    )
+    {
+        malformed = false;
         if (
             raw.ValueKind != JsonValueKind.Array
             || raw.GetArrayLength() > ExperienceNavigationRules.MaximumEntries
@@ -585,6 +732,419 @@ public static class ExperienceManifestScanner
 
     private static ExperienceScanResult Incompatible(IReadOnlyList<string> reasons) =>
         new(ExperienceScanResult.Incompatible, reasons, null);
+
+    private static bool Named(
+        JsonElement item,
+        out string id,
+        out string labelKey,
+        out string label,
+        string idName
+    )
+    {
+        id = Text(item, idName) ?? string.Empty;
+        labelKey = Text(item, "labelKey") ?? string.Empty;
+        label = Text(item, "label") ?? string.Empty;
+        return ExperienceNavigationRules.IsIdentifier(id)
+            && ExperienceNavigationRules.IsIdentifier(labelKey)
+            && ExperienceNavigationRules.IsPlainLabel(label);
+    }
+
+    private static bool OptionalArray(
+        JsonElement section,
+        string name,
+        int maximum,
+        out JsonElement raw
+    )
+    {
+        raw = default;
+        if (!section.TryGetProperty(name, out raw) || raw.ValueKind == JsonValueKind.Null)
+            return false;
+        return true;
+    }
+
+    private static IReadOnlyList<ExperiencePlanLevel> ReadPlanLevels(
+        JsonElement section,
+        SortedSet<string> reasons
+    )
+    {
+        if (
+            !OptionalArray(
+                section,
+                "planLevels",
+                ExperienceNavigationRules.MaximumPlanLevels,
+                out var raw
+            )
+        )
+            return [];
+        var levels = new List<ExperiencePlanLevel>();
+        var valid =
+            raw.ValueKind == JsonValueKind.Array
+            && raw.GetArrayLength() <= ExperienceNavigationRules.MaximumPlanLevels;
+        if (valid)
+            foreach (var item in raw.EnumerateArray())
+            {
+                if (
+                    item.ValueKind != JsonValueKind.Object
+                    || !Named(item, out var id, out var key, out var label, "levelId")
+                )
+                {
+                    valid = false;
+                    break;
+                }
+                levels.Add(new ExperiencePlanLevel(id, key, label));
+            }
+        if (!valid || levels.Select(level => level.LevelId).Distinct().Count() != levels.Count)
+        {
+            reasons.Add("EXPERIENCE_PLAN_LEVELS_INVALID");
+            return [];
+        }
+        return levels;
+    }
+
+    private static IReadOnlyList<ExperienceEventLayer> ReadEventLayers(
+        JsonElement section,
+        SortedSet<string> reasons
+    )
+    {
+        if (
+            !OptionalArray(
+                section,
+                "eventLayers",
+                ExperienceNavigationRules.MaximumLayers,
+                out var raw
+            )
+        )
+            return [];
+        var layers = new List<ExperienceEventLayer>();
+        var valid =
+            raw.ValueKind == JsonValueKind.Array
+            && raw.GetArrayLength() <= ExperienceNavigationRules.MaximumLayers;
+        if (valid)
+            foreach (var item in raw.EnumerateArray())
+            {
+                if (
+                    item.ValueKind != JsonValueKind.Object
+                    || !Named(item, out var id, out var key, out var label, "layerId")
+                    || !item.TryGetProperty("sensitive", out var sensitive)
+                    || sensitive.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+                    || !item.TryGetProperty("defaultOn", out var defaultOn)
+                    || defaultOn.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+                    // A sensitive layer (religion, politics) always starts off (MD4, C-061).
+                    || (sensitive.GetBoolean() && defaultOn.GetBoolean())
+                )
+                {
+                    valid = false;
+                    break;
+                }
+                layers.Add(
+                    new ExperienceEventLayer(
+                        id,
+                        key,
+                        label,
+                        sensitive.GetBoolean(),
+                        defaultOn.GetBoolean()
+                    )
+                );
+            }
+        if (!valid || layers.Select(layer => layer.LayerId).Distinct().Count() != layers.Count)
+        {
+            reasons.Add("EXPERIENCE_EVENT_LAYERS_INVALID");
+            return [];
+        }
+        return layers;
+    }
+
+    private static IReadOnlyList<ExperiencePlatform> ReadPlatforms(
+        JsonElement section,
+        SortedSet<string> reasons
+    )
+    {
+        if (
+            !OptionalArray(
+                section,
+                "platforms",
+                ExperienceNavigationRules.MaximumPlatforms,
+                out var raw
+            )
+        )
+            return [];
+        var platforms = new List<ExperiencePlatform>();
+        var valid =
+            raw.ValueKind == JsonValueKind.Array
+            && raw.GetArrayLength() <= ExperienceNavigationRules.MaximumPlatforms;
+        if (valid)
+            foreach (var item in raw.EnumerateArray())
+            {
+                var connector =
+                    item.ValueKind == JsonValueKind.Object ? Text(item, "connector") : null;
+                if (
+                    item.ValueKind != JsonValueKind.Object
+                    || !Named(item, out var id, out var key, out var label, "platformId")
+                    || connector is null
+                    || !ExperienceNavigationRules.Connectors.Contains(connector)
+                )
+                {
+                    valid = false;
+                    break;
+                }
+                platforms.Add(new ExperiencePlatform(id, key, label, connector));
+            }
+        if (
+            !valid
+            || platforms.Select(platform => platform.PlatformId).Distinct().Count()
+                != platforms.Count
+        )
+        {
+            reasons.Add("EXPERIENCE_PLATFORMS_INVALID");
+            return [];
+        }
+        return platforms;
+    }
+
+    private static IReadOnlyList<string> ReadViews(JsonElement section, SortedSet<string> reasons)
+    {
+        if (!OptionalArray(section, "views", 4, out var raw))
+            return [];
+        string[] views =
+            raw.ValueKind == JsonValueKind.Array
+                ? raw.EnumerateArray()
+                    .Select(item =>
+                        item.ValueKind == JsonValueKind.String ? item.GetString()! : string.Empty
+                    )
+                    .ToArray()
+                : [];
+        if (
+            raw.ValueKind != JsonValueKind.Array
+            || views.Length > 4
+            || views.Distinct().Count() != views.Length
+            || views.Any(view => !ExperienceNavigationRules.Views.Contains(view))
+        )
+        {
+            reasons.Add("EXPERIENCE_VIEWS_INVALID");
+            return [];
+        }
+        return views;
+    }
+
+    /// <summary>
+    /// Reads the optional modes (WC174-R001) and refuses a fourth mode, a duplicate mode, markup, an unknown readiness
+    /// source, gate action or tool command, and any entry that opens nothing. Entries follow the same rules as the
+    /// WC-171 navigation entries.
+    /// </summary>
+    private static IReadOnlyList<ExperienceMode> ReadModes(
+        JsonElement section,
+        IReadOnlyList<ExperienceDomainBlock> domainBlocks,
+        IReadOnlyList<string> audiences,
+        IReadOnlyList<ExperiencePlanLevel> planLevels,
+        SortedSet<string> reasons
+    )
+    {
+        if (!OptionalArray(section, "modes", 3, out var raw))
+            return [];
+        if (raw.ValueKind != JsonValueKind.Array || raw.GetArrayLength() > 3)
+        {
+            reasons.Add("EXPERIENCE_MODES_INVALID");
+            return [];
+        }
+        var modes = new List<ExperienceMode>();
+        foreach (var item in raw.EnumerateArray())
+        {
+            if (
+                item.ValueKind != JsonValueKind.Object
+                || Text(item, "modeId") is not { } modeId
+                || !ExperienceNavigationRules.ModeIds.Contains(modeId)
+                || !Named(item, out _, out var labelKey, out var label, "modeId")
+                || Text(item, "readinessSource") is not { } source
+                || !ExperienceNavigationRules.ReadinessSources.Contains(source)
+            )
+            {
+                reasons.Add("EXPERIENCE_MODES_INVALID");
+                continue;
+            }
+            var entries = (IReadOnlyList<ExperienceNavigationEntry>)[];
+            var entriesMalformed = !item.TryGetProperty("entries", out var rawEntries);
+            if (!entriesMalformed)
+                entries = ReadEntries(
+                    rawEntries,
+                    domainBlocks,
+                    audiences,
+                    reasons,
+                    out entriesMalformed
+                );
+            if (entriesMalformed)
+                reasons.Add("EXPERIENCE_MODES_INVALID");
+            var groups = ReadToolGroups(item, planLevels, reasons);
+            var gates = ReadGates(item, reasons);
+            modes.Add(new ExperienceMode(modeId, labelKey, label, source, entries, groups, gates));
+        }
+        if (modes.Select(mode => mode.ModeId).Distinct().Count() != modes.Count)
+            reasons.Add("EXPERIENCE_MODES_DUPLICATE");
+        var entryIds = modes
+            .SelectMany(mode => mode.Entries)
+            .Select(entry => entry.EntryId)
+            .ToArray();
+        if (entryIds.Distinct().Count() != entryIds.Length)
+            reasons.Add("EXPERIENCE_NAVIGATION_DUPLICATE");
+        return ExperienceNavigationRules
+            .ModeIds.Select(id => modes.FirstOrDefault(mode => mode.ModeId == id))
+            .Where(mode => mode is not null)
+            .Select(mode => mode!)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ExperienceToolGroup> ReadToolGroups(
+        JsonElement mode,
+        IReadOnlyList<ExperiencePlanLevel> planLevels,
+        SortedSet<string> reasons
+    )
+    {
+        if (!mode.TryGetProperty("toolGroups", out var raw) || raw.ValueKind == JsonValueKind.Null)
+            return [];
+        var groups = new List<ExperienceToolGroup>();
+        var valid = raw.ValueKind == JsonValueKind.Array && raw.GetArrayLength() <= 6;
+        if (valid)
+            foreach (var group in raw.EnumerateArray())
+            {
+                if (
+                    group.ValueKind != JsonValueKind.Object
+                    || !Named(
+                        group,
+                        out var groupId,
+                        out var groupKey,
+                        out var groupLabel,
+                        "groupId"
+                    )
+                    || !group.TryGetProperty("tools", out var rawTools)
+                    || rawTools.ValueKind != JsonValueKind.Array
+                    || rawTools.GetArrayLength() is 0 or > 8
+                )
+                {
+                    valid = false;
+                    break;
+                }
+                var tools = new List<ExperienceTool>();
+                foreach (var tool in rawTools.EnumerateArray())
+                {
+                    var icon = tool.ValueKind == JsonValueKind.Object ? Text(tool, "icon") : null;
+                    var command =
+                        tool.ValueKind == JsonValueKind.Object ? Text(tool, "command") : null;
+                    var level =
+                        tool.ValueKind == JsonValueKind.Object ? Text(tool, "planLevel") : null;
+                    var toolComponent =
+                        tool.ValueKind == JsonValueKind.Object ? Text(tool, "componentId") : null;
+                    if (
+                        tool.ValueKind != JsonValueKind.Object
+                        || !Named(
+                            tool,
+                            out var toolId,
+                            out var toolKey,
+                            out var toolLabel,
+                            "toolId"
+                        )
+                        || icon is null
+                        || !ExperienceNavigationRules.Icons.Contains(icon)
+                        || command is null
+                        || !ExperienceNavigationRules.ToolCommands.Contains(command)
+                        || (level is not null && !planLevels.Any(item => item.LevelId == level))
+                    )
+                    {
+                        valid = false;
+                        break;
+                    }
+                    var options = new List<ExperienceFlyoutOption>();
+                    if (
+                        tool.TryGetProperty("flyout", out var rawFlyout)
+                        && rawFlyout.ValueKind != JsonValueKind.Null
+                    )
+                    {
+                        if (
+                            rawFlyout.ValueKind != JsonValueKind.Array
+                            || rawFlyout.GetArrayLength() > 6
+                        )
+                        {
+                            valid = false;
+                            break;
+                        }
+                        foreach (var option in rawFlyout.EnumerateArray())
+                        {
+                            if (
+                                option.ValueKind != JsonValueKind.Object
+                                || !Named(
+                                    option,
+                                    out var optionId,
+                                    out var optionKey,
+                                    out var optionLabel,
+                                    "optionId"
+                                )
+                            )
+                            {
+                                valid = false;
+                                break;
+                            }
+                            options.Add(
+                                new ExperienceFlyoutOption(optionId, optionKey, optionLabel)
+                            );
+                        }
+                    }
+                    tools.Add(
+                        new ExperienceTool(
+                            toolId,
+                            toolKey,
+                            toolLabel,
+                            icon,
+                            command,
+                            level,
+                            toolComponent,
+                            options
+                        )
+                    );
+                }
+                if (!valid)
+                    break;
+                groups.Add(new ExperienceToolGroup(groupId, groupKey, groupLabel, tools));
+            }
+        if (!valid || groups.Select(group => group.GroupId).Distinct().Count() != groups.Count)
+        {
+            reasons.Add("EXPERIENCE_MODES_INVALID");
+            return [];
+        }
+        return groups;
+    }
+
+    private static IReadOnlyList<ExperienceModeGate> ReadGates(
+        JsonElement mode,
+        SortedSet<string> reasons
+    )
+    {
+        if (!mode.TryGetProperty("gates", out var raw) || raw.ValueKind == JsonValueKind.Null)
+            return [];
+        var gates = new List<ExperienceModeGate>();
+        var valid = raw.ValueKind == JsonValueKind.Array && raw.GetArrayLength() <= 8;
+        if (valid)
+            foreach (var item in raw.EnumerateArray())
+            {
+                if (
+                    item.ValueKind != JsonValueKind.Object
+                    || Text(item, "action") is not { } action
+                    || !ExperienceNavigationRules.GateActions.Contains(action)
+                    || Text(item, "requiresMode") is not { } requires
+                    || !ExperienceNavigationRules.ModeIds.Contains(requires)
+                    || Text(item, "messageKey") is not { } messageKey
+                    || !ExperienceNavigationRules.IsIdentifier(messageKey)
+                )
+                {
+                    valid = false;
+                    break;
+                }
+                gates.Add(new ExperienceModeGate(action, requires, messageKey));
+            }
+        if (!valid)
+        {
+            reasons.Add("EXPERIENCE_MODES_INVALID");
+            return [];
+        }
+        return gates;
+    }
 
     private static JsonElement? Object(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Object

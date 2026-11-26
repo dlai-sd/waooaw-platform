@@ -375,6 +375,7 @@ namespace Waooaw.Generated.DomainEmployment.Client
                 }
             }
 
+
             string contentType = null;
             if (options.HeaderParameters != null && options.HeaderParameters.ContainsKey("Content-Type"))
             {

@@ -45,7 +45,15 @@ export function operationsMenu(flags: GrantFlags): MenuLink[] {
       ? [{ id: 'pricing', href: '/admin/pricing', label: 'Pricing', icon: 'pricing' as const }]
       : []),
     ...(flags.showProviderAdmin
-      ? [{ id: 'providers', href: '/admin/providers', label: 'Providers', icon: 'providers' as const }]
+      ? [
+          { id: 'providers', href: '/admin/providers', label: 'Providers', icon: 'providers' as const },
+          {
+            id: 'agent-operation',
+            href: '/admin/agent-operation',
+            label: 'Agent operation',
+            icon: 'providers' as const,
+          },
+        ]
       : []),
     ...(flags.showKeyVaultAdmin
       ? [{ id: 'vault', href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: 'vault' as const }]

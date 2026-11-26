@@ -93,9 +93,287 @@
       "items": {
         "$ref": "#/$defs/NavigationEntry"
       }
+    },
+    "modes": {
+      "description": "WC-174. Optional declaration of the three fixed modes every agent has (INDUCT, GOALS, OPERATIONS): a label in the agent's own words, the entries and tool groups of its context menu, the readiness source and the gates on actions with a side effect. Data only; no fourth mode, no markup, no entry that opens nothing. A declaration without it shows the WC-171 menu.",
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/ModeDeclaration"
+      }
+    },
+    "eventLayers": {
+      "description": "WC-174. Calendar event layers the customer can switch on or off. A sensitive layer (for example religion or politics) always starts off and its content is always approval-gated.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/EventLayer"
+      }
+    },
+    "planLevels": {
+      "description": "WC-174. The levels of this agent's plan tree, outermost first (the platform renders any number from one to six).",
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/PlanLevel"
+      }
+    },
+    "platforms": {
+      "description": "WC-174. The outside places this agent works from. Each gets an explicit answer (present, not present, connected) from the customer; the connector names a platform-owned connector or NONE.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/PlatformDeclaration"
+      }
+    },
+    "views": {
+      "description": "WC-174. Which of the platform's calendar views the agent offers.",
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["MONTH", "WEEK", "PLATFORMS", "STORYBOARD"]
+      }
     }
   },
   "$defs": {
+    "ModeDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modeId", "labelKey", "label", "readinessSource", "entries"],
+      "properties": {
+        "modeId": {
+          "type": "string",
+          "enum": ["INDUCT", "GOALS", "OPERATIONS"]
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        },
+        "readinessSource": {
+          "type": "string",
+          "enum": ["INDUCTION_SUMMARY", "GOAL_COVERAGE", "OPERATION_STATUS"]
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/NavigationEntry"
+          }
+        },
+        "toolGroups": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/ToolGroup"
+          }
+        },
+        "gates": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/ModeGate"
+          }
+        }
+      }
+    },
+    "ToolGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["groupId", "labelKey", "label", "tools"],
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        },
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Tool"
+          }
+        }
+      }
+    },
+    "Tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["toolId", "labelKey", "label", "icon", "command"],
+      "properties": {
+        "toolId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        },
+        "icon": {
+          "type": "string",
+          "enum": ["profile", "calendar", "accounts", "results", "plan", "work", "insights", "documents"]
+        },
+        "command": {
+          "description": "The platform command the tool runs; the agent never names an endpoint.",
+          "type": "string",
+          "enum": ["ADD_EVENT", "ADD_PLACEHOLDER", "ADD_PLAN_NODE", "ADD_CONTENT", "ADD_SLOT", "ADD_NOTE"]
+        },
+        "planLevel": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "componentId": {
+          "description": "The counted package component this tool's items are scheduled against, when the agent declares one.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "flyout": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/FlyoutOption"
+          }
+        }
+      }
+    },
+    "FlyoutOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["optionId", "labelKey", "label"],
+      "properties": {
+        "optionId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        }
+      }
+    },
+    "ModeGate": {
+      "description": "Gates advise and never lock a door: this one blocks only the named action with a side effect until the named mode reports ready.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "requiresMode", "messageKey"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["PUBLISH", "SCHEDULE", "GENERATE_MEDIA"]
+        },
+        "requiresMode": {
+          "type": "string",
+          "enum": ["INDUCT", "GOALS", "OPERATIONS"]
+        },
+        "messageKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        }
+      }
+    },
+    "EventLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerId", "labelKey", "label", "sensitive", "defaultOn"],
+      "properties": {
+        "layerId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        },
+        "sensitive": {
+          "type": "boolean"
+        },
+        "defaultOn": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PlanLevel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levelId", "labelKey", "label"],
+      "properties": {
+        "levelId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        }
+      }
+    },
+    "PlatformDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platformId", "labelKey", "label", "connector"],
+      "properties": {
+        "platformId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "labelKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[^<>&{}\\[\\]`\\\\]+$"
+        },
+        "connector": {
+          "type": "string",
+          "enum": ["META_FACEBOOK", "META_INSTAGRAM", "NONE"]
+        }
+      }
+    },
     "NavigationEntry": {
       "type": "object",
       "additionalProperties": false,

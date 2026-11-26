@@ -87,12 +87,14 @@ export function WorkbenchShell({
   copy,
   handoffToken,
   initialSurface,
+  operationHref,
 }: {
   relationshipId: string;
   initial: WorkbenchSnapshot;
   copy: WorkbenchMessages;
   handoffToken?: string;
   initialSurface?: string | null;
+  operationHref?: string;
 }) {
   const [snapshot, setSnapshot] = useState(initial);
   const [surface, setSurface] = useState<string>(() => resolveSurface(initialSurface, initial.projection.navigation));
@@ -183,6 +185,11 @@ export function WorkbenchShell({
       <header className="workspace-header">
         <h1>{copy.title}</h1>
         <div className="workbench-actions">
+          {operationHref ? (
+            <a className="secondary-link" href={operationHref}>
+              Back to your calendar
+            </a>
+          ) : null}
           <OpenConversationCommand label={copy.talk} />
           <button className="secondary-link" disabled={refreshing} onClick={refresh} type="button">
             {refreshing ? copy.refreshing : copy.refresh}

@@ -553,7 +553,8 @@ public sealed class WorkbenchProjectionSurfaceTests
         var list = await fixture.Service.ListCapabilitiesAsync(fixture.Context(), default);
 
         WorkbenchCapability Find(string id) => list.Items.Single(item => item.SkillId == id);
-        Assert.Equal(4, list.Items.Count);
+        Assert.Equal(5, list.Items.Count);
+        Assert.Equal("NOT_ENABLED", Find("CUSTOMER_PROFILING").State);
         var content = Find("CONTENT_STRATEGY_AND_CALENDAR");
         Assert.Equal("DEFAULT_OFF", content.Availability);
         Assert.Equal("NOT_ENABLED", content.State);

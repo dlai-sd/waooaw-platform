@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0",
+  "requirementSetVersion": "1.0.0",
+  "requirements": [
+    {"requirementRef": "ORCH-IND-001", "label": "Orchard location", "mandatoryRule": "ALWAYS", "dependencyType": "CUSTOMER_CONFIRMATION", "affectedSkillRefs": ["SEASON_PLANNING"], "confirmationClass": "CUSTOMER"},
+    {"requirementRef": "ORCH-IND-002", "label": "Main crop", "mandatoryRule": "ALWAYS", "dependencyType": "CUSTOMER_CONFIRMATION", "affectedSkillRefs": ["SEASON_PLANNING"], "confirmationClass": "CUSTOMER"},
+    {"requirementRef": "ORCH-IND-003", "label": "Plot size", "mandatoryRule": "NEVER", "dependencyType": "CUSTOMER_CONFIRMATION", "affectedSkillRefs": ["SEASON_PLANNING"], "confirmationClass": "CUSTOMER"}
+  ]
+}

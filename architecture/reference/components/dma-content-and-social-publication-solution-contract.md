@@ -42,6 +42,11 @@ autonomous crisis response, additional social channels, and institutional market
    correction, deletion, and connected analytics retrieval are separately validated actions.
 5. oauth-vault remains the sole owner of customer-delegated Meta tokens under ADR-021. Tokens do not
    enter the DMA image, BP, PR state, AIR prompts, MCP request logs, evidence payloads, or source.
+   **WC-174 reconciliation (Founder experiment FD7, 2026-11-26):** for Agent Operation milestone AO-M1 the
+   as-built WC-149 custody (Key Vault, read only at publish time, behind one connection interface) is kept and
+   this invariant is the document to reconcile after the experiment. No agent image, prompt, log or evidence
+   record ever holds a key either way. See
+   [customer-connection-custody-decision-2026-11-26.md](../../security/customer-connection-custody-decision-2026-11-26.md).
 6. Azure Key Vault remains the cloud owner of environment platform secrets under ADR-014. Customer
    OAuth tokens remain in oauth-vault's per-tenant encryption boundary; they are not duplicated as
    ad hoc Key Vault secrets.

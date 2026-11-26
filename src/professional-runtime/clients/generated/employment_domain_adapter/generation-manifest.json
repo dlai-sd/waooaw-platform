@@ -4,5 +4,5 @@
   "language": "python",
   "library": "urllib3",
   "input": "architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml",
-  "inputSha256": "6fee1b2c1a1f02d4f26d60381cacb8af400a13b5eb9bdb18bb4fe5d680a5d8c8"
+  "inputSha256": "e3bda7331cba979989b359f254b200e4b026ed52ac846910e9decdf473270371"
 }

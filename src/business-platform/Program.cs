@@ -1118,6 +1118,27 @@ builder.Services.AddSingleton<WorkbenchCommandLedger>();
 builder.Services.AddSingleton<WorkbenchHandoffService>();
 builder.Services.AddScoped<WorkbenchProjectionService>();
 builder.Services.AddScoped<WorkbenchCommandService>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.AgentOperation.IAgentOperationStore,
+    Waooaw.BusinessPlatform.Services.AgentOperation.PostgresAgentOperationStore
+>();
+builder.Services.AddScoped<
+    Waooaw.BusinessPlatform.Services.AgentOperation.IOperationRelationshipSource,
+    Waooaw.BusinessPlatform.Services.AgentOperation.WorkbenchOperationRelationshipSource
+>();
+builder.Services.AddScoped<
+    Waooaw.BusinessPlatform.Services.AgentOperation.IOperationPackageLimits,
+    Waooaw.BusinessPlatform.Services.AgentOperation.WorkbenchOperationPackageLimits
+>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.AgentOperation.ICustomerConnectionInterface,
+    Waooaw.BusinessPlatform.Services.AgentOperation.ProviderCustodyConnectionInterface
+>();
+builder.Services.AddScoped<
+    Waooaw.BusinessPlatform.Services.AgentOperation.IOperationAlertSink,
+    Waooaw.BusinessPlatform.Services.AgentOperation.PolicyOperationAlertSink
+>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.AgentOperation.AgentOperationService>();
 builder.Services.AddScoped<IWorkbenchWhatsAppResponder, WorkbenchWhatsAppResponder>();
 
 // ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────

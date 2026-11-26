@@ -15,7 +15,7 @@ import hashlib
 import json
 import re
 import sys
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -75,12 +75,12 @@ def _json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=None)
+@cache
 def _spec(name: str) -> Any:
     return yaml.safe_load((API / name).read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=None)
+@cache
 def _spec_fixtures() -> Any:
     return yaml.safe_load((API / FIXTURES).read_text(encoding="utf-8"))
 
@@ -311,7 +311,7 @@ def test_wc136_r006_the_pydantic_model_accepts_the_dma_declaration_and_the_full_
     assert len(model.components) == 7
     assert manifest.experience is not None
     assert manifest.experience.contract_version == MANIFEST["experience"]["contractVersion"]
-    assert manifest.manifest_version == "1.1.0"
+    assert manifest.manifest_version == "1.2.0"
 
 
 def test_wc136_r006_the_model_rejects_duplicate_component_ids() -> None:
@@ -349,7 +349,7 @@ def test_wc136_r006_the_manifest_without_an_experience_block_still_validates_as_
 
 
 def test_wc136_r006_the_manifest_is_version_1_1_0_and_keeps_the_wc116_qualification_record() -> None:
-    assert MANIFEST["manifestVersion"] == "1.1.0"
+    assert MANIFEST["manifestVersion"] == "1.2.0"
     qualification = MANIFEST["conformanceScenarios"][0]
     assert qualification["scenarioId"] == "WC116-PACKAGE-A-QUALIFICATION"
     assert qualification["validatedManifestVersion"] == "1.0.0"
@@ -540,23 +540,19 @@ def _limit_violations() -> dict[str, dict[str, Any]]:
         "two links": _reply(link, {**link, "id": "other-link"}),
         "four choices": _reply(_block("c", "CHOICES", choices(4))),
         "no choices": _reply(_block("c", "CHOICES", choices(0))),
-        "eleven rows": _reply(
-            _block("l", "LIST", {"rows": [{"rowId": f"r{index}", "title": "Row"} for index in range(11)]})
-        ),
+        "eleven rows": _reply(_block("l", "LIST", {"rows": [{"rowId": f"r{index}", "title": "Row"} for index in range(11)]})),
         "choice label over twenty characters": _reply(
             _block("c", "CHOICES", {"choices": [{"choiceId": "c1", "label": "L" * 21}]})
         ),
-        "list title over twenty four characters": _reply(
-            _block("l", "LIST", {"rows": [{"rowId": "r1", "title": "T" * 25}]})
-        ),
+        "list title over twenty four characters": _reply(_block("l", "LIST", {"rows": [{"rowId": "r1", "title": "T" * 25}]})),
         "text over 1024 characters": _reply(_block("t", "TEXT", {"text": "x" * 1025})),
-        "link carries a URL": _reply(
-            _block("k", "LINK", {"label": "Open", "destinationRef": "https://example.test/path"})
-        ),
+        "link carries a URL": _reply(_block("k", "LINK", {"label": "Open", "destinationRef": "https://example.test/path"})),
         "fallback holds a non v1 type": _reply(
             _block("t", "TEXT", {"text": "Hello"}, fallback=[{"type": "STATUS", "data": SAMPLE_BLOCKS["STATUS"]["data"]}])
         ),
-        "fallback text without text": _reply(_block("s", "STATUS", SAMPLE_BLOCKS["STATUS"]["data"], fallback=[{"type": "TEXT", "data": {}}])),
+        "fallback text without text": _reply(
+            _block("s", "STATUS", SAMPLE_BLOCKS["STATUS"]["data"], fallback=[{"type": "TEXT", "data": {}}])
+        ),
         "five fallback blocks": _reply(_block("t", "TEXT", {"text": "Hello"}, fallback=[_text_fallback()] * 5)),
         "unknown sensitivity": _reply(_block("t", "TEXT", {"text": "Hello"}, sensitivity="SECRET")),
         "unknown block type": _reply(_block("t", "HOLOGRAM", {"text": "Hello"})),
@@ -628,7 +624,9 @@ def test_wc136_r007_v2_text_choices_list_and_link_keep_their_v1_limits() -> None
     v2 = BLOCKS_SCHEMA["$defs"]
 
     assert v2["TextData"]["properties"]["text"]["maxLength"] == v1["VisitorReplyBlockV1"]["properties"]["text"]["maxLength"]
-    assert v2["ChoicesData"]["properties"]["choices"]["maxItems"] == v1["VisitorReplyBlockV1"]["properties"]["choices"]["maxItems"]
+    assert (
+        v2["ChoicesData"]["properties"]["choices"]["maxItems"] == v1["VisitorReplyBlockV1"]["properties"]["choices"]["maxItems"]
+    )
     assert v2["ListData"]["properties"]["rows"]["maxItems"] == v1["VisitorReplyBlockV1"]["properties"]["rows"]["maxItems"]
     assert v2["LinkData"]["properties"]["label"]["maxLength"] == v1["VisitorReplyBlockV1"]["properties"]["label"]["maxLength"]
     assert BLOCKS_SCHEMA["properties"]["blocks"]["maxItems"] == v1["VisitorReplyV1"]["properties"]["blocks"]["maxItems"]
@@ -766,9 +764,7 @@ def test_wc136_r008_every_operation_documents_problem_json_errors(spec_name: str
 
     for _, _, operation in _operations(spec):
         errors = {
-            str(code): _resolve_local(spec, response)
-            for code, response in operation["responses"].items()
-            if str(code)[0] in "45"
+            str(code): _resolve_local(spec, response) for code, response in operation["responses"].items() if str(code)[0] in "45"
         }
         assert errors, operation["operationId"]
         for response in errors.values():
@@ -971,10 +967,10 @@ def test_wc136_r009_the_wbe_slice_is_private_bearer_secured_and_role_checked() -
 
 
 def test_wc136_r009_the_wbe_slice_mirrors_the_public_slice_operation_for_operation() -> None:
-    public = {
-        operation["operationId"]: (method, route, operation) for route, method, operation in _operations(_spec(PRICING))
+    public = {operation["operationId"]: (method, route, operation) for route, method, operation in _operations(_spec(PRICING))}
+    private = {
+        operation["operationId"]: (method, route, operation) for route, method, operation in _operations(_spec(WBE_PRICING))
     }
-    private = {operation["operationId"]: (method, route, operation) for route, method, operation in _operations(_spec(WBE_PRICING))}
 
     assert set(private) == {"wbe" + name[0].upper() + name[1:] for name in public}
     for name, (method, route, operation) in public.items():
@@ -1205,9 +1201,7 @@ def test_wc136_r009_every_wbe_route_has_exactly_one_business_platform_grant() ->
     spec = _spec(WBE_PRICING)
     major = int(spec["info"]["version"].split(".", maxsplit=1)[0])
     registry = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    operations = {
-        (method.upper(), route, operation["operationId"], major) for route, method, operation in _operations(spec)
-    }
+    operations = {(method.upper(), route, operation["operationId"], major) for route, method, operation in _operations(spec)}
     grants = [
         grant
         for grant in registry["route_grants"]
@@ -1232,7 +1226,8 @@ def test_wc136_r011_the_validation_catalog_wires_the_experience_contract_gate() 
 
     assert command["shell"] == (
         "pytest tests/contract/test_wc136_experience_contract.py tests/contract/test_wc136_generated_clients.py "
-        "tests/contract/test_wc136_dma_experience_scenarios.py -q"
+        "tests/contract/test_wc136_dma_experience_scenarios.py tests/contract/test_wc174_modes_and_boundaries.py "
+        "tests/contract/test_wc174_two_image_conformance.py -q"
     )
     assert gate["gate_id"] == "wc136:experience-contract"
     assert gate["command_id"] == "wc136-experience-contract"

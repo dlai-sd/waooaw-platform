@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "1.0",
+  "protocolVersion": "1.0-candidate",
+  "agentType": "FIXTURE_ORCHARD_ADVISOR",
+  "agentVersion": "1.0.0",
+  "manifestVersion": "1.0.0",
+  "governance": {
+    "agentSpecification": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#spec", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "promptPolicy": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#prompt", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "toolProfile": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#tools", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "decisionConsequenceMap": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#decisions", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"}
+  },
+  "induction": {
+    "requirementSetVersion": "1.0.0",
+    "mandatoryContext": ["ORCHARD_LOCATION", "MAIN_CROP"],
+    "optionalContext": ["PLOT_SIZE"],
+    "dependencyTypes": ["CUSTOMER_CONFIRMATION"],
+    "readinessRules": ["ALL_MANDATORY_CURRENT_AND_CONFIRMED", "UNKNOWN_STALE_CONFLICTED_OR_INCOMPATIBLE_IS_NOT_READY"],
+    "domainSummaryAdapter": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/requirements.v1.json", "contractVersion": "1.0.0", "contractDigest": "761ca16e7dc7b7d9b243d3565f7795b23024e7203f4434cf5e25ad5a300289c3"}
+  },
+  "planning": {
+    "supportedGoalTypes": ["PLAN_THE_SEASON"],
+    "milestoneTypes": ["SEASON_PLAN_ACCEPTED"],
+    "calendarConstraints": ["IANA_TIME_ZONE_REQUIRED"],
+    "materialChangeRules": ["PROTECTED_CHANGE_IS_MATERIAL"],
+    "performanceMeasureTypes": ["SEASON_PLAN_COVERAGE"],
+    "planAdapter": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#plan", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"}
+  },
+  "operations": {
+    "operatingCycleTypes": ["PLAN_AND_ADVISE"],
+    "workItemTypes": ["SEASON_PLAN", "DAILY_TASK"],
+    "reassessmentTriggers": ["CUSTOMER_REQUEST"],
+    "outcomeAdapter": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#outcome", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "billingProfile": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#billing", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "degradationProfile": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#degradation", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "shorterMissedReviewThreshold": null
+  },
+  "experience": {
+    "contractVersion": "1.0.0",
+    "vocabularyRef": {"contractRef": "src/agent-adapters/fixture_orchard/contracts/governance.md#vocabulary", "contractVersion": "1.0.0", "contractDigest": "176f5d6634b5f44bb906770271441702f582ea948d09d5f0d0ba7696772623ae"},
+    "goalTypes": [
+      {
+        "goalTypeId": "PLAN_THE_SEASON",
+        "parameters": ["ORCHARD_LOCATION", "MAIN_CROP"],
+        "measures": [{"measureId": "SEASON_PLAN_COVERAGE", "unit": "PERCENT", "evidenceSource": "CUSTOMER_CONFIRMATION", "freshnessSeconds": 604800}],
+        "constraints": [],
+        "starters": ["Help me plan this season"]
+      }
+    ],
+    "plan": {"milestoneTypes": ["SEASON_PLAN_ACCEPTED"], "calendarWindows": ["MONTH_START"]},
+    "operate": {
+      "workItemTypes": ["SEASON_PLAN", "DAILY_TASK"],
+      "cadence": [{"skillId": "SEASON_PLANNING", "trigger": "MONTHLY", "window": "MONTH_START"}],
+      "approvalModes": [{"mode": "CUSTOMER_APPROVAL", "escalation": "ASK_CUSTOMER_BEFORE_EVERY_ACTION"}]
+    },
+    "monitor": {
+      "tiles": [{"tileId": "SEASON_PLAN_TILE", "measureId": "SEASON_PLAN_COVERAGE", "blockType": "METRIC", "audiences": ["customer_owner"]}],
+      "narratives": [],
+      "alerts": []
+    },
+    "domainBlocks": [],
+    "components": [],
+    "audiences": ["customer_owner", "delegate"],
+    "modalities": ["text"],
+    "channelSupport": {
+      "web": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE"],
+      "whatsapp": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "DECISION"],
+      "mobile": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE"]
+    },
+    "conformanceScenarios": ["WC174-FIXTURE-CONFORMANCE"],
+    "modes": [
+      {
+        "modeId": "INDUCT",
+        "labelKey": "MODE_INDUCT",
+        "label": "Know my orchard",
+        "readinessSource": "INDUCTION_SUMMARY",
+        "entries": [
+          {"entryId": "ORCHARD_PROFILE", "labelKey": "NAV_ORCHARD_PROFILE", "label": "Orchard", "icon": "profile", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "profile"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "ORCHARD_FEEDS", "labelKey": "NAV_ORCHARD_FEEDS", "label": "Feeds", "icon": "accounts", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "presence"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"}
+        ]
+      },
+      {
+        "modeId": "GOALS",
+        "labelKey": "MODE_GOALS",
+        "label": "Plan the season",
+        "readinessSource": "GOAL_COVERAGE",
+        "entries": [
+          {"entryId": "SEASON_GOALS", "labelKey": "NAV_SEASON_GOALS", "label": "Season goals", "icon": "plan", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "goals"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "SEASON_CALENDAR", "labelKey": "NAV_SEASON_CALENDAR", "label": "Season calendar", "icon": "calendar", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "calendar"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "SEASON_PLAN", "labelKey": "NAV_SEASON_PLAN", "label": "Season plan", "icon": "plan", "order": 30, "surface": {"kind": "KERNEL_VIEW", "target": "plan_tree"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"}
+        ],
+        "toolGroups": [
+          {"groupId": "DATES", "labelKey": "TOOLS_DATES", "label": "Dates", "tools": [{"toolId": "SOWING_DAY", "labelKey": "TOOL_SOWING_DAY", "label": "Sowing day", "icon": "calendar", "command": "ADD_EVENT"}]},
+          {"groupId": "PLAN", "labelKey": "TOOLS_PLAN", "label": "Plan", "tools": [
+            {"toolId": "SEASON", "labelKey": "TOOL_SEASON", "label": "Season", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "SEASON"},
+            {"toolId": "MONTH", "labelKey": "TOOL_MONTH", "label": "Month", "icon": "plan", "command": "ADD_PLAN_NODE", "planLevel": "MONTH"},
+            {"toolId": "TASK", "labelKey": "TOOL_TASK", "label": "Task", "icon": "work", "command": "ADD_PLAN_NODE", "planLevel": "TASK"}
+          ]}
+        ]
+      },
+      {
+        "modeId": "OPERATIONS",
+        "labelKey": "MODE_OPERATIONS",
+        "label": "Daily advice",
+        "readinessSource": "OPERATION_STATUS",
+        "entries": [
+          {"entryId": "ADVICE_APPROVALS", "labelKey": "NAV_ADVICE_APPROVALS", "label": "Advice to approve", "icon": "work", "order": 10, "surface": {"kind": "KERNEL_VIEW", "target": "approvals"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"},
+          {"entryId": "ADVICE_RESULTS", "labelKey": "NAV_ADVICE_RESULTS", "label": "How the season is going", "icon": "results", "order": 20, "surface": {"kind": "KERNEL_VIEW", "target": "results"}, "audiences": ["customer_owner", "delegate"], "availabilityGate": "ALWAYS"}
+        ]
+      }
+    ],
+    "eventLayers": [
+      {"layerId": "SOWING", "labelKey": "LAYER_SOWING", "label": "Sowing days", "sensitive": false, "defaultOn": true},
+      {"layerId": "MANDI", "labelKey": "LAYER_MANDI", "label": "Mandi days", "sensitive": false, "defaultOn": true},
+      {"layerId": "WEATHER", "labelKey": "LAYER_WEATHER", "label": "Weather", "sensitive": false, "defaultOn": true},
+      {"layerId": "FESTIVAL", "labelKey": "LAYER_FESTIVAL", "label": "Festivals", "sensitive": false, "defaultOn": false}
+    ],
+    "planLevels": [
+      {"levelId": "SEASON", "labelKey": "LEVEL_SEASON", "label": "Season"},
+      {"levelId": "MONTH", "labelKey": "LEVEL_MONTH", "label": "Month"},
+      {"levelId": "TASK", "labelKey": "LEVEL_TASK", "label": "Task"}
+    ],
+    "platforms": [
+      {"platformId": "MANDI_FEED", "labelKey": "PLATFORM_MANDI_FEED", "label": "Mandi price feed", "connector": "NONE"},
+      {"platformId": "WEATHER_FEED", "labelKey": "PLATFORM_WEATHER_FEED", "label": "Weather feed", "connector": "NONE"},
+      {"platformId": "WHATSAPP_BUSINESS", "labelKey": "PLATFORM_WHATSAPP_BUSINESS", "label": "WhatsApp", "connector": "NONE"}
+    ],
+    "views": ["MONTH", "WEEK"]
+  },
+  "conformanceScenarios": [
+    {
+      "scenarioId": "WC174-FIXTURE-CONFORMANCE",
+      "evidenceRef": "tests/contract/test_wc174_two_image_conformance.py",
+      "result": "PASS",
+      "validatedProtocolVersion": "1.0-candidate",
+      "validatedManifestVersion": "1.0.0",
+      "limitationRefs": ["FIXTURE_NOT_A_PRODUCT"]
+    }
+  ]
+}

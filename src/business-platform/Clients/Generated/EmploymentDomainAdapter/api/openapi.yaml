@@ -418,6 +418,2083 @@ components:
             kind: COUNTED
             label: label
             availability: AVAILABLE
+          modes:
+          - readinessSource: INDUCTION_SUMMARY
+            gates:
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            entries:
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            modeId: INDUCT
+            toolGroups:
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            label: label
+            labelKey: labelKey
+          - readinessSource: INDUCTION_SUMMARY
+            gates:
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            entries:
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            modeId: INDUCT
+            toolGroups:
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            label: label
+            labelKey: labelKey
+          - readinessSource: INDUCTION_SUMMARY
+            gates:
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            - messageKey: messageKey
+              action: PUBLISH
+              requiresMode: INDUCT
+            entries:
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            - surface:
+                kind: KERNEL_VIEW
+                blocks:
+                - TEXT
+                - TEXT
+                target: target
+              availabilityGate: ALWAYS
+              icon: profile
+              audiences:
+              - null
+              - null
+              label: label
+              labelKey: labelKey
+              entryId: entryId
+              order: 563
+            modeId: INDUCT
+            toolGroups:
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            - groupId: groupId
+              label: label
+              labelKey: labelKey
+              tools:
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+              - toolId: toolId
+                componentId: componentId
+                flyout:
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                - optionId: optionId
+                  label: label
+                  labelKey: labelKey
+                planLevel: planLevel
+                icon: profile
+                label: label
+                labelKey: labelKey
+                command: ADD_EVENT
+            label: label
+            labelKey: labelKey
           domainBlocks:
           - blockId: blockId
             fallbackBlocks:
@@ -513,6 +2590,43 @@ components:
             - constraints
             - constraints
           contractVersion: contractVersion
+          planLevels:
+          - levelId: levelId
+            label: label
+            labelKey: labelKey
+          - levelId: levelId
+            label: label
+            labelKey: labelKey
+          - levelId: levelId
+            label: label
+            labelKey: labelKey
+          - levelId: levelId
+            label: label
+            labelKey: labelKey
+          - levelId: levelId
+            label: label
+            labelKey: labelKey
+          platforms:
+          - connector: META_FACEBOOK
+            platformId: platformId
+            label: label
+            labelKey: labelKey
+          - connector: META_FACEBOOK
+            platformId: platformId
+            label: label
+            labelKey: labelKey
+          - connector: META_FACEBOOK
+            platformId: platformId
+            label: label
+            labelKey: labelKey
+          - connector: META_FACEBOOK
+            platformId: platformId
+            label: label
+            labelKey: labelKey
+          - connector: META_FACEBOOK
+            platformId: platformId
+            label: label
+            labelKey: labelKey
           navigation:
           - surface:
               kind: KERNEL_VIEW
@@ -612,6 +2726,32 @@ components:
             contractDigest: contractDigest
             contractVersion: contractVersion
             contractRef: contractRef
+          eventLayers:
+          - layerId: layerId
+            defaultOn: true
+            label: label
+            sensitive: true
+            labelKey: labelKey
+          - layerId: layerId
+            defaultOn: true
+            label: label
+            sensitive: true
+            labelKey: labelKey
+          - layerId: layerId
+            defaultOn: true
+            label: label
+            sensitive: true
+            labelKey: labelKey
+          - layerId: layerId
+            defaultOn: true
+            label: label
+            sensitive: true
+            labelKey: labelKey
+          - layerId: layerId
+            defaultOn: true
+            label: label
+            sensitive: true
+            labelKey: labelKey
           audiences:
           - null
           - null
@@ -625,6 +2765,11 @@ components:
             calendarWindows:
             - calendarWindows
             - calendarWindows
+          views:
+          - MONTH
+          - MONTH
+          - MONTH
+          - MONTH
           vocabularyRef:
             contractDigest: contractDigest
             contractVersion: contractVersion
@@ -891,6 +3036,2083 @@ components:
           kind: COUNTED
           label: label
           availability: AVAILABLE
+        modes:
+        - readinessSource: INDUCTION_SUMMARY
+          gates:
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          entries:
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          modeId: INDUCT
+          toolGroups:
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          label: label
+          labelKey: labelKey
+        - readinessSource: INDUCTION_SUMMARY
+          gates:
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          entries:
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          modeId: INDUCT
+          toolGroups:
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          label: label
+          labelKey: labelKey
+        - readinessSource: INDUCTION_SUMMARY
+          gates:
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          - messageKey: messageKey
+            action: PUBLISH
+            requiresMode: INDUCT
+          entries:
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          - surface:
+              kind: KERNEL_VIEW
+              blocks:
+              - TEXT
+              - TEXT
+              target: target
+            availabilityGate: ALWAYS
+            icon: profile
+            audiences:
+            - null
+            - null
+            label: label
+            labelKey: labelKey
+            entryId: entryId
+            order: 563
+          modeId: INDUCT
+          toolGroups:
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          - groupId: groupId
+            label: label
+            labelKey: labelKey
+            tools:
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+            - toolId: toolId
+              componentId: componentId
+              flyout:
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              - optionId: optionId
+                label: label
+                labelKey: labelKey
+              planLevel: planLevel
+              icon: profile
+              label: label
+              labelKey: labelKey
+              command: ADD_EVENT
+          label: label
+          labelKey: labelKey
         domainBlocks:
         - blockId: blockId
           fallbackBlocks:
@@ -986,6 +5208,43 @@ components:
           - constraints
           - constraints
         contractVersion: contractVersion
+        planLevels:
+        - levelId: levelId
+          label: label
+          labelKey: labelKey
+        - levelId: levelId
+          label: label
+          labelKey: labelKey
+        - levelId: levelId
+          label: label
+          labelKey: labelKey
+        - levelId: levelId
+          label: label
+          labelKey: labelKey
+        - levelId: levelId
+          label: label
+          labelKey: labelKey
+        platforms:
+        - connector: META_FACEBOOK
+          platformId: platformId
+          label: label
+          labelKey: labelKey
+        - connector: META_FACEBOOK
+          platformId: platformId
+          label: label
+          labelKey: labelKey
+        - connector: META_FACEBOOK
+          platformId: platformId
+          label: label
+          labelKey: labelKey
+        - connector: META_FACEBOOK
+          platformId: platformId
+          label: label
+          labelKey: labelKey
+        - connector: META_FACEBOOK
+          platformId: platformId
+          label: label
+          labelKey: labelKey
         navigation:
         - surface:
             kind: KERNEL_VIEW
@@ -1085,6 +5344,32 @@ components:
           contractDigest: contractDigest
           contractVersion: contractVersion
           contractRef: contractRef
+        eventLayers:
+        - layerId: layerId
+          defaultOn: true
+          label: label
+          sensitive: true
+          labelKey: labelKey
+        - layerId: layerId
+          defaultOn: true
+          label: label
+          sensitive: true
+          labelKey: labelKey
+        - layerId: layerId
+          defaultOn: true
+          label: label
+          sensitive: true
+          labelKey: labelKey
+        - layerId: layerId
+          defaultOn: true
+          label: label
+          sensitive: true
+          labelKey: labelKey
+        - layerId: layerId
+          defaultOn: true
+          label: label
+          sensitive: true
+          labelKey: labelKey
         audiences:
         - null
         - null
@@ -1098,6 +5383,11 @@ components:
           calendarWindows:
           - calendarWindows
           - calendarWindows
+        views:
+        - MONTH
+        - MONTH
+        - MONTH
+        - MONTH
         vocabularyRef:
           contractDigest: contractDigest
           contractVersion: contractVersion
@@ -1160,6 +5450,48 @@ components:
             $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1"
           maxItems: 12
           type: array
+        modes:
+          description: |
+            WC-174. Optional declaration of the three fixed modes (INDUCT, GOALS, OPERATIONS): an agent label, entries and
+            tool groups for the context menu, the readiness source and the gates on actions with a side effect.
+            Admission refuses a fourth mode, markup, duplicate ids and entries that open nothing. Additive: a manifest
+            without it shows the WC-171 menu.
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceModeV1"
+          maxItems: 3
+          type: array
+        eventLayers:
+          description: WC-174. Calendar event layers; a sensitive layer always starts
+            off and its content is approval-gated.
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceEventLayerV1"
+          maxItems: 16
+          type: array
+        planLevels:
+          description: "WC-174. The levels of the agent's plan tree, outermost first."
+          items:
+            $ref: "#/components/schemas/EmploymentExperiencePlanLevelV1"
+          maxItems: 6
+          type: array
+        platforms:
+          description: WC-174. The outside places the agent works from; each needs
+            an explicit customer answer.
+          items:
+            $ref: "#/components/schemas/EmploymentExperiencePlatformV1"
+          maxItems: 16
+          type: array
+        views:
+          description: WC-174. Which platform calendar views the agent offers.
+          items:
+            enum:
+            - MONTH
+            - WEEK
+            - PLATFORMS
+            - STORYBOARD
+            type: string
+          maxItems: 4
+          type: array
+          uniqueItems: true
       required:
       - audiences
       - channelSupport
@@ -1173,6 +5505,1096 @@ components:
       - operate
       - plan
       - vocabularyRef
+    EmploymentExperienceModeV1:
+      additionalProperties: false
+      example:
+        readinessSource: INDUCTION_SUMMARY
+        gates:
+        - messageKey: messageKey
+          action: PUBLISH
+          requiresMode: INDUCT
+        - messageKey: messageKey
+          action: PUBLISH
+          requiresMode: INDUCT
+        - messageKey: messageKey
+          action: PUBLISH
+          requiresMode: INDUCT
+        - messageKey: messageKey
+          action: PUBLISH
+          requiresMode: INDUCT
+        - messageKey: messageKey
+          action: PUBLISH
+          requiresMode: INDUCT
+        entries:
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        - surface:
+            kind: KERNEL_VIEW
+            blocks:
+            - TEXT
+            - TEXT
+            target: target
+          availabilityGate: ALWAYS
+          icon: profile
+          audiences:
+          - null
+          - null
+          label: label
+          labelKey: labelKey
+          entryId: entryId
+          order: 563
+        modeId: INDUCT
+        toolGroups:
+        - groupId: groupId
+          label: label
+          labelKey: labelKey
+          tools:
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+        - groupId: groupId
+          label: label
+          labelKey: labelKey
+          tools:
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+        - groupId: groupId
+          label: label
+          labelKey: labelKey
+          tools:
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+        - groupId: groupId
+          label: label
+          labelKey: labelKey
+          tools:
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+        - groupId: groupId
+          label: label
+          labelKey: labelKey
+          tools:
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+          - toolId: toolId
+            componentId: componentId
+            flyout:
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            - optionId: optionId
+              label: label
+              labelKey: labelKey
+            planLevel: planLevel
+            icon: profile
+            label: label
+            labelKey: labelKey
+            command: ADD_EVENT
+        label: label
+        labelKey: labelKey
+      properties:
+        modeId:
+          enum:
+          - INDUCT
+          - GOALS
+          - OPERATIONS
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        readinessSource:
+          enum:
+          - INDUCTION_SUMMARY
+          - GOAL_COVERAGE
+          - OPERATION_STATUS
+          type: string
+        entries:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceNavigationEntryV1"
+          maxItems: 12
+          type: array
+        toolGroups:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceToolGroupV1"
+          maxItems: 6
+          type: array
+        gates:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceModeGateV1"
+          maxItems: 8
+          type: array
+      required:
+      - entries
+      - label
+      - labelKey
+      - modeId
+      - readinessSource
+    EmploymentExperienceToolGroupV1:
+      additionalProperties: false
+      example:
+        groupId: groupId
+        label: label
+        labelKey: labelKey
+        tools:
+        - toolId: toolId
+          componentId: componentId
+          flyout:
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          planLevel: planLevel
+          icon: profile
+          label: label
+          labelKey: labelKey
+          command: ADD_EVENT
+        - toolId: toolId
+          componentId: componentId
+          flyout:
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          planLevel: planLevel
+          icon: profile
+          label: label
+          labelKey: labelKey
+          command: ADD_EVENT
+        - toolId: toolId
+          componentId: componentId
+          flyout:
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          planLevel: planLevel
+          icon: profile
+          label: label
+          labelKey: labelKey
+          command: ADD_EVENT
+        - toolId: toolId
+          componentId: componentId
+          flyout:
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          planLevel: planLevel
+          icon: profile
+          label: label
+          labelKey: labelKey
+          command: ADD_EVENT
+        - toolId: toolId
+          componentId: componentId
+          flyout:
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          - optionId: optionId
+            label: label
+            labelKey: labelKey
+          planLevel: planLevel
+          icon: profile
+          label: label
+          labelKey: labelKey
+          command: ADD_EVENT
+      properties:
+        groupId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        tools:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceToolV1"
+          maxItems: 8
+          minItems: 1
+          type: array
+      required:
+      - groupId
+      - label
+      - labelKey
+      - tools
+    EmploymentExperienceToolV1:
+      additionalProperties: false
+      example:
+        toolId: toolId
+        componentId: componentId
+        flyout:
+        - optionId: optionId
+          label: label
+          labelKey: labelKey
+        - optionId: optionId
+          label: label
+          labelKey: labelKey
+        - optionId: optionId
+          label: label
+          labelKey: labelKey
+        - optionId: optionId
+          label: label
+          labelKey: labelKey
+        - optionId: optionId
+          label: label
+          labelKey: labelKey
+        planLevel: planLevel
+        icon: profile
+        label: label
+        labelKey: labelKey
+        command: ADD_EVENT
+      properties:
+        toolId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        icon:
+          enum:
+          - profile
+          - calendar
+          - accounts
+          - results
+          - plan
+          - work
+          - insights
+          - documents
+          type: string
+        command:
+          enum:
+          - ADD_EVENT
+          - ADD_PLACEHOLDER
+          - ADD_PLAN_NODE
+          - ADD_CONTENT
+          - ADD_SLOT
+          - ADD_NOTE
+          type: string
+        planLevel:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        componentId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        flyout:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceFlyoutOptionV1"
+          maxItems: 6
+          type: array
+      required:
+      - command
+      - icon
+      - label
+      - labelKey
+      - toolId
+    EmploymentExperienceFlyoutOptionV1:
+      additionalProperties: false
+      example:
+        optionId: optionId
+        label: label
+        labelKey: labelKey
+      properties:
+        optionId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+      required:
+      - label
+      - labelKey
+      - optionId
+    EmploymentExperienceModeGateV1:
+      additionalProperties: false
+      description: Blocks only the named action with a side effect until the named
+        mode reports ready; never blocks opening a screen.
+      example:
+        messageKey: messageKey
+        action: PUBLISH
+        requiresMode: INDUCT
+      properties:
+        action:
+          enum:
+          - PUBLISH
+          - SCHEDULE
+          - GENERATE_MEDIA
+          type: string
+        requiresMode:
+          enum:
+          - INDUCT
+          - GOALS
+          - OPERATIONS
+          type: string
+        messageKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+      required:
+      - action
+      - messageKey
+      - requiresMode
+    EmploymentExperienceEventLayerV1:
+      additionalProperties: false
+      example:
+        layerId: layerId
+        defaultOn: true
+        label: label
+        sensitive: true
+        labelKey: labelKey
+      properties:
+        layerId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        sensitive:
+          type: boolean
+        defaultOn:
+          type: boolean
+      required:
+      - defaultOn
+      - label
+      - labelKey
+      - layerId
+      - sensitive
+    EmploymentExperiencePlanLevelV1:
+      additionalProperties: false
+      example:
+        levelId: levelId
+        label: label
+        labelKey: labelKey
+      properties:
+        levelId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+      required:
+      - label
+      - labelKey
+      - levelId
+    EmploymentExperiencePlatformV1:
+      additionalProperties: false
+      example:
+        connector: META_FACEBOOK
+        platformId: platformId
+        label: label
+        labelKey: labelKey
+      properties:
+        platformId:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        labelKey:
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+          type: string
+        label:
+          maxLength: 40
+          minLength: 1
+          pattern: "^[^<>&{}\\[\\]`\\\\]+$"
+          type: string
+        connector:
+          enum:
+          - META_FACEBOOK
+          - META_INSTAGRAM
+          - NONE
+          type: string
+      required:
+      - connector
+      - label
+      - labelKey
+      - platformId
     EmploymentExperienceNavigationEntryV1:
       additionalProperties: false
       example:

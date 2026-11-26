@@ -49,7 +49,7 @@ describe('the global menu', () => {
         showPricingAdmin: true,
         showProviderAdmin: true,
       }).map((link) => link.id)
-    ).toEqual(['operations', 'pricing', 'providers', 'vault', 'access']);
+    ).toEqual(['operations', 'pricing', 'providers', 'agent-operation', 'vault', 'access']);
   });
 
   it('keeps the Founder shell to its own links', () => {

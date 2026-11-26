@@ -16,8 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class EmploymentModel(BaseModel):
     model_config = ConfigDict(
-        alias_generator=lambda value: value.split("_")[0]
-        + "".join(part.title() for part in value.split("_")[1:]),
+        alias_generator=lambda value: value.split("_")[0] + "".join(part.title() for part in value.split("_")[1:]),
         populate_by_name=True,
         extra="forbid",
     )
@@ -74,7 +73,9 @@ class ConformanceScenario(EmploymentModel):
     limitation_refs: tuple[str, ...] = ()
 
 
-ExperienceBlockType = Literal["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"]
+ExperienceBlockType = Literal[
+    "TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"
+]
 
 
 class ExperienceMeasure(EmploymentModel):
@@ -179,9 +180,9 @@ class ExperienceChannelSupport(EmploymentModel):
 class ExperienceNavigationSurface(EmploymentModel):
     kind: Literal["KERNEL_VIEW", "BLOCK_COMPOSITION", "DOMAIN_BLOCK"]
     target: str | None = Field(default=None, min_length=1, max_length=160)
-    blocks: tuple[
-        Literal["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE"], ...
-    ] | None = Field(default=None, min_length=1)
+    blocks: (
+        tuple[Literal["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE"], ...] | None
+    ) = Field(default=None, min_length=1)
 
 
 class ExperienceNavigationEntry(EmploymentModel):
@@ -193,6 +194,79 @@ class ExperienceNavigationEntry(EmploymentModel):
     surface: ExperienceNavigationSurface
     audiences: tuple[Literal["customer_owner", "delegate", "beneficiary", "steward"], ...] = Field(min_length=1)
     availability_gate: Literal["ALWAYS", "AFTER_FIRST_APPROVAL", "NEEDS_CONNECTED_ACCOUNTS"]
+
+
+_Identifier = r"^[A-Z][A-Z0-9_]{2,63}$"
+_PlainLabel = r"^[^<>&{}\[\]`\\]+$"
+ModeId = Literal["INDUCT", "GOALS", "OPERATIONS"]
+NavigationIcon = Literal["profile", "calendar", "accounts", "results", "plan", "work", "insights", "documents"]
+
+
+class ExperienceFlyoutOption(EmploymentModel):
+    option_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+
+
+class ExperienceTool(EmploymentModel):
+    tool_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+    icon: NavigationIcon
+    command: Literal["ADD_EVENT", "ADD_PLACEHOLDER", "ADD_PLAN_NODE", "ADD_CONTENT", "ADD_SLOT", "ADD_NOTE"]
+    plan_level: str | None = Field(default=None, pattern=_Identifier)
+    component_id: str | None = Field(default=None, min_length=1, max_length=160)
+    flyout: tuple[ExperienceFlyoutOption, ...] | None = Field(default=None, max_length=6)
+
+
+class ExperienceToolGroup(EmploymentModel):
+    group_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+    tools: tuple[ExperienceTool, ...] = Field(min_length=1, max_length=8)
+
+
+class ExperienceModeGate(EmploymentModel):
+    action: Literal["PUBLISH", "SCHEDULE", "GENERATE_MEDIA"]
+    requires_mode: ModeId
+    message_key: str = Field(pattern=_Identifier)
+
+
+class ExperienceMode(EmploymentModel):
+    mode_id: ModeId
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+    readiness_source: Literal["INDUCTION_SUMMARY", "GOAL_COVERAGE", "OPERATION_STATUS"]
+    entries: tuple[ExperienceNavigationEntry, ...] = Field(max_length=12)
+    tool_groups: tuple[ExperienceToolGroup, ...] | None = Field(default=None, max_length=6)
+    gates: tuple[ExperienceModeGate, ...] | None = Field(default=None, max_length=8)
+
+
+class ExperienceEventLayer(EmploymentModel):
+    layer_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+    sensitive: bool
+    default_on: bool
+
+    @model_validator(mode="after")
+    def _a_sensitive_layer_never_starts_on(self) -> ExperienceEventLayer:
+        if self.sensitive and self.default_on:
+            raise ValueError("a sensitive event layer must start off")
+        return self
+
+
+class ExperiencePlanLevel(EmploymentModel):
+    level_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+
+
+class ExperiencePlatform(EmploymentModel):
+    platform_id: str = Field(pattern=_Identifier)
+    label_key: str = Field(pattern=_Identifier)
+    label: str = Field(min_length=1, max_length=40, pattern=_PlainLabel)
+    connector: Literal["META_FACEBOOK", "META_INSTAGRAM", "NONE"]
 
 
 class ExperienceManifest(EmploymentModel):
@@ -210,6 +284,33 @@ class ExperienceManifest(EmploymentModel):
     channel_support: ExperienceChannelSupport
     conformance_scenarios: tuple[str, ...] = Field(min_length=1)
     navigation: tuple[ExperienceNavigationEntry, ...] | None = Field(default=None, max_length=12)
+    modes: tuple[ExperienceMode, ...] | None = Field(default=None, max_length=3)
+    event_layers: tuple[ExperienceEventLayer, ...] | None = Field(default=None, max_length=16)
+    plan_levels: tuple[ExperiencePlanLevel, ...] | None = Field(default=None, max_length=6)
+    platforms: tuple[ExperiencePlatform, ...] | None = Field(default=None, max_length=16)
+    views: tuple[Literal["MONTH", "WEEK", "PLATFORMS", "STORYBOARD"], ...] | None = Field(default=None, max_length=4)
+
+    @model_validator(mode="after")
+    def _modes_are_the_three_fixed_ids_and_declared_ids_are_unique(self) -> ExperienceManifest:
+        mode_ids = [mode.mode_id for mode in self.modes or ()]
+        if len(mode_ids) != len(set(mode_ids)):
+            raise ValueError("mode ids must be unique")
+        for declared in (
+            [layer.layer_id for layer in self.event_layers or ()],
+            [level.level_id for level in self.plan_levels or ()],
+            [platform.platform_id for platform in self.platforms or ()],
+        ):
+            if len(declared) != len(set(declared)):
+                raise ValueError("declared ids must be unique")
+        levels = {level.level_id for level in self.plan_levels or ()}
+        for mode in self.modes or ():
+            for group in mode.tool_groups or ():
+                for tool in group.tools:
+                    if tool.plan_level is not None and tool.plan_level not in levels:
+                        raise ValueError(f"tool {tool.tool_id} names a plan level that is not declared")
+        if len(set(self.views or ())) != len(self.views or ()):
+            raise ValueError("views must be unique")
+        return self
 
     @model_validator(mode="after")
     def _components_are_unique_and_bound_to_declared_skills(self) -> ExperienceManifest:
@@ -281,7 +382,9 @@ class MaterialChangeRequest(EmploymentModel):
     current_plan_version: str = Field(min_length=1, max_length=64)
     candidate_patch_ref: UUID
     protected_category_flags: tuple[
-        Literal["OUTCOME", "BASELINE", "TARGET", "BUDGET", "AUTHORITY", "CALENDAR", "SKILL_SET", "CREDENTIAL", "SAFETY", "MEASUREMENT"],
+        Literal[
+            "OUTCOME", "BASELINE", "TARGET", "BUDGET", "AUTHORITY", "CALENDAR", "SKILL_SET", "CREDENTIAL", "SAFETY", "MEASUREMENT"
+        ],
         ...,
     ]
 
@@ -330,13 +433,9 @@ class PerformanceAssessment(EmploymentModel):
 
 
 class EmploymentDomainSemantics(Protocol):
-    def manifest(
-        self, agent_type: str, agent_version: str, manifest_version: str
-    ) -> EmploymentInterfaceManifest: ...
+    def manifest(self, agent_type: str, agent_version: str, manifest_version: str) -> EmploymentInterfaceManifest: ...
 
-    def induction_requirements(
-        self, relationship_id: UUID, manifest_version: str
-    ) -> InductionRequirementSet: ...
+    def induction_requirements(self, relationship_id: UUID, manifest_version: str) -> InductionRequirementSet: ...
 
     def validate_plan(
         self, relationship_id: UUID, idempotency_key: UUID, request: PlanValidationRequest
