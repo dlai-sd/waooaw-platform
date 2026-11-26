@@ -16,8 +16,21 @@ import {
   type ProviderSummary,
   type TestAuthScheme,
 } from '@/lib/provider-admin-client';
+import { stepUpSignedInText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
 type Props = { onCreated: (provider: ProviderSummary) => void };
+
+const addKey = 'providers.add';
+
+type PendingAdd = {
+  providerName?: unknown;
+  displayName?: unknown;
+  category?: unknown;
+  agentTypeId?: unknown;
+  testUrl?: unknown;
+  scheme?: unknown;
+  authHeader?: unknown;
+};
 
 const schemeLabels: Record<TestAuthScheme, string> = {
   BEARER: 'Authorization: Bearer',
@@ -42,6 +55,22 @@ export function AddProviderForm({ onCreated }: Props) {
   const [scheme, setScheme] = useState<TestAuthScheme>('BEARER');
   const [authHeader, setAuthHeader] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [signedIn, setSignedIn] = useState(false);
+
+  // Nothing here is a secret, so the form comes back as it was; creating a provider still waits for the person.
+  useResumeAfterStepUp<PendingAdd>(addKey, (payload) => {
+    if (typeof payload.providerName === 'string') setProviderName(payload.providerName);
+    if (typeof payload.displayName === 'string') setDisplayName(payload.displayName);
+    if (payload.category === 'PLATFORM_LLM' || payload.category === 'AGENT_API') setCategory(payload.category);
+    if (typeof payload.agentTypeId === 'string') setAgentTypeId(payload.agentTypeId);
+    if (typeof payload.testUrl === 'string') setTestUrl(payload.testUrl);
+    if (typeof payload.scheme === 'string' && payload.scheme in schemeLabels) {
+      setScheme(payload.scheme as TestAuthScheme);
+    }
+    if (typeof payload.authHeader === 'string') setAuthHeader(payload.authHeader);
+    setOpen(true);
+    setSignedIn(true);
+  });
 
   useEffect(() => {
     if (open) firstFieldRef.current?.focus();
@@ -51,6 +80,7 @@ export function AddProviderForm({ onCreated }: Props) {
     setOpen(false);
     setMessage(null);
     setStepUp(false);
+    setSignedIn(false);
     setErrors({});
     toggleRef.current?.focus();
   }
@@ -95,6 +125,7 @@ export function AddProviderForm({ onCreated }: Props) {
     setBusy(true);
     setMessage(null);
     setStepUp(false);
+    setSignedIn(false);
     const result = await providerCall<ProviderSummary>('POST', '', body);
     setBusy(false);
     if (!result.ok) {
@@ -253,8 +284,14 @@ export function AddProviderForm({ onCreated }: Props) {
           </div>
         </form>
       ) : null}
+      {signedIn ? <output className="workbench-hint">{stepUpSignedInText('Create provider')}</output> : null}
       <PricingMessage message={message} />
-      {stepUp ? <StepUpCommand /> : null}
+      {stepUp ? (
+        <StepUpCommand
+          payload={{ providerName, displayName, category, agentTypeId, testUrl, scheme, authHeader }}
+          pendingKey={addKey}
+        />
+      ) : null}
     </section>
   );
 }

@@ -3,6 +3,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { AccessApprovals } from './AccessApprovals';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
@@ -41,6 +42,7 @@ function posted(mock: ReturnType<typeof serve>) {
 
 describe('AccessApprovals', () => {
   const originalFetch = global.fetch;
+  beforeEach(() => window.sessionStorage.clear());
   afterEach(() => {
     global.fetch = originalFetch;
     jest.restoreAllMocks();
@@ -55,15 +57,32 @@ describe('AccessApprovals', () => {
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
   });
 
-  it('says so when nobody is waiting and when the list cannot be loaded', async () => {
+  it('says so only when the server confirms nobody is waiting', async () => {
     serve(null, []);
-    const { unmount } = render(<AccessApprovals />);
+    render(<AccessApprovals />);
+    expect(screen.getAllByText('Loading…')).toHaveLength(2);
     expect(await screen.findByText('No requests are waiting.')).toBeVisible();
-    unmount();
+  });
 
+  it('shows a failed load as an error with Retry, never as an empty list', async () => {
     serve(null, [], 500);
     render(<AccessApprovals />);
-    expect(await screen.findByText('Access management could not be loaded.')).toBeVisible();
+    expect(await screen.findByText('The requests waiting for a decision could not be loaded.')).toBeVisible();
+    expect(screen.getByText('The people who hold a staff role could not be loaded.')).toBeVisible();
+    expect(screen.queryByText('No requests are waiting.')).toBeNull();
+
+    serve(null);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Retry' })[0]);
+    expect(await screen.findByText('asha@example.com', { selector: 'strong' })).toBeVisible();
+    expect(screen.queryByText('The requests waiting for a decision could not be loaded.')).toBeNull();
+  });
+
+  it('shows a network failure as a load error too', async () => {
+    global.fetch = jest.fn(async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    render(<AccessApprovals />);
+    expect(await screen.findByText('The requests waiting for a decision could not be loaded.')).toBeVisible();
   });
 
   it('approves and reloads', async () => {
@@ -99,6 +118,24 @@ describe('AccessApprovals', () => {
       max_age: '0',
       acr_values: '2',
     });
+    expect(window.sessionStorage.getItem('waooaw.step-up.access.decision')).toContain('"requestId":"r1"');
+  });
+
+  it('applies the interrupted decision once after the step-up', async () => {
+    savePendingStepUp('access.decision', { requestId: 'r1', email: 'asha@example.com', decision: 'APPROVE' });
+    const mock = serve(null);
+    const { unmount } = render(<AccessApprovals />);
+
+    expect(await screen.findByText('Resuming your action after sign-in…')).toBeVisible();
+    expect(await screen.findByText('asha@example.com: approved.')).toBeVisible();
+    expect(posted(mock)?.[0]).toBe('/api/platform/access/access-requests/r1/decision');
+    expect(JSON.parse(String(posted(mock)?.[1]?.body))).toEqual({ decision: 'APPROVE' });
+    unmount();
+
+    const again = serve(null);
+    render(<AccessApprovals />);
+    await screen.findByText('asha@example.com', { selector: 'strong' });
+    expect(posted(again)).toBeUndefined();
   });
 
   it('shows another refusal without offering the sign-in', async () => {

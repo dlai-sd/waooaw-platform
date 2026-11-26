@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { fakeResponse } from '@/lib/pricing-admin-test-data';
 import type { ProviderSummary } from '@/lib/provider-admin-client';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { ProvidersWorkspace } from './ProvidersWorkspace';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
@@ -62,6 +63,7 @@ const search = provider({
 afterEach(() => {
   global.fetch = originalFetch;
   jest.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 test('providers are grouped as platform APIs and agent APIs with status chips', () => {
@@ -91,6 +93,16 @@ test('an empty registry says so and an empty group points to Add provider', () =
 
   expect(screen.getByText('No providers are registered yet. Add one to get started.')).toBeVisible();
   expect(screen.getAllByText('No providers here yet. Use Add provider below.')).toHaveLength(2);
+});
+
+test('after the step-up the provider whose action was interrupted is reopened', async () => {
+  savePendingStepUp('providers.panel.p2', { providerId: 'p2', action: 'test' });
+  global.fetch = jest.fn().mockResolvedValue(fakeResponse(200, []));
+  render(<ProvidersWorkspace initialProviders={[openai, sarvam]} />);
+
+  expect(await screen.findByRole('heading', { level: 2, name: 'Sarvam' })).toBeInTheDocument();
+  expect(screen.getByText(/You are signed in with extra security\. Press Test to continue\./)).toBeInTheDocument();
+  await screen.findByText('No value has been saved for this provider yet.');
 });
 
 test('selecting a provider opens its own page with a way back, and moves focus to it', async () => {

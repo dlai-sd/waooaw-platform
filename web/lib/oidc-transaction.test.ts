@@ -25,7 +25,15 @@ describe('server-owned OIDC transaction', () => {
   });
 
   it('lets a Founder step-up return to its own console page and nowhere else', () => {
-    for (const path of ['/admin/providers', '/admin/pricing', '/admin/pricing/packages/3f2b-9c', '/access'])
+    for (const path of [
+      '/admin/providers',
+      '/admin/pricing',
+      '/admin/pricing/packages/3f2b-9c',
+      '/access',
+      // Operations and Agent operation start a step-up for Retry send and settings writes.
+      '/admin/operations',
+      '/admin/agent-operation',
+    ])
       expect(normalizeOidcCallback(path, 'LOGIN', origin)).toEqual({ intent: 'LOGIN', callbackPath: path });
     for (const refused of [
       '/admin/azure-key-vault',

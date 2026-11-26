@@ -15,7 +15,8 @@ export function providerClassFromPath(pathname: string): OidcProviderClass | und
   return provider ? providers[provider as keyof typeof providers] : undefined;
 }
 
-const founderConsoleReturn = /^\/(?:admin\/(?:providers|pricing(?:\/[A-Za-z0-9-]+){0,3})|access|founder\/access)$/;
+const founderConsoleReturn =
+  /^\/(?:admin\/(?:providers|operations|agent-operation|pricing(?:\/[A-Za-z0-9-]+){0,3})|access|founder\/access)$/;
 
 export function normalizeOidcCallback(
   callbackUrl: string,

@@ -219,7 +219,7 @@ whole Work Contract is complete).
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
 | WC-174 | Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED | **GROOMED 2026-11-26 (documents only).** The build is not authorized | #650, #649 |
-| WC-172 | Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED | **BUILT (application stories of Epics L, T and M and the code parts of U and G), pending the single Docker validation pa | #648, #647, #645 |
+| WC-172 | Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED | **BUILT (application stories of Epics L, T and M and the code parts of U and G), pending the single Docker validation pa | #651, #648, #647, #645 |
 | WC-171 | Agent Navigation, Alerts And Oversight (Roadmap Iteration 4, Milestone M4) - GROOMED | **BUILT, pending the single Docker validation pass and Founder review.** The Founder authorized the build in the session | #648, #645 |
 | WC-170 | Agent Execution Instructions | accepted when the Founder merges the WC-170 grooming pull request. | #645, #643, #640 |
 | WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #645, #642, #641, #640 |
@@ -256,7 +256,7 @@ whole Work Contract is complete).
 | WC-137 | Platform Access And Environment Feature Settings | IMPLEMENTED - FOUNDER REVIEW PENDING | #605 |
 | WC-136 | Common Agent Workbench, Spend Accounts And Pricing Engine | IMPLEMENTED - FOUNDER REVIEW PENDING; EXACT-HEAD CI QUALIFICATION OPEN (WC136-R045) | #604, #603 |
 | WC-135 | Visitor Conversation, Lead Capture And Simulated Customers | IMPLEMENTED AND DEPLOYED TO DEMO - RETROSPECTIVE PR FOR FOUNDER REVIEW (see Implementation And Evidence Record) | #602, #601 |
-| WC-134 | Durable Batching, Offering Metering And Shared Spend Work Component | IMPLEMENTATION WORK COMPONENT; NOT A COMPLETION, PR, DEPLOYMENT OR LIVE-ACCEPTANCE CLAIM | #641, #600, #599, #597, #595, #594, #593, #592, #591, #590, #589 |
+| WC-134 | Durable Batching, Offering Metering And Shared Spend Work Component | IMPLEMENTATION WORK COMPONENT; NOT A COMPLETION, PR, DEPLOYMENT OR LIVE-ACCEPTANCE CLAIM | #652, #641, #600, #599, #597, #595, #594, #593, #592, #591, #590, #589 |
 | WC-133 | WhatsApp-First Registration And Web Registration Repair | IMPLEMENTATION AUTHORIZED; REPOSITORY REGRESSIONS VALIDATED; PR GATES AND LIVE ACCEPTANCE PENDING | #588, #587, #586, #585, #584, #583, #582, #581, #580, #579, #578, #577 |
 | WC-132 | Clean Sign-Out, Deploy-Window Safety And Azure Runtime Noise | LOCALLY QUALIFIED - session-authorized implementation complete; exact-head PR | #573, #572, #571 |
 | WC-131 | Install Pinned Azure CLI Extensions On The Deploy Runner | LOCALLY QUALIFIED - Founder review/merge pending. | #570 |

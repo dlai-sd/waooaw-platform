@@ -69,6 +69,11 @@ def test_provisioning_client_holds_only_user_management_event_reading_and_the_ma
     assert account["realmRoles"] == ["acceptance-provisioner"]
     assert fragment["realm"]["adminEventsEnabled"] is True
     assert [group["name"] for group in fragment["realm"]["groups"]] == ["synthetic"]
+    profile = {attribute["name"]: attribute for attribute in fragment["realm"]["userProfile"]["attributes"]}
+    # The only attribute a customer cannot see or edit is the one that becomes the idp claim.
+    assert profile["synthetic_idp"]["permissions"] == {"view": ["admin"], "edit": ["admin"]}
+    assert profile["synthetic_idp"]["validations"]["options"]["options"] == ["google", "facebook"]
+    assert {"username", "email", "firstName", "lastName"} <= set(profile)
     assert "${ACCEPTANCE_PROVISIONER_CLIENT_SECRET}" == client["secret"]
 
 

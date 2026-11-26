@@ -9,6 +9,7 @@ import { StepUpCommand } from '@/components/admin/StepUpCommand';
 import { PricingMessage, type PricingNotice } from '@/components/admin/pricing/usePricingCommand';
 import { providerCall } from '@/lib/provider-admin-call';
 import { attemptText, problemText, type ProviderSummary, type TestAnswerResult } from '@/lib/provider-admin-client';
+import { stepUpResumingText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
 type Props = {
   provider: ProviderSummary;
@@ -21,6 +22,7 @@ function figure(value: number | null | undefined, unit: string): string {
 
 export function ProviderTestAnswer({ provider, fallbackCandidates }: Props) {
   const ids = useId();
+  const answerKey = `providers.answer.${provider.id}`;
   const [model, setModel] = useState('');
   const [fallbacks, setFallbacks] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -34,15 +36,29 @@ export function ProviderTestAnswer({ provider, fallbackCandidates }: Props) {
     );
   }
 
-  async function run() {
+  // The question and the choices are not secret and nothing ran before the step-up, so it asks again on its own.
+  const resuming = useResumeAfterStepUp<{ model?: unknown; fallbacks?: unknown }>(answerKey, async (payload) => {
+    const chosenModel = typeof payload.model === 'string' ? payload.model : '';
+    const chosenFallbacks = Array.isArray(payload.fallbacks)
+      ? payload.fallbacks.filter(
+          (name): name is string =>
+            typeof name === 'string' && fallbackCandidates.some((candidate) => candidate.providerName === name)
+        )
+      : [];
+    setModel(chosenModel);
+    setFallbacks(chosenFallbacks);
+    await run(chosenModel, chosenFallbacks);
+  });
+
+  async function run(modelValue: string, fallbackList: string[]) {
     setBusy(true);
     setMessage(null);
     setStepUp(false);
     setResult(null);
-    const trimmed = model.trim();
+    const trimmed = modelValue.trim();
     const response = await providerCall<TestAnswerResult>('POST', `/${provider.providerName}/test-answer`, {
       model: trimmed.length > 0 ? trimmed : null,
-      fallbackProviders: fallbacks,
+      fallbackProviders: fallbackList,
     });
     if (response.ok) {
       setResult({
@@ -54,7 +70,7 @@ export function ProviderTestAnswer({ provider, fallbackCandidates }: Props) {
       setMessage({
         kind: 'error',
         text: stepUpRequired
-          ? 'Confirm your identity again with multi-factor sign-in, then run Test answer again.'
+          ? 'Confirm your identity again with multi-factor sign-in. Test answer then runs again on its own.'
           : problemText(response.problem),
       });
       setStepUp(stepUpRequired);
@@ -104,12 +120,13 @@ export function ProviderTestAnswer({ provider, fallbackCandidates }: Props) {
           </fieldset>
         ) : null}
         <div className="workbench-actions">
-          <button className="secondary-link" disabled={busy} onClick={() => void run()} type="button">
+          <button className="secondary-link" disabled={busy} onClick={() => void run(model, fallbacks)} type="button">
             {busy ? 'Asking...' : 'Test answer'}
           </button>
         </div>
       </div>
       <output aria-live="polite" className="providers-answer-result">
+        {resuming ? `${stepUpResumingText} ` : null}
         {busy ? 'Waiting for the provider to answer...' : null}
         {result && !busy ? (
           <div className="workbench-stack">
@@ -159,7 +176,7 @@ export function ProviderTestAnswer({ provider, fallbackCandidates }: Props) {
         ) : null}
       </output>
       <PricingMessage message={message} />
-      {stepUp ? <StepUpCommand /> : null}
+      {stepUp ? <StepUpCommand payload={{ providerId: provider.id, model, fallbacks }} pendingKey={answerKey} /> : null}
     </section>
   );
 }

@@ -42,6 +42,21 @@ locals {
       uri         = "${trimsuffix(var.acceptance_key_vault_uri, "/")}/secrets/${local.acceptance_provisioner_secret_name}"
     }
   } : {}
+  # Password-only synthetic users have no broker session, so the provisioner records their provider alias as a user attribute that only admins can write.
+  acceptance_synthetic_idp_mappers = var.acceptance_provisioner_enabled ? [
+    {
+      name           = "synthetic_identity_provider"
+      protocol       = "openid-connect"
+      protocolMapper = "oidc-usermodel-attribute-mapper"
+      config = {
+        "user.attribute"     = "synthetic_idp"
+        "claim.name"         = "idp"
+        "jsonType.label"     = "String"
+        "id.token.claim"     = "true"
+        "access.token.claim" = "true"
+      }
+    },
+  ] : []
   acceptance_provisioner_clients     = var.acceptance_provisioner_enabled ? local.acceptance_provisioner_fragment.clients : []
   acceptance_provisioner_realm_roles = var.acceptance_provisioner_enabled ? local.acceptance_provisioner_fragment.realm.roles.realm : []
   acceptance_provisioner_users = var.acceptance_provisioner_enabled ? [
@@ -58,5 +73,12 @@ locals {
     adminEventsEnabled        = local.acceptance_provisioner_fragment.realm.adminEventsEnabled
     adminEventsDetailsEnabled = local.acceptance_provisioner_fragment.realm.adminEventsDetailsEnabled
     groups                    = local.acceptance_provisioner_fragment.realm.groups
+    # Declares the admin-only attribute behind the synthetic identity-provider claim; the first four attributes are Keycloak's own defaults.
+    components = {
+      "org.keycloak.userprofile.UserProfileProvider" = [{
+        providerId = "declarative-user-profile"
+        config     = { "kc.user.profile.config" = [jsonencode(local.acceptance_provisioner_fragment.realm.userProfile)] }
+      }]
+    }
   }) : "{}")
 }

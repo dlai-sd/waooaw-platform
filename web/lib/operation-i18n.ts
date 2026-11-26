@@ -122,7 +122,8 @@ const en = {
   registrySwitch: 'Allow public registry reads',
   saveSettings: 'Save settings',
   settingsSaved: 'Saved.',
-  stepUpNeeded: 'A fresh strong sign-in is needed to save. Sign in again and retry.',
+  stepUpNeeded:
+    'A fresh strong sign-in is needed to save. Use the button below; your changes are kept and saved after sign-in.',
   shareTitle: 'How work is reached',
   shareNote: 'Counts only. No conversation content is stored here.',
   attentionTitle: 'Needs the operator',

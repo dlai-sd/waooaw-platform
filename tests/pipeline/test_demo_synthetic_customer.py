@@ -147,3 +147,10 @@ def test_run_ids_meet_the_platform_marker_route_minimum_length() -> None:
     assert len(utility.new_run_id(NOW)) >= 8
     with pytest.raises(utility.UtilityError):
         utility.synthetic_username("s1126a", "a")
+
+
+def test_throwaway_customers_claim_a_provider_through_an_admin_only_attribute_and_one_link() -> None:
+    compile(utility.JOB_SCRIPT, "job", "exec")
+    assert '"attributes": {"synthetic_idp": [spec["idp"]]}' in utility.JOB_SCRIPT
+    assert "/federated-identity/{spec['idp']}" in utility.JOB_SCRIPT
+    assert utility.IDP_ALIAS in {"google", "facebook"}

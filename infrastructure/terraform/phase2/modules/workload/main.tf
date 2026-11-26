@@ -226,7 +226,7 @@ locals {
           "pkce.code.challenge.method" = "S256"
           "post.logout.redirect.uris"  = "${local.service_urls.web}/login"
         }
-        protocolMappers = [
+        protocolMappers = concat([
           {
             name           = "tenant_id_mapper"
             protocol       = "openid-connect"
@@ -288,7 +288,7 @@ locals {
               "access.token.claim" = "true"
             }
           },
-        ]
+        ], local.acceptance_synthetic_idp_mappers)
       },
       {
         clientId                  = "waooaw-platform"

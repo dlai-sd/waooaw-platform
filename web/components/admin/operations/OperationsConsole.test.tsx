@@ -2,10 +2,15 @@
 // Constitutional basis: C-023, C-049, C-059, C-063
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { OperationsConsole } from './OperationsConsole';
 
 jest.mock('@/components/admin/StepUpCommand', () => ({
-  StepUpCommand: () => <button type="button">Confirm step-up</button>,
+  StepUpCommand: ({ pendingKey, payload }: { pendingKey?: string; payload?: unknown }) => (
+    <button data-key={pendingKey} data-payload={JSON.stringify(payload)} type="button">
+      Confirm step-up
+    </button>
+  ),
 }));
 
 const blocked = {
@@ -108,6 +113,8 @@ const baseRoutes = {
 const openTab = (name: string | RegExp) => fireEvent.click(screen.getByRole('tab', { name }));
 
 describe('OperationsConsole', () => {
+  beforeEach(() => window.sessionStorage.clear());
+
   it('opens on the overview and shows one section at a time in tabs', async () => {
     install(baseRoutes);
     render(<OperationsConsole canResolve />);
@@ -115,6 +122,7 @@ describe('OperationsConsole', () => {
     expect(await screen.findByText(/operator page: emitted — 7/)).toBeInTheDocument();
     expect(screen.getByText(/identity-schema: healthy/)).toBeInTheDocument();
     expect(screen.queryByText(/blocked for 42 min/)).not.toBeInTheDocument();
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Overview',
       'Blocked messages (1)',
@@ -129,26 +137,32 @@ describe('OperationsConsole', () => {
     install(baseRoutes);
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
 
     expect(screen.getByText(/blocked for 42 min/)).toBeInTheDocument();
     expect(screen.getByText('Why: WhatsApp refused the message.')).toBeInTheDocument();
-    expect(screen.getByText(/Unblocked · .* by founder-subject — “Template approved now”/)).toBeInTheDocument();
+    expect(screen.getByText(/Retry queued · .* by founder-subject — “Template approved now”/)).toBeInTheDocument();
     expect(screen.queryByText(/\+91|whatsapp:/i)).not.toBeInTheDocument();
   });
 
-  it('unblocks a message with a reason and an idempotency key, then reloads', async () => {
+  it('queues a retry with a reason and a key, says delivery is not yet confirmed, then reloads', async () => {
     const calls = install({
       ...baseRoutes,
       [`blocked-messages/${blocked.outboxId}/resolve`]: { status: 201, body: { resolutionId: 'r-1', replayed: false } },
     });
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Template approved by Meta today' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Unblock' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry send' }));
 
-    expect(await screen.findByText(/your name, the time and the reason were recorded/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Queued for retry. Delivery is confirmed when the message leaves this list — refresh to check.'
+      )
+    ).toBeInTheDocument();
     const post = calls.find((call) => call.method === 'POST');
     expect(post?.body).toEqual({
       schemaVersion: '1.0.0',
@@ -165,6 +179,7 @@ describe('OperationsConsole', () => {
     });
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Recipient is not on WhatsApp' } });
     fireEvent.click(screen.getByRole('button', { name: 'Close with a reason' }));
@@ -177,13 +192,14 @@ describe('OperationsConsole', () => {
     const calls = install(baseRoutes);
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
     fireEvent.click(screen.getByRole('button', { name: 'Mark undeliverable' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('reason of at least five characters');
     expect(calls.some((call) => call.method === 'POST')).toBe(false);
   });
 
-  it('offers no Unblock for a message that cannot be sent again', async () => {
+  it('offers no Retry send for a message that cannot be sent again', async () => {
     install({
       ...baseRoutes,
       'operations/blocked-messages': {
@@ -193,9 +209,10 @@ describe('OperationsConsole', () => {
     });
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
 
-    expect(screen.queryByRole('button', { name: 'Unblock' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry send' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close with a reason' })).toBeInTheDocument();
     expect(screen.getByText(/cannot be sent again/)).toBeInTheDocument();
   });
@@ -207,20 +224,165 @@ describe('OperationsConsole', () => {
     });
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Retry after template approval' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Unblock' }));
-    expect(await screen.findByRole('button', { name: 'Confirm step-up' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry send' }));
+    const step = await screen.findByRole('button', { name: 'Confirm step-up' });
+    expect(step).toHaveAttribute('data-key', 'operations.resolve');
+    expect(JSON.parse(step.getAttribute('data-payload') ?? '{}')).toEqual({
+      outboxId: blocked.outboxId,
+      action: 'RETRY',
+      reason: 'Retry after template approval',
+    });
+    expect(screen.getByText(/needs a fresh multi-factor sign-in/)).toBeInTheDocument();
   });
 
-  it('gives an administrator the read view only, with no unblock, acknowledge or customers tab', async () => {
+  it('resumes the interrupted retry once after the step-up and says so', async () => {
+    savePendingStepUp('operations.resolve', {
+      outboxId: blocked.outboxId,
+      action: 'RETRY',
+      reason: 'Retry after template approval',
+    });
+    const calls = install({
+      ...baseRoutes,
+      [`blocked-messages/${blocked.outboxId}/resolve`]: { status: 201, body: { resolutionId: 'r-9', replayed: false } },
+    });
+    const { unmount } = render(<OperationsConsole canResolve />);
+
+    expect(await screen.findByText('Resuming your action after sign-in…')).toBeInTheDocument();
+    expect(await screen.findByText(/Queued for retry/)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Blocked messages/ })).toHaveAttribute('aria-selected', 'true');
+    const posts = calls.filter((call) => call.method === 'POST');
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toEqual({
+      schemaVersion: '1.0.0',
+      action: 'RETRY',
+      reason: 'Retry after template approval',
+    });
+    unmount();
+
+    render(<OperationsConsole canResolve />);
+    await screen.findByText(/operator page: emitted/);
+    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+  });
+
+  it('does not resume an action that was remembered more than ten minutes ago', async () => {
+    savePendingStepUp(
+      'operations.resolve',
+      { outboxId: blocked.outboxId, action: 'RETRY', reason: 'Retry after template approval' },
+      Date.now() - 11 * 60 * 1000
+    );
+    const calls = install(baseRoutes);
+    render(<OperationsConsole canResolve />);
+    await screen.findByText(/operator page: emitted/);
+    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+  });
+
+  it('says plainly when the retry could not be queued, or WhatsApp is not active', async () => {
+    let status = 500;
+    install({
+      ...baseRoutes,
+      [`blocked-messages/${blocked.outboxId}/resolve`]: () => ({
+        status,
+        body: status === 503 ? { code: 'OPERATIONS_WHATSAPP_INACTIVE' } : {},
+      }),
+    });
+    render(<OperationsConsole canResolve />);
+    await screen.findByText(/operator page: emitted/);
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
+    openTab(/Blocked messages/);
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Retry after template approval' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry send' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('could not be queued for retry');
+    status = 503;
+    fireEvent.click(screen.getByRole('button', { name: 'Retry send' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('WhatsApp is not active'));
+  });
+
+  it('shows a failed read as an error with Retry instead of an empty list, and retries it', async () => {
+    let healthy = false;
+    install({
+      ...baseRoutes,
+      'operations/blocked-messages': () =>
+        healthy ? { status: 200, body: { items: [blocked] } } : { status: 500, body: {} },
+      'operations/blocked-messages/history': { status: 500, body: {} },
+      'operations/pages': { status: 500, body: {} },
+    });
+    render(<OperationsConsole canResolve />);
+    await screen.findByText(/operator page: emitted/);
+    openTab(/Blocked messages/);
+    expect(
+      await screen.findByText('Blocked messages could not be loaded right now. Nothing was changed.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Recent changes could not be loaded right now. Nothing was changed.')).toBeInTheDocument();
+    expect(screen.queryByText('No blocked messages.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No blocked message has been changed yet.')).not.toBeInTheDocument();
+
+    healthy = true;
+    fireEvent.click(screen.getAllByRole('button', { name: 'Retry' })[0]);
+    expect(await screen.findByText(/blocked for 42 min/)).toBeInTheDocument();
+
+    openTab('Pages');
+    expect(await screen.findByText('Pages could not be loaded right now. Nothing was changed.')).toBeInTheDocument();
+    expect(screen.queryByText('No pages recorded.')).not.toBeInTheDocument();
+  });
+
+  it('shows Loading while a read is in flight, and an empty state only for a confirmed empty answer', async () => {
+    install({
+      ...baseRoutes,
+      'operations/blocked-messages': { status: 200, body: { items: [] } },
+    });
+    render(<OperationsConsole canResolve />);
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    await screen.findByText(/operator page: emitted/);
+    openTab(/Blocked messages/);
+    expect(await screen.findByText('No blocked messages.')).toBeInTheDocument();
+  });
+
+  it('shows a failed overview as an error with Retry, not as a blank page', async () => {
+    install({ ...baseRoutes, 'operations/overview': { status: 500, body: {} } });
+    render(<OperationsConsole canResolve />);
+    expect(
+      await screen.findByText('The overview could not be loaded right now. Nothing was changed.')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('moves between tabs with the arrow, Home and End keys and keeps one tab in the tab order', async () => {
+    install(baseRoutes);
+    render(<OperationsConsole canResolve />);
+    await screen.findByText(/operator page: emitted/);
+    const tabs = () => screen.getAllByRole('tab');
+
+    expect(tabs().map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1']);
+    fireEvent.keyDown(tabs()[0], { key: 'ArrowRight' });
+    expect(tabs()[1]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs()[1]).toHaveFocus();
+    expect(tabs().map((tab) => tab.getAttribute('tabindex'))).toEqual(['-1', '0', '-1', '-1', '-1']);
+    fireEvent.keyDown(tabs()[1], { key: 'ArrowLeft' });
+    fireEvent.keyDown(tabs()[0], { key: 'ArrowLeft' });
+    expect(tabs()[4]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs()[4]).toHaveFocus();
+    fireEvent.keyDown(tabs()[4], { key: 'ArrowRight' });
+    expect(tabs()[0]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(tabs()[0], { key: 'End' });
+    expect(tabs()[4]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(tabs()[4], { key: 'Home' });
+    expect(tabs()[0]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(tabs()[0], { key: 'x' });
+    expect(tabs()[0]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('gives an administrator the read view only, with no retry, acknowledge or customers tab', async () => {
     install(baseRoutes);
     render(<OperationsConsole canResolve={false} />);
     await screen.findByText(/operator page: emitted/);
     expect(screen.queryByRole('tab', { name: 'Customers' })).not.toBeInTheDocument();
+    await screen.findByRole('tab', { name: 'Blocked messages (1)' });
     openTab(/Blocked messages/);
     expect(screen.queryByLabelText('Reason')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Unblock' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry send' })).not.toBeInTheDocument();
     openTab('Pages');
     expect(screen.queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
   });
@@ -234,8 +396,8 @@ describe('OperationsConsole', () => {
     await screen.findByText(/operator page: emitted/);
     openTab('Pages');
 
+    expect(await screen.findByText(/dead letter age breach: emitted · 3 times, first/)).toBeInTheDocument();
     expect(screen.getByText(/a person receiving it is not proven here/)).toBeInTheDocument();
-    expect(screen.getByText(/dead letter age breach: emitted · 3 times, first/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
     await waitFor(() => expect(calls.some((call) => call.url.includes('/acknowledge'))).toBe(true));
   });
@@ -253,7 +415,7 @@ describe('OperationsConsole', () => {
     expect(await screen.findByText(/Not active \(not enabled\)/)).toBeInTheDocument();
   });
 
-  it('reads the work timeline and says the spend chain cannot be read yet', async () => {
+  it('reads the work timeline and describes a failed spend chain read neutrally', async () => {
     install({
       ...baseRoutes,
       'work-timeline': {
@@ -283,7 +445,10 @@ describe('OperationsConsole', () => {
     });
     fireEvent.click(section.getByRole('button', { name: 'Read' }));
     expect(await section.findByText(/The post was published/)).toBeInTheDocument();
-    expect(section.getByText(/needs a route grant to the billing engine/)).toBeInTheDocument();
+    expect(
+      section.getByText('The spend chain could not be read: the billing engine did not answer.')
+    ).toBeInTheDocument();
+    expect(section.queryByText(/route grant/)).not.toBeInTheDocument();
   });
 
   it('refuses a lookup that is not two full identifiers', async () => {

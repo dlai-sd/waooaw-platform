@@ -18,14 +18,14 @@ Deviation rule:    Any change to iterations, order, scope or Work Contract numbe
 ## Platform Status
 
 ```
-Version:              v1.45.0 — state as of 2026-11-26: WC-174 delivered (PR #650 merged as 7c6e2ce592)
+Version:              v1.45.0 — state as of 2026-11-26: WC-134 delivered (PR #652 merged as ba597a50f9)
 Epoch:                1 — Foundation
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 56
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (16 active + 1 proposed skill, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G5 CLEAR
-Phase:                IMPLEMENTATION — latest delivered WC-174
+Phase:                IMPLEMENTATION — latest delivered WC-134
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
@@ -42,8 +42,8 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-174 — Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED
-Sprint status:   DONE — 2026-11-26 · PR #650 merged as 7c6e2ce592
+Last sprint:     WC-134 — Durable Batching, Offering Metering And Shared Spend Work Component
+Sprint status:   DONE — 2026-11-26 · PR #652 merged as ba597a50f9
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```

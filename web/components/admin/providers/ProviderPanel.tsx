@@ -17,6 +17,7 @@ import {
   type ProviderSummary,
   type SavedVersion,
 } from '@/lib/provider-admin-client';
+import { stepUpSignedInText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 import { ProviderHistory, type HistoryState } from './ProviderHistory';
 import { ProviderStatusChips } from './ProviderList';
 import { ProviderTestAnswer } from './ProviderTestAnswer';
@@ -51,7 +52,8 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState<'test' | 'save' | null>(null);
   const [message, setMessage] = useState<PricingNotice | null>(null);
-  const [stepUp, setStepUp] = useState(false);
+  const [stepUp, setStepUp] = useState<'test' | 'save' | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [history, setHistory] = useState<HistoryState>({ kind: 'loading' });
 
   const loadHistory = useCallback(async () => {
@@ -74,6 +76,12 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
   useEffect(() => {
     if (focusOnMount) headingRef.current?.focus();
   }, [focusOnMount]);
+
+  // The value typed before the step-up is never kept, so only a reminder comes back, not an automatic retry.
+  useResumeAfterStepUp(`providers.panel.${provider.id}`, () => {
+    setSignedIn(true);
+    valueRef.current?.focus();
+  });
 
   useEffect(() => {
     if (busy !== null || restoreFocus.current === null) return;
@@ -101,13 +109,14 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
   async function runTest() {
     setBusy('test');
     setMessage(null);
-    setStepUp(false);
+    setStepUp(null);
+    setSignedIn(false);
     restoreFocus.current = 'test';
     const result = await providerCall<CredentialTestResult>('POST', `/${provider.id}/credentials/test`, { value });
     if (!result.ok) {
       discardValue();
       setMessage({ kind: 'error', text: problemText(result.problem) });
-      setStepUp(result.problem.code === 'PROVIDER_STEP_UP_REQUIRED');
+      setStepUp(result.problem.code === 'PROVIDER_STEP_UP_REQUIRED' ? 'test' : null);
       restoreFocus.current = 'value';
     } else if (result.data.outcome === 'FAILED') {
       setTest(result.data);
@@ -122,7 +131,8 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
   async function confirmAndSave() {
     setBusy('save');
     setMessage(null);
-    setStepUp(false);
+    setStepUp(null);
+    setSignedIn(false);
     restoreFocus.current = 'value';
     const body: { value: string; acknowledgeUntested?: boolean } = { value };
     if (untestedAccepted) body.acknowledgeUntested = true;
@@ -137,7 +147,7 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
       void loadHistory();
     } else {
       setMessage({ kind: 'error', text: problemText(result.problem) });
-      setStepUp(result.problem.code === 'PROVIDER_STEP_UP_REQUIRED');
+      setStepUp(result.problem.code === 'PROVIDER_STEP_UP_REQUIRED' ? 'save' : null);
     }
     setBusy(null);
   }
@@ -225,8 +235,18 @@ export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount,
             Save without a test. I understand this value has not been checked against the provider.
           </label>
         ) : null}
+        {signedIn ? (
+          <output className="workbench-hint">
+            {stepUpSignedInText('Test')} The value was not kept; enter it again first.
+          </output>
+        ) : null}
         <PricingMessage message={message} />
-        {stepUp ? <StepUpCommand /> : null}
+        {stepUp ? (
+          <StepUpCommand
+            payload={{ providerId: provider.id, action: stepUp }}
+            pendingKey={`providers.panel.${provider.id}`}
+          />
+        ) : null}
       </fieldset>
 
       {provider.credential.status === 'ACTIVE' ? (

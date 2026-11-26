@@ -3,15 +3,19 @@
 // Implements: work-contracts/WC-148-founder-provider-credential-registry-screen.md WC148-R006
 // Constitutional basis: C-023, C-059, C-063, C-083
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Breadcrumb } from '@/components/admin/master-detail/Breadcrumb';
 import { providerCall } from '@/lib/provider-admin-call';
 import { fallbackProvidersFrom, problemText, type ProviderSummary } from '@/lib/provider-admin-client';
+import { findPendingStepUp } from '@/lib/step-up-resume';
 import { AddProviderForm } from './AddProviderForm';
 import { ProviderList } from './ProviderList';
 import { ProviderPanel } from './ProviderPanel';
 
 type Props = { initialProviders: ProviderSummary[] };
+
+// Screens that remember an interrupted action for one provider before the step-up sign-in.
+const resumablePrefixes = ['providers.panel.', 'providers.answer.', 'providers.rollback.'];
 
 // The list of providers, then one provider on its own page; the list is not shown beside it.
 export function ProvidersWorkspace({ initialProviders }: Props) {
@@ -19,6 +23,20 @@ export function ProvidersWorkspace({ initialProviders }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userSelected, setUserSelected] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const reopened = useRef(false);
+
+  // After the step-up sign-in the page reloads on the list; reopen the provider whose action was interrupted.
+  useEffect(() => {
+    if (reopened.current) return;
+    reopened.current = true;
+    for (const prefix of resumablePrefixes) {
+      const providerId = findPendingStepUp<{ providerId?: unknown } | null>(prefix)?.payload?.providerId;
+      if (typeof providerId === 'string' && providers.some((provider) => provider.id === providerId)) {
+        setSelectedId(providerId);
+        return;
+      }
+    }
+  }, [providers]);
 
   const refresh = useCallback(async () => {
     const result = await providerCall<ProviderSummary[]>('GET', '');

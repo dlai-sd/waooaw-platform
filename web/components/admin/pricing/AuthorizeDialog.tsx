@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { StepUpCommand } from '@/components/admin/StepUpCommand';
 import { versionTag, type PricingVersion } from '@/lib/pricing-admin-client';
 import type { Simulation } from '@/lib/pricing-admin-types';
+import { stepUpSignedInText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 import { SimulatorPanel } from './SimulatorPanel';
 import { PricingMessage, usePricingCommand } from './usePricingCommand';
 
@@ -27,6 +28,15 @@ export function AuthorizeDialog({ version, simulation, isFounder, onClose, onAut
   const [confirmed, setConfirmed] = useState(false);
   const [effectiveFrom, setEffectiveFrom] = useState('');
   const [stepUp, setStepUp] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const authorizeKey = `pricing.authorize.${version.versionId}`;
+
+  // Authorizing puts a price on sale, so after the step-up only the date comes back; the person presses Authorize and
+  // gives any second confirmation again.
+  useResumeAfterStepUp<{ effectiveFrom?: unknown }>(authorizeKey, (payload) => {
+    if (typeof payload.effectiveFrom === 'string') setEffectiveFrom(payload.effectiveFrom);
+    setSignedIn(true);
+  });
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -39,6 +49,7 @@ export function AuthorizeDialog({ version, simulation, isFounder, onClose, onAut
   const canAuthorize = isFounder && (!guarded || confirmed) && !busy;
 
   async function authorize() {
+    setSignedIn(false);
     const body: Record<string, unknown> = {
       schemaVersion: '1.0',
       expectedVersion: versionTag(version),
@@ -103,8 +114,11 @@ export function AuthorizeDialog({ version, simulation, isFounder, onClose, onAut
           </label>
         ) : null}
       </div>
+      {signedIn ? <output className="workbench-hint">{stepUpSignedInText('Authorize')}</output> : null}
       <PricingMessage message={message} />
-      {stepUp ? <StepUpCommand /> : null}
+      {stepUp ? (
+        <StepUpCommand payload={{ versionId: version.versionId, effectiveFrom }} pendingKey={authorizeKey} />
+      ) : null}
       <p>
         <button className="primary-command" disabled={!canAuthorize} onClick={() => void authorize()} type="button">
           Authorize

@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { fakeResponse } from '@/lib/pricing-admin-test-data';
 import { fallbackProvidersFrom, type ProviderSummary } from '@/lib/provider-admin-client';
+import { savePendingStepUp } from '@/lib/step-up-resume';
 import { ProviderPanel } from './ProviderPanel';
 import { ProviderTestAnswer } from './ProviderTestAnswer';
 
@@ -42,6 +43,7 @@ function serve(response: Response) {
 afterEach(() => {
   global.fetch = originalFetch;
   jest.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 test('offers only other LLM providers with an active credential as fallbacks', () => {
@@ -147,6 +149,45 @@ test('a missing step-up offers the multi-factor sign-in and the probe outage is 
   fireEvent.click(screen.getByRole('button', { name: 'Test answer' }));
   await screen.findByText(/provider test is unavailable right now/);
   expect(screen.queryByRole('button', { name: 'Confirm with multi-factor sign-in' })).not.toBeInTheDocument();
+});
+
+test('after the step-up it restores the choices and asks again once on its own', async () => {
+  savePendingStepUp('providers.answer.id-sarvam', {
+    providerId: 'id-sarvam',
+    model: 'gpt-x',
+    fallbacks: ['openai', 'not-a-candidate'],
+  });
+  const fetchMock = serve(
+    fakeResponse(200, {
+      answered: { provider: 'openai', model: 'gpt-x', text: 'Four.' },
+      attempts: [],
+    })
+  );
+  const { unmount } = render(<ProviderTestAnswer fallbackCandidates={[openai]} provider={sarvam} />);
+
+  expect(await screen.findByText('openai answered.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Model (optional)')).toHaveValue('gpt-x');
+  expect(screen.getByLabelText('OpenAI')).toBeChecked();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(JSON.parse(String(init.body))).toEqual({ model: 'gpt-x', fallbackProviders: ['openai'] });
+  unmount();
+
+  render(<ProviderTestAnswer fallbackCandidates={[openai]} provider={sarvam} />);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test('the step-up remembers the model and fallbacks chosen', async () => {
+  serve(fakeResponse(403, { code: 'PROVIDER_STEP_UP_REQUIRED' }));
+  render(<ProviderTestAnswer fallbackCandidates={[openai]} provider={sarvam} />);
+  fireEvent.click(screen.getByLabelText('OpenAI'));
+  fireEvent.change(screen.getByLabelText('Model (optional)'), { target: { value: 'gpt-x' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Test answer' }));
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm with multi-factor sign-in' }));
+
+  const remembered = window.sessionStorage.getItem('waooaw.step-up.providers.answer.id-sarvam') ?? '';
+  expect(JSON.parse(remembered).payload).toEqual({ providerId: 'id-sarvam', model: 'gpt-x', fallbacks: ['openai'] });
 });
 
 test('the panel offers Test answer only with a saved credential and lists other saved providers as fallbacks', async () => {

@@ -36,6 +36,8 @@ from typing import Any
 REALM = "waooaw"
 GROUP = "synthetic"
 PREFIX = "acc-"
+# The customer proof only knows brokered providers; synthetic users claim the Google alias with a fake link.
+IDP_ALIAS = "google"
 EMAIL_DOMAIN = "synthetic.waooaw.test"
 CLIENT_ID = "waooaw-acceptance-provisioner"
 IDENTITY_ORIGIN = "https://auth.demo.waooaw.com"
@@ -93,6 +95,8 @@ if spec["action"] == "create":
         created, body = call("POST", f"/admin/realms/{realm}/users", {
             "username": user["username"], "email": user["email"], "emailVerified": True, "enabled": True,
             "firstName": "Synthetic", "lastName": label.upper(), "groups": ["/" + group],
+            # Admin-only attribute that the web client turns into the idp claim, so the customer proof accepts this user.
+            "attributes": {"synthetic_idp": [spec["idp"]]},
             "credentials": [
                 {"type": "password", "value": user["password"], "temporary": False},
                 {"type": "otp", "secretData": json.dumps({"value": user["otpSecret"]}),
@@ -102,6 +106,12 @@ if spec["action"] == "create":
             print("SYN ERROR", user["username"], body.replace("\n", " ")[:160], flush=True)
         status, text = call("GET", f"/admin/realms/{realm}/users?username={user['username']}&exact=true")
         found = json.loads(text) if status == 200 and text.startswith("[") else []
+        if created == 201 and found:
+            # The customer proof requires exactly one federated link to the claimed provider.
+            linked, body = call("POST", f"/admin/realms/{realm}/users/{found[0]['id']}/federated-identity/{spec['idp']}",
+                                {"userId": "synthetic-" + user["username"], "userName": user["username"]})
+            if linked != 204:
+                print("SYN ERROR link", user["username"], linked, body.replace("\n", " ")[:160], flush=True)
         print("SYN USER", label, user["username"], "created", created, "id", found[0]["id"] if found else "", flush=True)
 elif spec["action"] == "list":
     for user in synthetic_members():
@@ -155,7 +165,7 @@ def make_customers(run_id: str, labels: list[str]) -> dict[str, dict[str, str]]:
 
 
 def job_spec(action: str, **extra: Any) -> dict[str, Any]:
-    return {"action": action, "realm": REALM, "group": GROUP, "prefix": PREFIX, "client_id": CLIENT_ID, **extra}
+    return {"action": action, "realm": REALM, "group": GROUP, "prefix": PREFIX, "idp": IDP_ALIAS, "client_id": CLIENT_ID, **extra}
 
 
 def parse_job_lines(lines: list[str]) -> list[list[str]]:
