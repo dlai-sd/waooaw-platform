@@ -7,8 +7,11 @@ failure that must never be read as "drained". The workflow test pins that the wa
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/wait_for_replicas_drained.sh"
@@ -70,3 +73,28 @@ def test_the_workflow_waits_for_the_drain_before_it_starts_the_temporal_startup_
     wait = step.index('scripts/wait_for_replicas_drained.sh "ca-${TARGET_ENVIRONMENT}-temporal"')
     start = step.index("az containerapp job start")
     assert wait < start
+
+
+def test_a_deploy_that_keeps_the_database_stops_running_demo_before_the_temporal_gate() -> None:
+    steps = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["terraform"]["steps"]
+    names = [step.get("name") for step in steps]
+    quiesce = steps[names.index("Quiesce running Demo applications before migrations")]
+    reset_only = steps[names.index("Quiesce Demo consumers before database reset")]
+    # Exactly one of the two stops runs, so a running Demo can never reach the gate with Temporal still up.
+    assert "outputs.reuse == 'true'" in quiesce["if"] and "outputs.reuse != 'true'" in reset_only["if"]
+    assert "inputs.environment == 'demo'" in quiesce["if"] and "inputs.apply" in quiesce["if"]
+    assert "--action Stop --component database-reset" in quiesce["run"]
+    assert names.index("Quiesce running Demo applications before migrations") < names.index(
+        "Resume PgBouncer before migration preflight"
+    ) < names.index("Qualify exact Temporal startup through PgBouncer")
+
+
+
+def test_every_retained_evidence_path_is_on_its_own_line() -> None:
+    steps = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["terraform"]["steps"]
+    upload = next(step for step in steps if step.get("name") == "Upload plans and evidence")
+    # A line holding two names is one pattern that matches nothing, so neither file would be retained.
+    joined = [line for line in upload["with"]["path"].splitlines() if len(re.sub(r"\$\{\{.*?\}\}", "", line).split()) > 1]
+    assert joined == []
+    assert "wc143-database-chain-reuse.json" in upload["with"]["path"].split()
+    assert "wc124-connection-budget.json" in upload["with"]["path"].split()

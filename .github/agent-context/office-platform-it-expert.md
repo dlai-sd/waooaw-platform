@@ -166,11 +166,14 @@ Open the PR as a retrospective one only after that testing is done.
 | 21 | Cloud Networking and Runtime Connectivity Engineering | Prove DNS, TCP, TLS, ingress, and private-network behavior from the exact consumer context |
 | 22 | Deployment Qualification and Failure-Injection Testing | Reproduce negative runtime paths locally before starting a hosted or paid deployment |
 | 23 | Observability and Automated Incident Diagnosis | Correlate executions and emit sanitized underlying failure evidence automatically |
+| 24 | Synthetic-Customer Integration Testing | Test a deployed Demo build as a throwaway customer or Founder, collect all defects in one pass, delete the customers, then fix and re-run |
 
-**Status:** Skills 1-17 are ACTIVE. Skills 18-23 are added by Founder direction in PR #536 and become
-ACTIVE only after Founder review and merge. Skill 17 was activated by FA-049 after R-118. Activation
+**Status:** Skills 1-17 are ACTIVE. Skills 18-23 are added by Founder direction in PR #536 and Skill 24 in
+WC-168; they become ACTIVE only after Founder review and merge. Skill 17 was activated by FA-049 after R-118. Activation
 grants capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each
-require their own current authority.
+require their own current authority. Skill 24 additionally needs the Founder's current-session approval
+before any throwaway customer is created, and for Skill 24 read only the runbook
+`architecture/reference/runbooks/demo-synthetic-customer.md` and its spec section.
 
 ## PR Precheck Failure Repair Path
 
