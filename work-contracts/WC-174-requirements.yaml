@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-174
 contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
-contract_digest: 08fb775ca1c0f303cda74cf13c1a4ef2522eeb35f6e313a5079642be39a5e493
+contract_digest: ffc54e474f8e76574674ae3095c9814e122bb760bc7cf27e698da8f697ecd6ac
 implementation_scope: true
 result: PLANNED
 
@@ -213,7 +213,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC174-R032
     source: WC-174 Canonical Requirement Index, R032
-    observable_outcome: Per relationship the platform records how each outcome was reached (asked, accepted from a suggestion, or tool) and shows the Founder the share reached with the assistant against a Founder-set target, with no conversation content in the measure.
+    observable_outcome: Per relationship the platform records how each outcome was reached (asked, accepted from a suggestion, or tool) and shows the Founder the share reached with the assistant as a trend toward the maximum possible, with no conversation content in the measure.
     test_path_or_plan: Business Platform measure tests including a content-absence scan, Founder screen tests.
     initial_state: Founder-reserved
 
