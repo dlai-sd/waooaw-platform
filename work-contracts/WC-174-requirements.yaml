@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-174
 contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
-contract_digest: 0828d7a7da5db26fea0e26eeb008e610c63048f5acf2c1a2ead66bec0c6d3478
+contract_digest: 08fb775ca1c0f303cda74cf13c1a4ef2522eeb35f6e313a5079642be39a5e493
 implementation_scope: true
 result: PLANNED
 
@@ -48,7 +48,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC174-R006
     source: WC-174 Canonical Requirement Index, R006
-    observable_outcome: DMA proposes events as a skill invocation through the existing execution port from the confirmed profile, with source, reason and confidence; reads and model use go through the tool registry and AI runtime, not the image; the Business Platform stores agent-neutral calendar records; the customer accepts, edits, hides or adds events and placeholders; sensitive categories stay off until chosen; every change is evidence; events never publish by themselves.
+    observable_outcome: DMA proposes events as a skill invocation through the existing execution port from the confirmed profile, with source, reason and confidence; reads and model use go through the tool registry and AI runtime, not the image; the Business Platform stores agent-neutral calendar records; the customer chooses which event layers to see, turning one or more on or off at any time and adding their own, with religion and politics layers starting off; the customer accepts, edits, hides or adds events and placeholders; every change is evidence; events never publish by themselves.
     test_path_or_plan: DMA agent tests for event research and categories, adapter egress-denied tests, Business Platform state and evidence tests, Jest tests of the controls.
     initial_state: Founder-reserved
 
