@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-174
 contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
-contract_digest: 5924f7f4960ae800bd16d35fd88a45ab019487e0b4bcf8c440f9591cf36554f1
+contract_digest: 0828d7a7da5db26fea0e26eeb008e610c63048f5acf2c1a2ead66bec0c6d3478
 implementation_scope: true
 result: PLANNED
 
@@ -182,7 +182,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC174-R027
     source: WC-174 Canonical Requirement Index, R027
-    observable_outcome: The workspace shows the grouped layout (top bar, view chips, a left rail grouped in build order that changes with the mode, flyouts on choice, options panel, status bar, Today jump, replayable tour), with tool groups, flyouts and views declared by the agent as data.
+    observable_outcome: The workspace shows the grouped layout (top bar, view chips, two collapsible vertical levels on the left, an icon rail of the three modes then the chosen mode's sub-menus and tools in build order, with a bottom bar and sheets on a phone and the WAOOAW global menu kept in the top header, flyouts on choice, options panel, status bar, Today jump, replayable tour), with sub-menus, tool groups, flyouts and views declared by the agent as data.
     test_path_or_plan: Component and Playwright tests at 360, 768 and 1440, schema and admission tests for the declared tool groups, fixture agent render test.
 
   - <<: *defaults
@@ -235,3 +235,9 @@ requirements:
     source: WC-174 Canonical Requirement Index, R035
     observable_outcome: The adapter conformance kit passes for the DMA image and the fixture agent's image, each an isolated one-artifact deployment with default-deny ingress and egress, with no change to Business Platform, Professional Runtime or web, and usage and cost for both through the same billing engine meters.
     test_path_or_plan: Conformance kit run against both images, deployment policy tests, billing meter tests for two agents; Demo read-back.
+
+  - <<: *defaults
+    requirement_id: WC174-R036
+    source: WC-174 Canonical Requirement Index, R036
+    observable_outcome: The customer creates their own events, themes at every level, stories, posts and assets by hand or by asking, in any mode; their work has the same states, review checks, approvals, exact-version rules and package counts as agent-made work, is not changed by the agent until handed over, and shows on the calendar and in the conversation.
+    test_path_or_plan: Business Platform command, author-state and count tests, Jest and Playwright tests, DMA review-check tests on customer-authored items, a test that no agent change applies to a customer-owned item.
