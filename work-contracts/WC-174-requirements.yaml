@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-174
 contract_path: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md
-contract_digest: 380ecc16ca5b438bbf7e50cf7b77d932b021f024022f40149e4935515f4654c4
+contract_digest: 20d750181011965e7707edc35d3d780a453484651228004dc7b8d08577d7a0b8
 implementation_scope: true
 result: PLANNED
 
@@ -178,3 +178,41 @@ requirements:
     source: WC-174 Canonical Requirement Index, R026
     observable_outcome: After the Demo deployment the ledger rows are set from their read-backs, the roadmap progress record is refreshed, and README, SPRINT-REGISTRY and PROJECT_STATE are refreshed by the state refresh.
     test_path_or_plan: Ledger validator and platform-state checks in Docker.
+
+  - <<: *defaults
+    requirement_id: WC174-R027
+    source: WC-174 Canonical Requirement Index, R027
+    observable_outcome: The workspace shows the grouped layout (top bar, view chips, a left rail grouped in build order that changes with the mode, flyouts on choice, options panel, status bar, Today jump, replayable tour), with tool groups, flyouts and views declared by the agent as data.
+    test_path_or_plan: Component and Playwright tests at 360, 768 and 1440, schema and admission tests for the declared tool groups, fixture agent render test.
+
+  - <<: *defaults
+    requirement_id: WC174-R028
+    source: WC-174 Canonical Requirement Index, R028
+    observable_outcome: The agent's conversation is docked in every mode and view (a bottom sheet on a phone), is one durable conversation shared with WhatsApp, survives mode and view changes, shows the conversation budget left, and gives the next three items and a link on WhatsApp.
+    test_path_or_plan: Jest and Playwright tests, conversation hand-off tests, budget display tests, WhatsApp fallback tests.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC174-R029
+    source: WC-174 Canonical Requirement Index, R029
+    observable_outcome: The conversation knows the mode, view, selection, readiness gap and package limits, opens with the one next step, asks one new question at a time, offers buttons, free text, Do it for me, Let me do it and Explain, and never invents an action the platform does not offer.
+    test_path_or_plan: DMA conversation scenario tests per mode, context contract tests between web, Business Platform and the agent, a test that every offered action exists as a platform command.
+
+  - <<: *defaults
+    requirement_id: WC174-R030
+    source: WC-174 Canonical Requirement Index, R030
+    observable_outcome: Every tool action can be asked in words and every asked action appears on the workspace through the same idempotent commands and evidence; agent changes wait as suggestions until accepted; each item has an author state the customer can change; undo creates a new version and deletes nothing.
+    test_path_or_plan: Business Platform command, idempotency and evidence tests, author-state transition tests, Jest and Playwright tests, a test that no agent change applies without acceptance.
+
+  - <<: *defaults
+    requirement_id: WC174-R031
+    source: WC-174 Canonical Requirement Index, R031
+    observable_outcome: The readiness line always names the one next step with one primary action per mode, computed from the readiness source and gates, with the same text in the conversation.
+    test_path_or_plan: Business Platform projection tests, Jest tests of the line, a test that web and conversation text match.
+
+  - <<: *defaults
+    requirement_id: WC174-R032
+    source: WC-174 Canonical Requirement Index, R032
+    observable_outcome: Per relationship the platform records how each outcome was reached (asked, accepted from a suggestion, or tool) and shows the Founder the share reached with the assistant against a Founder-set target, with no conversation content in the measure.
+    test_path_or_plan: Business Platform measure tests including a content-absence scan, Founder screen tests.
+    initial_state: Founder-reserved

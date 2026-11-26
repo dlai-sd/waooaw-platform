@@ -37,6 +37,7 @@ The milestone is **AO-M1: a synthetic customer is inducted by DMA, sets goals sk
 | FD2 | Modes are lenses with gates; the customer hops freely | "gates but customer can easily hop among them" |
 | FD3 | The agent researches the calendar events from the business profile; the customer adds their own events and placeholders | "the agent from research based on customer business profile. Customer can put their own events/placeholders" |
 | FD4 | One Work Contract for the full scope, a new section and first milestone in the roadmap | "create a work contract covering full scope" and "Approved. add next section in roadmap called WAOOAW Agent operation with DMA and create first milestone under it" |
+| FD5 | The layout and flow take their inspiration from a planner-style workspace (grouped tool rail, a view switcher, an always-present AI button, one clear next step); the DMA conversation is visible all the time, driven by context and guiding the customer; customers are expected to spend most of their time on AI-driven outcomes | "dma agent conversation handy/visible all the time and context driven, guided dialouge. We expect maximum time customer to use AI driven outcomes." |
 
 ## What Grooming Found (verified in the repository on 2026-11-26)
 
@@ -66,10 +67,11 @@ The milestone is **AO-M1: a synthetic customer is inducted by DMA, sets goals sk
 | O5 | Content is planned month, week, individual theme and story on the calendar, created per platform, approved by the customer and published to a connected account within the package |
 | O6 | Results are read from connected and customer-owned sources against the goals and feed the next month's goals |
 | O7 | Another agent proves the model generic with a declaration only and no change to shared code |
+| O8 | The agent's conversation is always in view and guides the customer from the context they are in; the customer can get every outcome by asking, or by using the tools, and can hand an item over or take it back; most of a customer's time is spent on AI-driven outcomes, and that is measured |
 
 ## Authority And Scope
 
-In scope: the `modes` declaration and its admission validation; the mode shell and context menus; the shared Calendar block and event research; the Induct conversation surface over the DMA induction contract (version 1.1.0); the platform presence inventory with connection, test, repair and revoke; public-source enrichment within lawful limits; the confirmed profile and maturity report screens; skill-by-skill goal setting; the content planning hierarchy and plan tree; creation, approval and scheduled publishing for connected accounts; results and the improve loop; alerts through the WC-171 policy; acceptance slice 6 and a declaration-only fixture agent.
+In scope: the `modes` declaration and its admission validation; the mode shell and context menus; the workspace layout, tool rail, view chips and tour; the docked, context-driven DMA conversation with hand over and suggestions; the shared Calendar block and event research; the Induct conversation surface over the DMA induction contract (version 1.1.0); the platform presence inventory with connection, test, repair and revoke; public-source enrichment within lawful limits; the confirmed profile and maturity report screens; skill-by-skill goal setting; the content planning hierarchy and plan tree; creation, approval and scheduled publishing for connected accounts; results and the improve loop; the share-by-route measure; alerts through the WC-171 policy; acceptance slice 6 and a declaration-only fixture agent.
 
 Out of scope: real customers and real money (WC-172 go-live), a real second agent (WC-173, which then uses this model), Instagram, YouTube, LinkedIn and Google connectors that need outside approval until that approval exists (the screen says so honestly), the second "outside WAOOAW" measurement bucket, paid ads (`AD_BOOST`), mobile app, changing prices or package contents.
 
@@ -84,6 +86,10 @@ Authority limits: no password, token or secret value is typed into, shown by or 
 | MD3 | The Calendar is the home surface of a relationship; the mode menu sits beside it. Themes, content and publish slots are layers on it | FD3 and the Founder's "background base screen" |
 | MD4 | Calendar events have a state: `SUGGESTED` by the agent, `ACCEPTED`, `HIDDEN`, `CUSTOMER_ADDED`. Categories are declared by the agent (DMA: festival, sport, art, politics, local, religion, season). Religion and politics suggestions are shown only after the customer turns that category on; content on them is always approval-gated | FD3 with C-061; the Founder may relax the default |
 | MD5 | A platform's presence status is one of `NOT_PRESENT`, `PUBLIC_ONLY`, `CONNECTED_TESTED`, `NEEDS_REPAIR`, plus `NOT_YET_CONNECTABLE` where WAOOAW has no connector or approval. Every listed platform must have an explicit answer before Induct reads READY; connecting is offered, never required | FD1 and the Founder's rule that each platform is either absent or reachable |
+| MD6 | The agent's conversation is a docked panel beside the workspace in every mode and view (a bottom sheet on a phone), one durable conversation shared with WhatsApp. It knows the mode, the view, the selected item and the readiness gap, opens with the one next step, and offers buttons plus free text | FD5; one conversation across channels is already the platform rule (ADR-052) |
+| MD7 | AI-first parity: every tool action can be asked for in words, and every asked-for action appears on the workspace where the customer can see, change or undo it. Both routes call the same platform commands with the same evidence | FD5; a screen changes state only through platform commands (architecture section 6.5) |
+| MD8 | Every item has an author state: `AGENT_SUGGESTED` (shown as a suggestion, not applied until accepted), `CUSTOMER_EDITED`, `CUSTOMER_OWNED` (the agent leaves it alone until handed back), `APPROVED_VERSION` (locked). The customer can hand an item over or take it back at any time; undo creates a new version and never deletes | FD5; D06: nothing expands authority silently |
+| MD9 | The layout follows the build order: a top bar (relationship and month, undo and redo, the mode switcher, the assistant, the package meter, help), view chips, a left tool rail grouped by purpose and changing with the mode, flyouts that appear only when a tool is chosen, a small options panel with one primary action, and a status bar | FD5 and the Founder's reference screens |
 
 ## Generic Model And What Each Agent Declares
 
@@ -95,6 +101,57 @@ Authority limits: no password, token or secret value is typed into, shown by or 
 | Source inventory with connect, test, repair, revoke | Which sources exist and what each gives | Facebook, Instagram, WhatsApp, YouTube, LinkedIn, Google, website, registries | Weather and mandi feeds; school systems; broker |
 | Goal per skill (D06 fields) and the plan tree | Skills, measures, hierarchy levels | Profile, Planner, Creation, Publishing, Operations | Season, month, task; term, week, session |
 | Approval, scheduling, evidence, alerts, spend, stop | Approval ladder and hard limits | Customer approval per exact version | Per skill; per session; pre-authorized with limits |
+
+## Workspace Layout And Flow
+
+Inspired by the Founder's reference screens of a planner-style workspace: tools grouped in the order a person builds, choices that appear only when needed, one clear next step, and an always-present AI button. For DMA the conversation is not a button: it is docked and always visible.
+
+```
+[ Business · Month  ↶ ↷ ]   [ Induct | Goals | Operations ]   [ package meter ]  [ ? ]
+[ view chips: Month | Week | Platforms | Storyboard ]            [ readiness line + next step ]
+
+ Left rail (by mode)     Calendar (the workspace)            DMA conversation (docked, always on)
+ ── Anchors                                                   Knows: mode, view, selected item, gap
+   Event · Placeholder                                         "Next: confirm your Instagram."
+ ── Plan                                                      [Do it for me] [Let me do it] [Explain]
+   Theme · Weekly · Story                                      free text: "make Diwali week family-led"
+ ── Content
+   Post · Reel · Video → flyout: Image / Reel / Carousel / Text
+ ── Publish
+   Slot · Note                  Options: ☐ suggestions ☐ sensitive categories ☐ competitor events
+                                [ Preview on platform ]
+ Status bar: nothing selected · last edited by · posts 3 of 8 · synced / freshness
+```
+
+| Part | Rule |
+|---|---|
+| Top bar | Relationship and month with undo and redo on the left; the mode switcher in the centre; the package meter and help on the right. The assistant is not a button here because the conversation panel is always docked (a bottom sheet on a phone) |
+| View chips | Month, Week, Platforms (one lane per platform), Storyboard: four views of one plan, always in sync, shown by a small sync pill |
+| Left rail | Grouped in build order, separated by dividers, and changing with the mode. Induct: Business, Platforms, Sources, Audience, Brand. Goals: one entry per skill, then Anchors, Plan, Content, Publish. Operations: Approvals, Published, Results, Improve |
+| Flyouts | Choosing a tool opens only its options (a post type: Image, Reel, Carousel, Text); nothing else is shown until a tool is chosen |
+| Readiness line | Replaces a hint bar: it always names the one next step with one primary button ("Confirm profile", "Approve this story", "Publish 3 approved posts") |
+| Options and preview | A small panel of toggles (suggestions, sensitive categories, competitor events) and one primary action, usually "Preview on platform" |
+| Today jump | Month arrows and a Today button replace the compass |
+| Tour | A short coachmark tour once in Induct (what the modes, the calendar and the conversation are), skippable and replayable from help |
+
+### The conversation as the main way to work
+
+| Rule | Meaning |
+|---|---|
+| Always on, context aware | It shows in every mode and view and knows the mode, view, selected item, readiness gap and package limits |
+| Guided | It opens with the one next step, asks one new question at a time (D06), offers buttons and free text, and always allows "Do it for me", "Let me do it" and "Explain" |
+| Same result either way | Asking and using a tool call the same commands; whatever the agent does appears on the workspace as a suggestion until accepted |
+| Hand over and take back | The customer can say "I'll write this one myself" or "take it back and polish it"; the author state of the item changes and the agent respects it |
+| Cost aware | Every reply counts against the package's conversation budget (spec section 3.16); the customer sees what is left, and a limit is explained plainly, never a silent stop |
+| One conversation | The same durable conversation continues on WhatsApp, where the workspace is replaced by the next three items and a link |
+
+### Flow in build order
+
+| Mode | Flow, with the next step always on the readiness line |
+|---|---|
+| Induct | Understand, confirm labels, platforms, sources, confirm profile |
+| Goals | Choose a month, master theme, weekly themes, individual themes, story, create |
+| Operations | Approvals, publish, results, improve, which feeds the next month's goals |
 
 ## Canonical Requirement Index
 
@@ -124,8 +181,14 @@ Authority limits: no password, token or secret value is typed into, shown by or 
 | WC174-R022 | Operations raises alerts (a goal behind pace, a connection needing repair, a publish failed, a package component nearly used) through the WC-171 policy, and the operator console shows failed publishes and connection repairs without database access |
 | WC174-R023 | Package counts and prices are unchanged; every count the customer sees (plans, drafts, assets, posts, observed accounts) equals what the owner counts; activation of B1 and B2 stays a separate Founder decision; nothing in the modes bypasses a package limit |
 | WC174-R024 | Every screen follows the visual system and UX vocabulary and passes the WC-167 R006 layers (Jest, Playwright at 360, 768 and 1440 in light and dark, axe, lint, strict types, production build, 90 percent changed-line coverage); labels come from the vocabulary keys so a regional language can be added without code change |
-| WC174-R025 | Acceptance slice 6 runs on Demo for a synthetic customer: induct (labels confirmed, each platform answered, one tester account connected and tested), maturity report, goals for the five skills, a month planned on the calendar with a customer event, one story approved, one post published to the tester account, results read, a monthly digest; plus the fixture agent's three modes; one calibration report whose every NOT-WITNESSED or FAIL item has an owner |
+| WC174-R025 | Acceptance slice 6 runs on Demo for a synthetic customer, working mainly through the docked conversation: induct (labels confirmed, each platform answered, one tester account connected and tested), maturity report, goals for the five skills, a month planned on the calendar with a customer event, one agent suggestion accepted and one item taken over by the customer, one story approved, one post published to the tester account, results read, a monthly digest; plus the fixture agent's three modes; one calibration report whose every NOT-WITNESSED or FAIL item has an owner |
 | WC174-R026 | Close-out: after the Demo deployment the ledger rows are set from their read-backs, the `ROADMAP.md` progress record is refreshed, README, SPRINT-REGISTRY and PROJECT_STATE are refreshed by the state refresh |
+| WC174-R027 | The workspace follows the layout of MD9: top bar, view chips, a left tool rail grouped in build order that changes with the mode, flyouts shown only when a tool is chosen, an options panel with one primary action, a status bar, a Today jump, and a short replayable tour; the tool groups, flyouts and views are declared by the agent as data and rendered by the platform (no agent layout or code) |
+| WC174-R028 | The agent's conversation is docked beside the workspace in every mode and view (a bottom sheet on a phone), is one durable conversation shared with WhatsApp, survives a change of mode or view, and shows what is left of the conversation budget; on WhatsApp the workspace is replaced by the next three items and a link |
+| WC174-R029 | The conversation is context driven and guided: it knows the mode, view, selected item, readiness gap and package limits; opens with the one next step; asks one new question at a time; offers buttons and free text and always "Do it for me", "Let me do it" and "Explain"; refuses nothing the screen allows and never invents an action the platform does not offer |
+| WC174-R030 | AI-first parity and hand over: every tool action can be asked in words and every asked action appears on the workspace; both call the same idempotent commands with the same evidence; an agent change appears as a suggestion until the customer accepts it; each item carries an author state (suggested, customer edited, customer owned, approved version) the customer can change at any time; undo creates a new version and deletes nothing |
+| WC174-R031 | The readiness line always shows the one next step with one primary action per mode, computed from the readiness source and the gates, and it is the same text the conversation uses |
+| WC174-R032 | The platform records, per relationship, how each outcome was reached (asked in words, accepted from a suggestion, or done with a tool) and shows the Founder the share reached with the assistant; the Founder sets the target; no content of the conversation is stored in the measure |
 
 ## Epics And Groomed Stories
 
@@ -191,6 +254,18 @@ Size: S small, M medium, L large (relative). "Proof" is slice 6 in Epic H.
 | O3 | As a customer and operator I am alerted to what needs me | Alerts through the WC-171 policy; the operator console shows failed publishes and repairs | BP, Web | M | R022 |
 | O4 | As the platform I keep package counts honest | Every count on screen equals the owner's count; B1 and B2 activation stays a Founder decision | BP, billing engine | S | R023 |
 
+### Epic W. Workspace and conversation (R027 to R032)
+
+| Story | As a ... I can ... | Acceptance | Owner | Size | Req |
+|---|---|---|---|---|---|
+| W1 | As a customer I find tools where I expect them | Left rail grouped in build order, changing with the mode; flyouts only on choice; the agent declares groups, flyouts and views as data | BP, Web | L | R027 |
+| W2 | As a customer I always have the agent beside me | Conversation docked in every mode and view, bottom sheet on a phone, kept across mode changes, budget left shown | Web, BP | L | R028 |
+| W3 | As a customer I am guided from where I am | Context passed to the agent (mode, view, selection, gap, limits); one next step first; buttons, free text, Do it for me, Let me do it, Explain | DMA, BP | L | R029 |
+| W4 | As a customer I get the same result by asking or by clicking | Same commands and evidence both ways; agent changes shown as suggestions until accepted | BP, Web | L | R030 |
+| W5 | As a customer I hand an item over or take it back | Author state per item; the agent respects it; undo makes a new version | BP, Web | M | R030 |
+| W6 | As a customer I always see my next step | Readiness line with one primary action per mode, same text as the conversation; a short tour | Web | M | R031, R027 |
+| W7 | As the Founder I see how much work is done with the assistant | Per-relationship share by route (asked, accepted, tool); no conversation content in the measure; target set by me | BP, Web | S | R032 |
+
 ### Epic H. Proof and close-out (R024 to R026)
 
 | Story | As a ... I can ... | Acceptance | Owner | Size | Req |
@@ -207,6 +282,9 @@ The author decides every technical point. Only these need the Founder:
 |---|---|---|
 | Authorize the build | Before any code | Explicit words in the session that starts the build |
 | MD1 to MD5 | At grooming acceptance | Confirm three fixed modes, gates that block actions not screens, the Calendar as home, the event states and sensitive-category default, the presence statuses |
+| MD6 to MD9 | At grooming acceptance | Confirm the always-docked conversation, AI-first parity, the author states with suggestions held until accepted, and the layout |
+| AI-first target | Before the proof | The share of outcomes the Founder expects to be reached with the assistant (R032) |
+| Conversation budget | Before the build | How much conversation a package includes and what the customer sees at the limit (spec section 3.16) |
 | DMA wording | During the build | The labels of the three modes, the DMA entries, the calendar categories and the story levels |
 | Lawful public sources | Before story I6 | Whether and how GST and other registries may be read |
 | Platforms and approvals | Before each connector | Which platform goes live in which order; Meta App Review, YouTube, LinkedIn and Google approvals and their lead times |
@@ -220,17 +298,17 @@ The author decides every technical point. Only these need the Founder:
 |---|---|---|
 | 1 | This grooming pull request (documents and the roadmap section) merges | Founder |
 | 2 | Demo read-backs of WC-168 to WC-172 after the current deployment | Author reads back |
-| 3 | Build pull request: all stories, one Docker pass, state refresh, bound PR body. **Proposed build order inside it:** Epic M and K first, then I, then G, then C and O, so that a split is clean if the build proves too large | Author builds, Founder authorizes and merges |
+| 3 | Build pull request: all stories, one Docker pass, state refresh, bound PR body. **Proposed build order inside it:** Epic M, K and W first (modes, calendar, workspace and the docked conversation), then I, then G, then C and O, so that a split is clean if the build proves too large | Author builds, Founder authorizes and merges |
 | 4 | One Environment Deployment of Demo | Founder |
 | 5 | Read back each requirement, run slice 6, record the calibration report and ledger rows in a short follow-up commit | Author |
 
-If the build proves larger than one pull request, the author asks for a split at that point in this order: M and K together, then I, then G, then C and O. Each part stays independently usable and each leaves the Demo working.
+If the build proves larger than one pull request, the author asks for a split at that point in this order: M, K and W together, then I, then G, then C and O. Each part stays independently usable and each leaves the Demo working.
 
 ## Journey Simulation (grooming review)
 
 | Step | Expectation after the build | Risk found in grooming | Response |
 |---|---|---|---|
-| Customer opens the hired DMA | Calendar and a mode menu; Induct shows 3 of 17 confirmed | Fixed workbench, no modes | M1 to M3 |
+| Customer opens the hired DMA | Calendar, a mode menu and the DMA conversation already open with the next step; Induct shows 3 of 17 confirmed | Fixed workbench, no modes, conversation only behind a link | M1 to M3, W2, W3 |
 | DMA opens the conversation | Shows what it found, asks one question, highlights the labels | Questionnaire feel; D06 forbids hidden questionnaires | I1, I2 |
 | "Do you have Instagram, YouTube, Facebook, WhatsApp, LinkedIn?" | Each answered present or not present; Facebook and Instagram can be connected and tested; others say not yet connectable | Only Meta exists; no passwords allowed | I3, I4, FD1 |
 | Customer jumps to Goals before finishing | Opens freely, readiness says what is missing, publishing stays blocked | Locked doors would frustrate | M3, MD2 |
@@ -240,6 +318,8 @@ If the build proves larger than one pull request, the author asks for a split at
 | Approved post publishes | Goes to the tester Page, counted once, Stop works | Real publishing needs separate authority | C5 |
 | Month ends | Digest, results against goals, one recommendation | Business results need customer-owned sources | O1, O2 |
 | A second agent is added | Its own modes, events and levels, same code | Agent names creeping into shared code | M5 |
+| Customer says "make Diwali week family-led" in the conversation | The calendar shows the changed week as a suggestion; the customer accepts one item, takes another over to write it themselves | Silent changes and lost trust | W4, W5 |
+| Customer uses the tools instead | Same commands, same evidence, the conversation sees the change and offers the next step | Two routes drifting apart | W4, W3 |
 
 ## Gaps Found In Grooming And How They Were Fixed
 
@@ -254,9 +334,12 @@ If the build proves larger than one pull request, the author asks for a split at
 | G7 | Creation is metadata only today | `content-social-manifest` B1 | RECORDED: text and pictures first, video and audio behind the provider gate (R016, R019) |
 | G8 | Only the Meta Page connector exists | WC-149 | RECORDED: other platforms are honest about not being connectable (R010); approvals are Founder items |
 | G9 | Lawful use of GST and open data is undecided | No decision on record | FIXED: Founder item and story I6, off until decided |
-| G10 | The scope is very large | Seven epics | RECORDED: one pull request is planned; the split order is stated above |
+| G10 | The scope is very large | Eight epics | RECORDED: one pull request is planned; the split order is stated above |
 | G11 | The outside-WAOOAW measurement bucket | Founder note: later | RECORDED: out of scope, only WAOOAW's own work is attributed (R020) |
 | G12 | The roadmap guard test assumes exactly six iteration rows | `test_roadmap_single_source.py` | FIXED: the new section uses its own track table, and the test lists WC-174 as written |
+| G13 | The conversation is a separate place today | Architecture finding F4: the workspace shows only a "Continue in conversation" link | FIXED: R028, W2 |
+| G14 | An always-on, AI-first workspace spends model budget on every reply | Spec section 3.16 token economy; WC-170 spend chain | RECORDED: the budget is shown to the customer and a limit is explained; the amount is a Founder item (R028) |
+| G15 | "Maximum AI use" could push customers to accept suggestions without thought | D06: no silent authority expansion | FIXED: suggestions stay unapplied until accepted, publishing needs exact-version approval (R017, R030) |
 
 ## Stop Conditions
 
@@ -266,6 +349,8 @@ If the build proves larger than one pull request, the author asks for a split at
 - Anything would be published without the customer's approval of that exact version and a separate publication authority, or to a non-sandbox account on Demo: do not publish.
 - Content on religion, politics or another sensitive category would be created or suggested against the customer's setting or C-061: stop.
 - A generation would run or spend without an authorized rate: stop.
+- An agent change would be applied to the customer's plan or to anything visible outside WAOOAW without the customer accepting it: stop.
+- The conversation would act on something the screen does not offer, or store its content in the usage measure: stop.
 - A registry or platform would be read in breach of its terms or before the Founder's lawful-basis decision: do not read it.
 - An E3 embedded surface is needed: stop; it needs its own security review.
 

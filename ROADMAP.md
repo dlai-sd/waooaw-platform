@@ -98,6 +98,7 @@ The Agent Operation track (WC-174, milestone AO-M1) sits beside this table, not 
 | Agent operation: modes (2026-11-26) | "gates but customer can easily hop among them" |
 | Agent operation: calendar events (2026-11-26) | "the agent from research based on customer business profile. Customer can put their own events/placeholders" |
 | Agent operation: scope and roadmap (2026-11-26) | "create a work contract covering full scope we are discussing" and "Approved. add next section in roadmap called WAOOAW Agent operation with DMA and create first milestone under it among with other required details in milestone document" |
+| Agent operation: layout and conversation (2026-11-26) | Reference screens supplied "for inspiration on grouping, layout flow etc"; "dma agent conversation handy/visible all the time and context driven, guided dialouge. We expect maximum time customer to use AI driven outcomes." |
 
 ## 7. Constitutional compliance check of how this roadmap was decided
 
@@ -155,6 +156,8 @@ Emergencies (security, production incidents, Founder-assigned urgent fixes) are 
 | Gates, not locked doors | A mode shows what it still needs; the customer can open any mode at any time; a gate blocks only an action with a side effect, such as publishing |
 | Calendar as the background screen | Each relationship has a calendar of events that matter to that customer; the agent proposes them from the business profile and the customer adds their own events and placeholders |
 | Menus of the agent's own | The WAOOAW menu stays; the agent's context menu changes with the mode; every agent declares its entries as data |
+| The agent's conversation always in view | The agent's conversation is docked beside the workspace in every mode, knows the context and guides the customer; customers are expected to spend most of their time on AI-driven outcomes, can hand any item over or take it back, and agent changes wait for acceptance |
+| A grouped, planner-style workspace | Tools grouped in build order, choices that appear only when needed, one clear next step, a view switcher over one plan (month, week, platforms, storyboard) |
 | Consent, never stored passwords | Platforms are connected by consent and tested; each platform is present, not present or not yet connectable |
 
 **How it sits beside the iterations.**
@@ -178,7 +181,8 @@ Later candidates, not planned and not promised: more connectors (YouTube, Linked
 
 | Part | Done when (all of these) |
 |---|---|
-| Contract | WC-174 groomed with 26 requirements and a ledger; the Founder confirmed MD1 to MD5 |
+| Contract | WC-174 groomed with 32 requirements and a ledger; the Founder confirmed MD1 to MD9 |
+| Workspace and conversation | The workspace follows the grouped layout; the DMA conversation is docked and context driven in every mode and view; every outcome can be reached by asking or by tools with the same evidence; suggestions wait for acceptance; items can be handed over and taken back; the share of AI-driven outcomes is measured |
 | Modes and menus | Any agent declares three modes as data; the customer opens any mode at any time with a readiness line; gates block only side-effect actions; a declaration-only fixture agent renders its own modes through the same code |
 | Calendar | A shared calendar is the base screen; DMA proposes events from the confirmed profile; the customer adds, edits and hides events and placeholders; sensitive categories stay off until chosen |
 | Induct | A focused conversation confirms the business as labels; every platform is answered (present, not present, connected and tested, or not yet connectable); a connected tester account is tested; the maturity report is read and confirmed |
