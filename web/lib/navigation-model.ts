@@ -11,6 +11,7 @@ export type MenuIcon =
   | 'pricing'
   | 'providers'
   | 'agent-operation'
+  | 'professionals'
   | 'access'
   | 'founder';
 
@@ -53,6 +54,12 @@ export function operationsMenu(flags: GrantFlags): MenuLink[] {
             href: '/admin/agent-operation',
             label: 'Agent operation',
             icon: 'agent-operation' as const,
+          },
+          {
+            id: 'professionals',
+            href: '/admin/professionals',
+            label: 'Professionals',
+            icon: 'professionals' as const,
           },
         ]
       : []),

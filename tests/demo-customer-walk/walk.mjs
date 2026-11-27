@@ -17,7 +17,7 @@ const findings = [];
 let current = "login";
 const events = { console: [], failed: [] };
 page.on("console", (m) => { if (m.type() === "error") events.console.push({ page: current, text: m.text().slice(0, 200) }); });
-page.on("response", (r) => { const u = r.url(); if (r.status() >= 400 && (u.includes("/api/") || new URL(u).origin === ORIGIN)) events.failed.push({ page: current, status: r.status(), url: u.replace(ORIGIN, "").slice(0, 120) }); });
+page.on("response", async (r) => { const u = r.url(); if (r.status() >= 400 && (u.includes("/api/") || new URL(u).origin === ORIGIN)) events.failed.push({ page: current, status: r.status(), url: u.replace(ORIGIN, "").slice(0, 120), body: (await r.text().catch(() => "")).replace(/eyJ[A-Za-z0-9_.-]{20,}/g, "<jwt>").slice(0, 240) }); });
 
 // sign in through the product's own entry and the real Keycloak form
 await page.goto(ORIGIN + "/login", { waitUntil: "domcontentloaded" });

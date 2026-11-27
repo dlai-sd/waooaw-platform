@@ -13,6 +13,7 @@ using Moq;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.PlatformApprovals;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
@@ -366,6 +367,222 @@ public sealed class AcquisitionControllerTests
         Assert.Equal(0, gateway.CallCount);
         await using var db = factory.CreateDbContext();
         Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC175_R023_ANewCustomerStartsATrialOnceTheFounderHasApprovedTheVersion()
+    {
+        var (factory, relationships, trials, membership, owners) = TrialHarness();
+        var approvals = Approvals(factory, out var store);
+        await approvals.DecideAsync(
+            "DIGITAL_MARKETING_LOCAL_SERVICE",
+            "1.0.0",
+            PlatformApprovalActions.Approve,
+            "founder-1",
+            null,
+            CancellationToken.None
+        );
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            trials,
+            approvals: approvals
+        );
+
+        var created = Assert.IsType<ObjectResult>(
+            await controller.ContinueAsync(
+                ValidRequest("TRIAL"),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
+        Assert.Equal(1, owners.WbeCalls);
+        await using var db = factory.CreateDbContext();
+        var admission = Assert.Single(await db.AgentAdmissions.ToListAsync());
+        Assert.Equal(membership.TenantId, admission.TenantId);
+        Assert.Equal(AgentAdmissionState.Active, admission.State);
+        Assert.Equal(
+            PlatformProfessionalApprovalService.WorkspacePolicyVersion,
+            admission.PolicyVersion
+        );
+        Assert.Equal(
+            admission.AdmissionId,
+            Assert.Single(await db.EmploymentRelationships.ToListAsync()).ProfessionalAdmissionId
+        );
+        Assert.Single(store.History);
+    }
+
+    [Fact]
+    public async Task WC175_R023_WithoutTheFoundersApprovalNoWorkspaceAdmissionAndNoRelationshipIsCreated()
+    {
+        var (factory, relationships, trials, membership, _) = TrialHarness();
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            trials,
+            approvals: Approvals(factory, out _)
+        );
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("TRIAL"),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.AgentAdmissions);
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC175_R023_ASuspendedVersionStopsNewTrialsEvenWhereTheWorkspaceAlreadyHasAnAdmission()
+    {
+        var (factory, relationships, trials, membership, _) = TrialHarness();
+        var approvals = Approvals(factory, out _);
+        await approvals.DecideAsync(
+            "DIGITAL_MARKETING_LOCAL_SERVICE",
+            "1.0.0",
+            PlatformApprovalActions.Approve,
+            "founder-1",
+            null,
+            CancellationToken.None
+        );
+        Assert.NotNull(
+            await approvals.EnsureWorkspaceAdmissionAsync(
+                membership.TenantId,
+                membership.AccountId,
+                "DIGITAL_MARKETING_LOCAL_SERVICE",
+                "1.0.0",
+                CancellationToken.None
+            )
+        );
+        await approvals.DecideAsync(
+            "DIGITAL_MARKETING_LOCAL_SERVICE",
+            "1.0.0",
+            PlatformApprovalActions.Suspend,
+            "founder-1",
+            "Paused for a review",
+            CancellationToken.None
+        );
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            trials,
+            approvals: approvals
+        );
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("TRIAL"),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task WC175_R023_AnApprovalOfAnEarlierDefinitionNoLongerApplies()
+    {
+        var (factory, relationships, trials, membership, _) = TrialHarness();
+        var approvals = Approvals(factory, out var store);
+        await store.SaveAsync(
+            new PlatformProfessionalApproval(
+                "DIGITAL_MARKETING_LOCAL_SERVICE",
+                "1.0.0",
+                PlatformApprovalStates.Approved,
+                "sha256:" + new string('0', 64),
+                "rev-1",
+                "founder-1",
+                DateTimeOffset.UtcNow,
+                null,
+                1
+            ),
+            0,
+            CancellationToken.None
+        );
+        var controller = Controller(
+            factory,
+            Catalog(),
+            relationships,
+            membership,
+            trials,
+            approvals: approvals
+        );
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("TRIAL"),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+        var listed = Assert.Single(await approvals.ListAsync(CancellationToken.None));
+        Assert.True(listed.DefinitionChanged);
+        Assert.Contains(PlatformApprovalActions.Approve, listed.Actions);
+    }
+
+    private static (
+        InMemoryEmploymentRelationshipFactory Factory,
+        EmploymentRelationshipService Relationships,
+        RelationshipTrialService Trials,
+        CustomerWorkspaceMembership Membership,
+        TrialOwnerGatewayStub Owners
+    ) TrialHarness()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        var owners = new TrialOwnerGatewayStub
+        {
+            Wbe = new(trialId, startsAt, startsAt.AddDays(14)),
+            Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14)),
+        };
+        return (
+            factory,
+            relationships,
+            new RelationshipTrialService(factory, relationships, owners),
+            new CustomerWorkspaceMembership(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                ["OWNER"]
+            ),
+            owners
+        );
+    }
+
+    private static PlatformProfessionalApprovalService Approvals(
+        InMemoryEmploymentRelationshipFactory factory,
+        out InMemoryPlatformProfessionalApprovalStore store
+    )
+    {
+        store = new InMemoryPlatformProfessionalApprovalStore();
+        return new PlatformProfessionalApprovalService(
+            Catalog(),
+            store,
+            factory,
+            TimeProvider.System
+        );
     }
 
     [Fact]
@@ -986,7 +1203,8 @@ public sealed class AcquisitionControllerTests
         EmploymentRelationshipService relationships,
         CustomerWorkspaceMembership? membership,
         RelationshipTrialService? trials = null,
-        FakePackageCatalogGateway? packages = null
+        FakePackageCatalogGateway? packages = null,
+        PlatformProfessionalApprovalService? approvals = null
     )
     {
         var controller = new AcquisitionController(
@@ -995,7 +1213,8 @@ public sealed class AcquisitionControllerTests
             relationships,
             NullLogger<AcquisitionController>.Instance,
             trials,
-            new HireQuoteService(packages ?? DefaultPackages())
+            new HireQuoteService(packages ?? DefaultPackages()),
+            approvals
         )
         {
             ControllerContext = new ControllerContext

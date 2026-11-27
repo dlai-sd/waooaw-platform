@@ -111,7 +111,7 @@ if (MODE === "register") {
         await page.getByRole("button", { name: /verify code/i }).click().catch((e) => log.push({ step: "mobile-confirm-click", error: String(e).slice(0, 160) }));
         await page.waitForTimeout(6000);
         await snap("register-mobile-confirmed");
-        const finish = page.getByRole("button", { name: /complete|finish|continue/i }).first();
+        const finish = page.getByRole("button", { name: /^register$|complete|finish|continue/i }).first();
         if (await finish.count()) {
           await finish.click().catch((e) => log.push({ step: "complete-click", error: String(e).slice(0, 160) }));
           await page.waitForTimeout(6000);
@@ -119,6 +119,13 @@ if (MODE === "register") {
         }
       }
     }
+  }
+  // A registration saved earlier by this customer resumes at its last step: confirm it if the final button is showing.
+  const resume = page.getByRole("button", { name: /^register$/i });
+  if (!(await name.count()) && (await resume.count())) {
+    await resume.first().click().catch((e) => log.push({ step: "resume-register-click", error: String(e).slice(0, 160) }));
+    await page.waitForTimeout(6000);
+    await snap("register-completed");
   }
   if (await email.count()) {
     await email.fill(user.email);

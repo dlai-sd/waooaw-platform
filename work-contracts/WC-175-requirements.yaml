@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-175
 contract_path: work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md
-contract_digest: b6f4cf9a5238f86e1c9e83c9e11b234ff8ebd14a16f011fe60cffad2e6705382
+contract_digest: a5d6d672c2de841effa12923060d1d737ca524a1e76dacf04ede317d09245a3f
 implementation_scope: true
 result: PLANNED
 
@@ -175,3 +175,31 @@ requirements:
     source: WC-175 Canonical Requirement Index, R022
     observable_outcome: The Operations Overview shows the approved WhatsApp limits, what is used and whether registration codes are on.
     test_path_or_plan: tests/business-platform.Tests/AlertAndOperationsServiceTests.cs overview limits cases; web/components/admin/operations/OperationsConsole.test.tsx limits cases; Founder live review.
+
+  - <<: *defaults
+    requirement_id: WC175-R023
+    source: WC-175 Canonical Requirement Index, R023
+    observable_outcome: A new customer can start a Trial once the Founder has approved the exact version, and cannot while it is not approved, suspended, retired or changed since approval; the workspace receives its own active admission from the approval.
+    test_path_or_plan: tests/business-platform.Tests/AcquisitionControllerTests.cs WC175_R023 cases; tests/business-platform.Tests/PlatformApprovals/PlatformProfessionalApprovalTests.cs workspace admission cases.
+    initial_state: expected-fail
+
+  - <<: *defaults
+    requirement_id: WC175-R024
+    source: WC-175 Canonical Requirement Index, R024
+    observable_outcome: The Founder approves, suspends or retires a professional version on a Professionals page, with a reason for suspend and retire and a fresh strong sign-in for every decision; a customer cannot reach it.
+    test_path_or_plan: web/components/admin/ProfessionalApprovals.test.tsx; web/lib/api/professional-approvals-proxy.test.ts; web/lib/navigation-model.test.ts; web/lib/oidc-transaction.test.ts; PlatformProfessionalApprovalTests controller cases.
+    initial_state: expected-fail
+
+  - <<: *defaults
+    requirement_id: WC175-R025
+    source: WC-175 Canonical Requirement Index, R025
+    observable_outcome: Decisions live in one platform-wide table with an append-only history bound to the approved definition's digest; the migration is idempotent; the application role cannot delete decisions or change history.
+    test_path_or_plan: tests/business-platform.Tests/PlatformApprovals/PlatformProfessionalApprovalPostgresTests.cs; tests/pipeline/test_wc124_init_chain_lint.py.
+    initial_state: expected-fail
+
+  - <<: *defaults
+    requirement_id: WC175-R026
+    source: WC-175 Canonical Requirement Index, R026
+    observable_outcome: After deployment and the Founder's approval of Digital Marketing 1.0.0, a throwaway customer starts a Trial through the real journey and the result is recorded.
+    test_path_or_plan: JOURNEY=trial scripts/run_demo_customer_walk.sh after the Founder approves on the Professionals page (Skill 24).
+    dependencies: Deployment of this change and the Founder's approval on the Professionals page

@@ -49,7 +49,7 @@ describe('the global menu', () => {
         showPricingAdmin: true,
         showProviderAdmin: true,
       }).map((link) => link.id)
-    ).toEqual(['operations', 'pricing', 'providers', 'agent-operation', 'vault', 'access']);
+    ).toEqual(['operations', 'pricing', 'providers', 'agent-operation', 'professionals', 'vault', 'access']);
   });
 
   it('gives every staff tool its own icon so two entries are never mistaken for each other', () => {

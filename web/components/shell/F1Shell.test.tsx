@@ -150,6 +150,7 @@ describe('F1 shell primitives', () => {
       '/admin/pricing',
       '/admin/providers',
       '/admin/agent-operation',
+      '/admin/professionals',
       '/admin/azure-key-vault',
       '/access',
     ]);
@@ -172,6 +173,7 @@ describe('F1 shell primitives', () => {
       '/admin/pricing',
       '/admin/providers',
       '/admin/agent-operation',
+      '/admin/professionals',
       '/admin/azure-key-vault',
     ]);
     expect(screen.queryByRole('link', { name: 'Marketplace' })).not.toBeInTheDocument();

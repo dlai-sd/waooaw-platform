@@ -42,8 +42,8 @@ AUTONOMOUS_HALT: false
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
 Last update: 2026-11-27 — WC-175 Demo Registration, Trial, Hire And Founder Screen Defects delivered
-Latest completed sprint: WC-175 — Demo Registration, Trial, Hire And Founder Screen Defects (PR #655 merged as 2bff78c1d4)
-Latest recorded Work Contract: WC-175 — Demo Registration, Trial, Hire And Founder Screen Defects (merged PR #655)
+Latest completed sprint: WC-175 — Demo Registration, Trial, Hire And Founder Screen Defects (PR #656 merged as baf91f15df)
+Latest recorded Work Contract: WC-175 — Demo Registration, Trial, Hire And Founder Screen Defects (merged PR #656, PR #655)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)

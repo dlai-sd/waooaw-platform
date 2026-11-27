@@ -61,3 +61,10 @@ is registered as synthetic, Business Platform answers the WhatsApp registration 
   so two throwaway customers never share a number.
 - `JOURNEY=register scripts/run_demo_customer_walk.sh` enters that number and the code, confirms it and completes registration.
 - The real WhatsApp delivery (`waooaw_registration_otp`) is a separate, Founder-approved live check with a real number.
+
+## Before a Trial or Hire test: the Founder's approval
+
+A customer can start a Trial or Hire only for a professional version the Founder has approved on the Founder **Professionals**
+page (`/admin/professionals`). The approval covers every customer and is tied to the exact definition in the release; a
+suspended, retired or changed version stops new customers. A throwaway customer's Trial is refused with "Professional is not
+currently available" until the Founder has approved, so check the page first and never approve on the Founder's behalf.

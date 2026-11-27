@@ -34,6 +34,7 @@ describe('server-owned OIDC transaction', () => {
       // Operations and Agent operation start a step-up for Retry send and settings writes.
       '/admin/operations',
       '/admin/agent-operation',
+      '/admin/professionals',
       '/admin/azure-key-vault',
       '/founder',
       '/founder/access',
