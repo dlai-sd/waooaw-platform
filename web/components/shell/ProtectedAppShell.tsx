@@ -8,6 +8,7 @@
 
 import {
   Activity,
+  BadgeCheck,
   Bell,
   Bot,
   ChevronLeft,
@@ -61,6 +62,7 @@ const menuIcons: Record<MenuIcon, LucideIcon> = {
   pricing: Tag,
   providers: KeyRound,
   'agent-operation': SlidersHorizontal,
+  professionals: BadgeCheck,
   access: UserCheck,
   founder: ShieldCheck,
 };

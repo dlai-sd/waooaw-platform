@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.PlatformApprovals;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
@@ -73,11 +74,34 @@ public sealed partial class AcquisitionController(
     EmploymentRelationshipService relationships,
     ILogger<AcquisitionController> logger,
     RelationshipTrialService? trials = null,
-    HireQuoteService? quotes = null
+    HireQuoteService? quotes = null,
+    PlatformProfessionalApprovalService? approvals = null
 ) : ControllerBase
 {
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")]
     private static partial Regex PackageCodePattern();
+
+    // Used only where no approval service is wired (unit tests); the deployed service always gates on the Founder's approval.
+    private static async Task<Guid?> ActiveWorkspaceAdmissionAsync(
+        EmploymentRelationshipDbContext db,
+        Guid tenantId,
+        ProfessionalDisclosure activeDisclosure,
+        CancellationToken cancellationToken
+    ) =>
+        await db
+            .AgentAdmissions.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
+                && value.State == AgentAdmissionState.Active
+                && value.ProfessionalTypeId == activeDisclosure.ProfessionalType
+                && value.ProfessionalVersion == activeDisclosure.ProjectionVersion
+                && value.AdmissionContentDigest != null
+                && value.EvidenceSetDigest != null
+                && value.ArtifactDigest != null
+            )
+            .OrderByDescending(value => value.UpdatedAt)
+            .Select(value => (Guid?)value.AdmissionId)
+            .FirstOrDefaultAsync(cancellationToken);
 
     [HttpPost("hire-quote")]
     [CustomerIdentityRoute(requiresMembership: true)]
@@ -363,20 +387,21 @@ public sealed partial class AcquisitionController(
         }
         if (claimScope is not null)
             await claimScope.CommitAsync(cancellationToken);
-        var admissionId = await db
-            .AgentAdmissions.AsNoTracking()
-            .Where(value =>
-                value.TenantId == tenantId
-                && value.State == AgentAdmissionState.Active
-                && value.ProfessionalTypeId == activeDisclosure.ProfessionalType
-                && value.ProfessionalVersion == activeDisclosure.ProjectionVersion
-                && value.AdmissionContentDigest != null
-                && value.EvidenceSetDigest != null
-                && value.ArtifactDigest != null
+        // The Founder's approval of this exact version is the gate; the workspace's own admission follows from it.
+        var admissionId = approvals is not null
+            ? await approvals.EnsureWorkspaceAdmissionAsync(
+                tenantId,
+                participantId,
+                activeDisclosure.ProfessionalType,
+                activeDisclosure.ProjectionVersion,
+                cancellationToken
             )
-            .OrderByDescending(value => value.UpdatedAt)
-            .Select(value => (Guid?)value.AdmissionId)
-            .FirstOrDefaultAsync(cancellationToken);
+            : await ActiveWorkspaceAdmissionAsync(
+                db,
+                tenantId,
+                activeDisclosure,
+                cancellationToken
+            );
         if (!admissionId.HasValue)
             return Problem(
                 statusCode: StatusCodes.Status409Conflict,

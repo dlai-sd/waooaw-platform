@@ -16,7 +16,7 @@ export function providerClassFromPath(pathname: string): OidcProviderClass | und
 }
 
 const founderConsoleReturn =
-  /^\/(?:admin\/(?:providers|operations|agent-operation|azure-key-vault|pricing(?:\/[A-Za-z0-9-]+){0,3})|access|founder(?:\/access)?)$/;
+  /^\/(?:admin\/(?:providers|operations|agent-operation|professionals|azure-key-vault|pricing(?:\/[A-Za-z0-9-]+){0,3})|access|founder(?:\/access)?)$/;
 
 export function normalizeOidcCallback(
   callbackUrl: string,

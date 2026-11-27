@@ -1353,6 +1353,8 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 
 **Registration code:** a throwaway customer registers with the platform's fixed synthetic test code (default `123456`) on its own fictitious `+1555` number; the server accepts it only for customers in the synthetic registry and never sends a WhatsApp message. Never ask the Founder for a real number or a real code for automated runs.
 
+**Trial and Hire prerequisite:** the Founder must have approved the professional version on the Founder Professionals page; without it a throwaway customer's Trial is refused (409 "Professional is not currently available"). Ask the Founder to approve; never approve for them.
+
 **Procedure:**
 1. Confirm the target build is deployed and, for customer pages, that the realm change declaring `synthetic_idp` has been imported by that deployment.
 2. Obtain the Founder's approval, create the smallest number of customers, and keep the sign-in file private; never print or commit it.

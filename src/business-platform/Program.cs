@@ -1123,6 +1123,11 @@ builder.Services.AddSingleton<
     Waooaw.BusinessPlatform.Services.AgentOperation.IAgentOperationStore,
     Waooaw.BusinessPlatform.Services.AgentOperation.PostgresAgentOperationStore
 >();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.PlatformApprovals.IPlatformProfessionalApprovalStore,
+    Waooaw.BusinessPlatform.Services.PlatformApprovals.PostgresPlatformProfessionalApprovalStore
+>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.PlatformApprovals.PlatformProfessionalApprovalService>();
 builder.Services.AddScoped<
     Waooaw.BusinessPlatform.Services.AgentOperation.IOperationRelationshipSource,
     Waooaw.BusinessPlatform.Services.AgentOperation.WorkbenchOperationRelationshipSource
