@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-27 · **Version:** 1.45.0 · **Work Contracts:** 167 Work Contracts recorded · 113 with merged-PR evidence · 54 without
+**Last Updated:** 2026-11-27 · **Version:** 1.45.0 · **Work Contracts:** 167 Work Contracts recorded · 114 with merged-PR evidence · 53 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,7 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-176 | Registration, Trial, Hire And Customer Pages To Full Extent | GROOMED, AWAITING FOUNDER REVIEW OF SCOPE AND THE SIX FOUNDER DECISIONS | none recorded |
+| WC-176 | Registration, Trial, Hire And Customer Pages To Full Extent | GROOMED, AWAITING FOUNDER REVIEW OF SCOPE AND THE SIX FOUNDER DECISIONS | #658 |
 | WC-175 | Demo Registration, Trial, Hire And Founder Screen Defects | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED | #657, #656, #655 |
 | WC-174 | Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED | **GROOMED 2026-11-26 (documents only).** The build is not authorized | #650, #649 |
 | WC-172 | Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED | **BUILT (application stories of Epics L, T and M and the code parts of U and G), pending the single Docker validation pa | #651, #648, #647, #645 |
