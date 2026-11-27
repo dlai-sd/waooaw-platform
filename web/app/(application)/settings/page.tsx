@@ -47,7 +47,7 @@ export default async function SettingsPage() {
           actionLabel="Browse Marketplace"
           kind="empty"
           title="Customer settings will appear here"
-          description="Language and theme remain available in the header. Relationship notifications and organization settings begin after Trial or Hire."
+          description="Language and theme remain available in the header. Notification and organization settings begin once you have registered and started a Trial or Hire."
         />
       );
     }

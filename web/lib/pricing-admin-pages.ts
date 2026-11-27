@@ -17,7 +17,8 @@ export async function requirePricingPage(): Promise<PricingPageSession> {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/home');
   const access = await resolvePlatformAccess(accessToken);
-  if (!access.administrator) redirect('/home');
+  // A signed-in person without a staff grant gets the same plain not-permitted page as the Founder area.
+  if (!access.administrator) redirect('/403');
   return { accessToken, isFounder: access.founder };
 }
 

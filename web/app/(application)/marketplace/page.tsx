@@ -9,9 +9,11 @@ import { DisclosureContinuation } from '@/components/acquisition/DisclosureConti
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { type HireQuoteResult, resolveHireQuote } from '@/lib/api/hire-quote';
+import { getIdentitySession } from '@/lib/api/identity';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
 import { describePortalFailure } from '@/lib/api/portal-failure';
 import { portalMessages } from '@/lib/portal-i18n';
+import { logServerFailure } from '@/lib/server-failure';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 interface MarketplacePageProps {
@@ -26,6 +28,16 @@ interface MarketplacePageProps {
     idempotencyKey?: string;
     couponCode?: string;
   }>;
+}
+
+async function needsRegistration(accessToken: string): Promise<boolean> {
+  try {
+    return (await getIdentitySession(accessToken)).kind === 'registration-required';
+  } catch (error) {
+    logServerFailure('web.marketplace.identity_session_failed', error);
+    // Unknown is treated as registered: the server still refuses an unregistered checkout with its own code.
+    return false;
+  }
 }
 
 export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
@@ -64,10 +76,13 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
 
   try {
     const page = await browseMarketplaceProfessionals(accessToken, filters);
+    // A signed-in person who has not registered has no customer account yet: the price and the checkout both need one,
+    // so ask for registration first instead of failing after the contract is accepted.
+    const registrationRequired = await needsRegistration(accessToken);
     // The amount is the server-resolved quote from the for-sale packages; the listing itself carries no price.
     const quotes = await Promise.all(
       page.items.map((professional) =>
-        professional.availableIntents.has('HIRE')
+        professional.availableIntents.has('HIRE') && !registrationRequired
           ? resolveHireQuote(accessToken, professional.professionalType, professional.version)
           : Promise.resolve<HireQuoteResult>({ kind: 'not-offered' })
       )
@@ -130,6 +145,8 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                         <span>/ {quote.cadence.toLowerCase()}</span>
                         <small>Monthly price including GST. Final terms are shown before you accept.</small>
                       </p>
+                    ) : hireOffered && registrationRequired ? (
+                      <p>Complete registration to see the price</p>
                     ) : hireOffered ? (
                       <p>
                         {quoted.kind === 'unavailable'
@@ -167,6 +184,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                     priceInrPaise={quote?.grossAmountInrPaise}
                     professionalType={professional.professionalType}
                     professionalVersion={professional.version}
+                    registrationRequired={registrationRequired}
                     quoteVersion={quote?.quoteVersion}
                     termsVersion={professional.termsVersion}
                     trialAvailable={professional.availableIntents.has('TRIAL')}

@@ -10,6 +10,7 @@ export type MenuIcon =
   | 'vault'
   | 'pricing'
   | 'providers'
+  | 'agent-operation'
   | 'access'
   | 'founder';
 
@@ -51,21 +52,21 @@ export function operationsMenu(flags: GrantFlags): MenuLink[] {
             id: 'agent-operation',
             href: '/admin/agent-operation',
             label: 'Agent operation',
-            icon: 'providers' as const,
+            icon: 'agent-operation' as const,
           },
         ]
       : []),
     ...(flags.showKeyVaultAdmin
       ? [{ id: 'vault', href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: 'vault' as const }]
       : []),
-    ...(flags.showAccess ? [{ id: 'access', href: '/access', label: 'Access', icon: 'access' as const }] : []),
+    ...(flags.showAccess ? [{ id: 'access', href: '/access', label: 'Staff access', icon: 'access' as const }] : []),
   ];
 }
 
 export function founderMenu(founderHome: string): MenuLink[] {
   return [
     { id: 'founder', href: '/founder', label: founderHome, icon: 'founder' },
-    { id: 'access', href: '/founder/access', label: 'Access', icon: 'access' },
+    { id: 'access', href: '/founder/access', label: 'Staff access', icon: 'access' },
   ];
 }
 

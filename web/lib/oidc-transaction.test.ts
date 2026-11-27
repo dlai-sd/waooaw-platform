@@ -4,6 +4,7 @@ import {
   protocolCookiesMatch,
   providerClassFromPath,
 } from './oidc-transaction';
+import { founderMenu, operationsMenu } from './navigation-model';
 
 const origin = 'https://app.example';
 
@@ -33,10 +34,12 @@ describe('server-owned OIDC transaction', () => {
       // Operations and Agent operation start a step-up for Retry send and settings writes.
       '/admin/operations',
       '/admin/agent-operation',
+      '/admin/azure-key-vault',
+      '/founder',
+      '/founder/access',
     ])
       expect(normalizeOidcCallback(path, 'LOGIN', origin)).toEqual({ intent: 'LOGIN', callbackPath: path });
     for (const refused of [
-      '/admin/azure-key-vault',
       '/admin/providers?next=/home',
       '/admin/providers#x',
       'https://attacker.example/admin/providers',
@@ -44,6 +47,20 @@ describe('server-owned OIDC transaction', () => {
     ])
       expect(normalizeOidcCallback(refused, 'LOGIN', origin)).toBeNull();
     expect(normalizeOidcCallback('/admin/providers', 'REGISTER', origin)).toBeNull();
+  });
+
+  it('accepts every Founder page the menus can open', () => {
+    const everyTool = operationsMenu({
+      showAccess: true,
+      showKeyVaultAdmin: true,
+      showOperations: true,
+      showPricingAdmin: true,
+      showProviderAdmin: true,
+    });
+    const hrefs = [...everyTool, ...founderMenu('Founder home')].map((link) => link.href);
+    expect(hrefs.length).toBeGreaterThanOrEqual(7);
+    for (const href of hrefs)
+      expect(normalizeOidcCallback(href, 'LOGIN', origin)).toEqual({ intent: 'LOGIN', callbackPath: href });
   });
 
   it('extracts and later requires state, nonce, and PKCE cookies', () => {

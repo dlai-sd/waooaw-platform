@@ -116,6 +116,8 @@ const en = {
   settingsTitle: 'Agent operation settings',
   allowanceDefault: 'Conversations per package (default)',
   allowanceByType: 'Conversations for one kind of agent',
+  allowanceByTypeHint:
+    'Optional. One line per kind of agent, written as KIND=number, for example DIGITAL_MARKETING_LOCAL_SERVICE=500. Kinds not listed use the default above.',
   instagramSwitch: 'Let customers connect Instagram',
   sandboxOnly: 'Publish only to test accounts',
   sandboxAccounts: 'Test account ids (one per line)',
@@ -125,7 +127,11 @@ const en = {
   stepUpNeeded:
     'A fresh strong sign-in is needed to save. Use the button below; your changes are kept and saved after sign-in.',
   shareTitle: 'How work is reached',
-  shareNote: 'Counts only. No conversation content is stored here.',
+  shareNote:
+    'Each day shows how many outcomes were reached by asking the assistant in words, by accepting its suggestion, or by using a tool directly. Assistant share is asked plus accepted, as a share of all three. Counts only; no conversation content is stored here.',
+  shareAsked: 'Asked in words',
+  shareAccepted: 'Accepted suggestions',
+  shareTool: 'Done with a tool',
   attentionTitle: 'Needs the operator',
 } as const;
 

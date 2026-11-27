@@ -155,7 +155,7 @@ describe('F1 shell primitives', () => {
     ]);
   });
 
-  it('gives the Founder shell only its own links and never the customer list', () => {
+  it('gives the Founder shell its own links plus every staff tool, and never the customer list', () => {
     render(
       <ProtectedAppShell messages={messages.en} variant="founder">
         <p>Founder content</p>
@@ -165,6 +165,14 @@ describe('F1 shell primitives', () => {
     expect(founder.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/founder',
       '/founder/access',
+    ]);
+    const tools = within(screen.getByRole('navigation', { name: 'Operations' }));
+    expect(tools.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/admin/operations',
+      '/admin/pricing',
+      '/admin/providers',
+      '/admin/agent-operation',
+      '/admin/azure-key-vault',
     ]);
     expect(screen.queryByRole('link', { name: 'Marketplace' })).not.toBeInTheDocument();
   });

@@ -44,12 +44,15 @@ async function safeRegistrationProblem(error: ResponseError) {
     approved && [400, 401, 403, 404, 409, 410, 422, 429, 503].includes(error.response.status)
       ? error.response.status
       : 503;
+  // Only a refusal raised before the provider was reached may say no code was sent; anything else stays unresolved.
+  const notSent = approved && error.response.headers.get('x-delivery-state') === 'NOT_SENT';
   return {
     status,
     body: {
       code,
       title: 'Identity request could not be completed.',
       ...(correlationId ? { correlationId } : {}),
+      ...(notSent ? { deliveryState: 'NOT_SENT' } : {}),
     },
   };
 }

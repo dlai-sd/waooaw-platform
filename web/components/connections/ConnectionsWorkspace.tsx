@@ -21,6 +21,7 @@ import { isSafeAuthorizationUrl, navigateTo } from './navigate';
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; text: string; action: ProblemAction | null }
+  | { kind: 'account-required' }
   | { kind: 'ready'; connections: ProviderConnection[] };
 
 type Props = { initialNotice?: PricingNotice | null; staff?: boolean };
@@ -35,6 +36,9 @@ export function ConnectionsWorkspace({ initialNotice = null, staff = false }: Pr
     const result = await connectionCall<ProviderConnection[]>('GET', '');
     if (result.ok && Array.isArray(result.data)) {
       setLoad({ kind: 'ready', connections: result.data });
+    } else if (!staff && !result.ok && result.problem.code === 'CONNECTION_ACCOUNT_REQUIRED') {
+      // Not having an account yet is a normal first state, not a failure.
+      setLoad((current) => (current.kind === 'ready' ? current : { kind: 'account-required' }));
     } else {
       setLoad((current) =>
         current.kind === 'ready'
@@ -107,6 +111,22 @@ export function ConnectionsWorkspace({ initialNotice = null, staff = false }: Pr
       </div>
 
       {load.kind === 'loading' ? <output className="workbench-hint">Loading your connections...</output> : null}
+      {load.kind === 'account-required' ? (
+        <div className="workbench-stack">
+          <p className="workbench-hint">
+            You can connect your accounts after you have registered and started a Trial or Hire. Nothing is connected
+            yet.
+          </p>
+          <div className="workbench-actions">
+            <Link className="primary-command" href={`/register?returnTo=${encodeURIComponent('/connections')}`}>
+              Complete registration
+            </Link>
+            <Link className="secondary-link" href="/marketplace">
+              Browse the marketplace
+            </Link>
+          </div>
+        </div>
+      ) : null}
       {load.kind === 'error' ? (
         <div className="workbench-stack">
           <p className="workbench-message workbench-message-error" role="alert">

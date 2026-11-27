@@ -31,6 +31,7 @@ type ErrorKind =
   | 'rejected'
   | 'restart'
   | 'step-up'
+  | 'not-sent'
   | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
@@ -111,6 +112,12 @@ export function RegistrationFlow({
         }
         if (response.status === 403 || code === 'IDENTITY_ACTION_DENIED') {
           setError('rejected');
+          return;
+        }
+        if (commandBody.action === 'mobile-start' && body?.deliveryState === 'NOT_SENT') {
+          // Nothing reached WhatsApp, so a fresh request is safe and no earlier request needs to be resumed.
+          keys.current.delete(commandBody.action);
+          setError('not-sent');
           return;
         }
         throw new Error();
@@ -198,6 +205,13 @@ export function RegistrationFlow({
     journey?.dismiss();
   }
 
+  // Name the provider that verified the email only when it is one we know; a synthetic or other login names none.
+  const providerName =
+    registration?.providerLabel === 'facebook'
+      ? 'Facebook'
+      : registration?.providerLabel === 'google'
+        ? 'Google'
+        : undefined;
   const errorMessage =
     error === 'rejected'
       ? messages.signInRejected
@@ -211,9 +225,11 @@ export function RegistrationFlow({
               ? messages.verificationRejected
               : error === 'rate-limited'
                 ? messages.verificationRateLimited
-                : error === 'unavailable'
-                  ? messages.unavailable
-                  : '';
+                : error === 'not-sent'
+                  ? messages.whatsappVerificationNotSent
+                  : error === 'unavailable'
+                    ? messages.unavailable
+                    : '';
 
   function emailVerificationForm() {
     if (!challenge)
@@ -428,9 +444,7 @@ export function RegistrationFlow({
           <div className="verified-registration-email">
             <label htmlFor="verified-registration-email">{messages.verifiedEmail}</label>
             <input id="verified-registration-email" readOnly type="text" value={registration.maskedEmail} />
-            <span>
-              {messages.verifiedBy} {registration.providerLabel === 'facebook' ? 'Facebook' : 'Google'}
-            </span>
+            {providerName ? <span>{`${messages.verifiedBy} ${providerName}`}</span> : null}
           </div>
         ) : null}
         {action === 'COMPLETE_PROFILE' ? (

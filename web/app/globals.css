@@ -844,11 +844,17 @@ h1 {
   box-shadow: 0 6px 20px rgb(92 17 17 / 28%);
   cursor: pointer;
 }
+.form-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: .875rem;
+}
 .stop-control button:disabled {
-  color: #6b7280;
-  background: #e5e7eb;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--line);
   box-shadow: none;
-  cursor: not-allowed;
+  cursor: default;
 }
 .evidence-window-heading button {
   border: 1px solid var(--line);
@@ -2522,6 +2528,10 @@ select:focus-visible,
 }
 .marketplace-grid {
   gap: .75rem;
+}
+.marketplace-grid > .marketplace-offer:only-child {
+  grid-column: 1 / -1;
+  max-width: 46rem;
 }
 .marketplace-grid > .marketplace-offer {
   position: relative;

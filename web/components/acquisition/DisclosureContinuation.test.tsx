@@ -41,8 +41,8 @@ describe('DisclosureContinuation', () => {
     );
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
     expect(screen.getByLabelText('Coupon code')).toHaveValue('Not applicable during Trial');
-    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'UPI' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Credit or debit card' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'UPI' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue to hire' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(continueButton);
@@ -91,8 +91,31 @@ describe('DisclosureContinuation', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review free 14-day Trial' }));
     expect(screen.getByLabelText('Coupon code')).toHaveValue('Not applicable during Trial');
-    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Credit or debit card' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Coupon code (optional)')).not.toBeInTheDocument();
+  });
+
+  it('asks an unregistered customer to register before any contract or payment step', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        registrationRequired
+        termsVersion="2026-07-18"
+        trialAvailable
+        trialDurationDays={14}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Create your account to continue' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Complete registration' })).toHaveAttribute(
+      'href',
+      '/register?returnTo=%2Fmarketplace'
+    );
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Review free/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review Hire' })).not.toBeInTheDocument();
   });
 
   it('withdraws consent and requires fresh consent when the offer contract changes', () => {
@@ -164,7 +187,7 @@ describe('DisclosureContinuation', () => {
     });
     const locationBeforeCommand = window.location.href;
     fireEvent.click(screen.getByRole('checkbox'));
-    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Credit or debit card' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Hire - no payment required' }));
 
     await waitFor(() => expect(screen.getByTestId('continuation')).toBeVisible());

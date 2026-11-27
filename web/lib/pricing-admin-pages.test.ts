@@ -44,9 +44,10 @@ function token(roles: string[]): string {
 test('only pricing administrators and the Founder pass the page gate', async () => {
   jest.mocked(getServerAccessToken).mockResolvedValueOnce(undefined);
   await expect(requirePricingPage()).rejects.toThrow('redirected');
+  expect(redirect).toHaveBeenCalledWith('/home');
   jest.mocked(getServerAccessToken).mockResolvedValueOnce(token(['customer']));
   await expect(requirePricingPage()).rejects.toThrow('redirected');
-  expect(redirect).toHaveBeenCalledWith('/home');
+  expect(redirect).toHaveBeenCalledWith('/403');
 
   const admin = token(['pricing_admin']);
   jest.mocked(getServerAccessToken).mockResolvedValueOnce(admin);

@@ -143,7 +143,37 @@ public sealed class IdentityVerificationRequiredException(string reason) : Excep
 
 public sealed class IdentityDuplicateResolutionRequiredException(string reason) : Exception(reason);
 
-public sealed class IdentityDeliveryUnavailableException(string reason) : Exception(reason);
+public sealed class IdentityDeliveryUnavailableException(string reason, string? cause = null)
+    : Exception(reason)
+{
+    // Refusals raised before anything is handed to the provider; for these the customer can be told no code was sent.
+    private static readonly HashSet<string> NotSentCauses = new(StringComparer.Ordinal)
+    {
+        "REGISTRATION_CHALLENGE_REQUIRED",
+        "REGISTRATION_CHALLENGE_INVALID",
+        "REGISTRATION_VERIFICATION_DENIED",
+        "REGISTRATION_RECIPIENT_DENIED",
+        "REGISTRATION_AUTHORITY_CHANGED",
+        "REGISTRATION_PROVIDER_REJECTED",
+        "PROVIDER_AUTHORITY_EXPIRED",
+        "CONFIGURATION_MISSING",
+        "CONFIGURATION_DENIED",
+        "DEPENDENCY_UNAVAILABLE",
+        "ACTIVATION_REQUIRED",
+        "WINDOW_CLOSED",
+        "AUTHORITY_DENIED",
+    };
+
+    // A fixed reason code (never a phone number, code or token) naming which check refused delivery.
+    public string? Cause { get; } = cause;
+
+    public bool NotSent =>
+        Cause is not null
+        && (
+            NotSentCauses.Contains(Cause)
+            || Cause.StartsWith("AUTHENTICATION_TEMPLATE_", StringComparison.Ordinal)
+        );
+}
 
 public sealed class IdentityStepUpRequiredException(string reason, Guid intentId)
     : Exception(reason)
@@ -1104,7 +1134,15 @@ public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
                 if (transaction is not null)
                     await transaction.CommitAsync(ct);
             }
-            throw new IdentityDeliveryUnavailableException("Verification delivery is unavailable.");
+            throw new IdentityDeliveryUnavailableException(
+                "Verification delivery is unavailable.",
+                exception switch
+                {
+                    IdentityDeliveryUnavailableException delivery => delivery.Message,
+                    WhatsAppCapabilityUnavailableException capability => capability.ReasonCode,
+                    _ => $"DISPATCH_FAILED_{exception.GetType().Name}",
+                }
+            );
         }
         if (reg is not null)
         {

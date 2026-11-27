@@ -53,7 +53,11 @@ export function OfferabilityWorkbench() {
       <header className="offerability-heading">
         <p className="eyebrow">Founder decision</p>
         <h1>Offerability</h1>
-        <p>Price one approved professional offering against current owner evidence.</p>
+        <p>Check whether a customer price covers what the agent costs to run, before you offer it.</p>
+        <p>
+          Direct contribution is the money left from the customer price after the direct costs of running the agent.
+          ALLOW means the price is safe to offer; any other result lists what blocks it.
+        </p>
       </header>
 
       <form
@@ -87,6 +91,10 @@ export function OfferabilityWorkbench() {
           Customer price (INR)
           <input name="priceRupees" type="number" min="0.01" step="0.01" required />
         </label>
+        <p className="form-hint">
+          Relationship ID is the identifier of the customer relationship being priced, shown on its page. The offering,
+          type and tier default to the Digital Marketing Starter offer.
+        </p>
         <button className="primary-command" type="submit" disabled={pending}>
           {pending ? (
             <LoaderCircle className="spin" aria-hidden="true" size={18} />

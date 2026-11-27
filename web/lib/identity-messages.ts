@@ -20,6 +20,8 @@ const en = {
   requestNewWhatsappCode: 'Request a new WhatsApp code',
   whatsappDeliveryUnresolved:
     'Delivery could not be confirmed. Retry checks the same request without sending again. You can explicitly request a new code after waiting one minute.',
+  whatsappVerificationNotSent:
+    'WhatsApp verification is not available right now. No code was sent. Please try again later, or contact support if this continues.',
   changeWhatsappNumber: 'Use a different number',
   code: 'Six-digit code',
   saveProfile: 'Save and continue',
@@ -63,6 +65,8 @@ export type IdentityMessages = { [Key in keyof typeof en]: string };
 
 const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> = {
   hi: {
+    whatsappVerificationNotSent:
+      'WhatsApp सत्यापन अभी उपलब्ध नहीं है। कोई कोड नहीं भेजा गया। कृपया बाद में पुनः प्रयास करें, या समस्या बनी रहे तो सहायता से संपर्क करें।',
     title: 'अपना WAOOAW खाता बनाएँ',
     displayName: 'आपका नाम',
     businessName: 'व्यवसाय का नाम',
@@ -82,6 +86,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     retry: 'फिर प्रयास करें',
   },
   mr: {
+    whatsappVerificationNotSent:
+      'WhatsApp पडताळणी सध्या उपलब्ध नाही. कोणताही कोड पाठवला गेला नाही. कृपया नंतर पुन्हा प्रयत्न करा, किंवा समस्या कायम राहिल्यास सपोर्टशी संपर्क करा.',
     title: 'तुमचे WAOOAW खाते तयार करा',
     displayName: 'तुमचे नाव',
     businessName: 'व्यवसायाचे नाव',

@@ -1194,6 +1194,24 @@ public sealed class IdentityController(
         return IdentityProblemResponses.Create(status, code, detail, stepUpIntentId, correlationId);
     }
 
+    private IActionResult DeliveryUnavailable(IdentityDeliveryUnavailableException exception)
+    {
+        logger.LogWarning(
+            "Identity verification delivery unavailable reason={Reason} notSent={NotSent} path={Path}",
+            exception.Cause ?? exception.Message,
+            exception.NotSent,
+            Request.Path
+        );
+        // A header, not a new problem code, so the published error contract is unchanged.
+        if (exception.NotSent)
+            Response.Headers["X-Delivery-State"] = "NOT_SENT";
+        return IdentityProblem(
+            503,
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            "Verification delivery is temporarily unavailable."
+        );
+    }
+
     // ── POST /api/v1/identity/registrations ──────────────────────────────────
 
     [HttpPost("registrations")]
@@ -1445,13 +1463,9 @@ public sealed class IdentityController(
                 "The idempotency key was already used with a different request."
             );
         }
-        catch (IdentityDeliveryUnavailableException)
+        catch (IdentityDeliveryUnavailableException exception)
         {
-            return IdentityProblem(
-                503,
-                "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Verification delivery is temporarily unavailable."
-            );
+            return DeliveryUnavailable(exception);
         }
         catch (IdentityResourceNotFoundException)
         {
@@ -1613,13 +1627,9 @@ public sealed class IdentityController(
                 "Registration not found or not accessible."
             );
         }
-        catch (IdentityDeliveryUnavailableException)
+        catch (IdentityDeliveryUnavailableException exception)
         {
-            return IdentityProblem(
-                503,
-                "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Verification delivery is temporarily unavailable."
-            );
+            return DeliveryUnavailable(exception);
         }
         catch (ArgumentException)
         {
@@ -1838,13 +1848,9 @@ public sealed class IdentityController(
                 "The idempotency key was already used with a different request."
             );
         }
-        catch (IdentityDeliveryUnavailableException)
+        catch (IdentityDeliveryUnavailableException exception)
         {
-            return IdentityProblem(
-                503,
-                "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Verification delivery is temporarily unavailable."
-            );
+            return DeliveryUnavailable(exception);
         }
         catch (ArgumentException)
         {

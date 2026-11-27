@@ -11,9 +11,9 @@ import { redirect } from 'next/navigation';
 export default async function ProvidersPage() {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/home');
-  if (!(await resolvePlatformAccess(accessToken)).founder) redirect('/home');
+  if (!(await resolvePlatformAccess(accessToken)).founder) redirect('/403');
   const load = await loadProviders(accessToken);
-  if (load.kind === 'forbidden') redirect('/home');
+  if (load.kind === 'forbidden') redirect('/403');
   if (load.kind === 'unavailable') {
     return (
       <StateView

@@ -567,14 +567,20 @@ public sealed partial class WhatsAppJourneyService
     )
     {
         var receivedAt = proof.VerifiedAt;
-        if (
-            string.IsNullOrWhiteSpace(proof.MessageId)
-            || string.IsNullOrWhiteSpace(proof.PhoneSubjectHash)
-            || !proof.UnsupportedContent && string.IsNullOrWhiteSpace(proof.Text)
-            || proof.ExpiresAt <= _clock.GetUtcNow()
-            || (proof.VerifiedAt - proof.SentAt).Duration() > TimeSpan.FromMinutes(5)
-        )
+        // Name which check refused the message (a fixed code, never message content or a phone number).
+        var invalidReason =
+            string.IsNullOrWhiteSpace(proof.MessageId) ? "MESSAGE_ID_MISSING"
+            : string.IsNullOrWhiteSpace(proof.PhoneSubjectHash) ? "PHONE_HASH_MISSING"
+            : !proof.UnsupportedContent && string.IsNullOrWhiteSpace(proof.Text) ? "TEXT_MISSING"
+            : proof.ExpiresAt <= _clock.GetUtcNow() ? "PROOF_EXPIRED"
+            : (proof.VerifiedAt - proof.SentAt).Duration() > TimeSpan.FromMinutes(5)
+                ? "SENT_TIME_SKEW"
+            : null;
+        if (invalidReason is not null)
+        {
+            _logger?.LogWarning("WhatsApp inbound proof rejected reason={Reason}", invalidReason);
             throw new WhatsAppWebhookException(403, "PHONE_IDENTITY_PROOF_INVALID");
+        }
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         if (_conversationDbFactory is null)

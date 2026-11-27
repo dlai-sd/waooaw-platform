@@ -173,10 +173,11 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
           {copy.allowanceByType}
           <textarea
             onChange={(event) => setOverrides(event.target.value)}
-            placeholder="AGENT_TYPE=500"
+            placeholder="DIGITAL_MARKETING_LOCAL_SERVICE=500"
             value={overrides}
           />
         </label>
+        <p className="form-hint">{copy.allowanceByTypeHint}</p>
         <label>
           <input checked={instagram} onChange={(event) => setInstagram(event.target.checked)} type="checkbox" />
           {copy.instagramSwitch}
@@ -228,9 +229,9 @@ export function AgentOperationSettings({ initial, copy }: { initial: OperationSe
               <thead>
                 <tr>
                   <th scope="col">Day</th>
-                  <th scope="col">Asked</th>
-                  <th scope="col">Accepted</th>
-                  <th scope="col">Tool</th>
+                  <th scope="col">{copy.shareAsked}</th>
+                  <th scope="col">{copy.shareAccepted}</th>
+                  <th scope="col">{copy.shareTool}</th>
                   <th scope="col">Assistant share</th>
                 </tr>
               </thead>

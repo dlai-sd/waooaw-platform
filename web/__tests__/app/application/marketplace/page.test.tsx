@@ -1,12 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import MarketplacePage from '@/app/(application)/marketplace/page';
 import { resolveHireQuote } from '@/lib/api/hire-quote';
+import { getIdentitySession } from '@/lib/api/identity';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 jest.mock('@/lib/api/professionals', () => ({ browseMarketplaceProfessionals: jest.fn() }));
 jest.mock('@/lib/api/hire-quote', () => ({ resolveHireQuote: jest.fn() }));
+jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
 
@@ -48,6 +50,7 @@ const listing = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready' } as never);
   jest.mocked(getRequestI18n).mockResolvedValue({
     locale: 'en',
     messages: { returnHome: 'Return home' },
@@ -144,4 +147,20 @@ it.each([
   expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Review Hire' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
+});
+
+it('asks an unregistered customer to register and never looks up a price they cannot be quoted', async () => {
+  jest.mocked(getServerAccessToken).mockResolvedValue('visitor-access-token');
+  jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' } as never);
+  jest.mocked(browseMarketplaceProfessionals).mockResolvedValue(listing as never);
+
+  render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
+
+  expect(resolveHireQuote).not.toHaveBeenCalled();
+  expect(screen.getByText('Complete registration to see the price')).toBeInTheDocument();
+  expect(screen.queryByText('Price cannot be shown right now')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Complete registration' })).toHaveAttribute(
+    'href',
+    '/register?returnTo=%2Fmarketplace'
+  );
 });
