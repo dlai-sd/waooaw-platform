@@ -48,3 +48,16 @@ permitted" on every customer page. The fix needs no Business Platform change:
 
 This works only after the deploy that carries the realm change has re-imported the realm.
 The Founder-page step-up probe and the public pages do not depend on it.
+
+## Registration code for a throwaway customer
+
+A real customer's WhatsApp code is sent through Meta and costs money. A throwaway customer never uses it. When
+`AcceptanceSyntheticTenants__Enabled` is true (Demo and test only; the platform refuses it in Production) and the customer
+is registered as synthetic, Business Platform answers the WhatsApp registration step with the fixed test code
+(`AcceptanceSyntheticTenants__TestVerificationCode`, default `123456`) and sends nothing, so no template and no budget is used.
+
+- The check is server-side: the customer must be in the synthetic registry written by the marker route. A real customer is never affected.
+- Each throwaway customer gets its own fictitious number in the `+1555xxxxxxx` range (stored in the sign-in file as `mobile`),
+  so two throwaway customers never share a number.
+- `JOURNEY=register scripts/run_demo_customer_walk.sh` enters that number and the code, confirms it and completes registration.
+- The real WhatsApp delivery (`waooaw_registration_otp`) is a separate, Founder-approved live check with a real number.

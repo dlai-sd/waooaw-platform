@@ -100,10 +100,24 @@ if (MODE === "register") {
     await snap("register-profile-saved");
     const phone = page.locator('input[type="tel"]');
     if (await phone.count()) {
-      await phone.fill("+15555550134");
+      // The throwaway customer's own fictitious number; the platform answers a synthetic customer with its fixed test code and sends nothing.
+      await phone.fill(user.mobile || "+15555550134");
       await page.getByRole("button", { name: /send whatsapp verification code/i }).click().catch((e) => log.push({ step: "mobile-start-click", error: String(e).slice(0, 160) }));
       await page.waitForTimeout(8000);
       await snap("register-mobile-start");
+      const code = page.locator('input[name="code"]');
+      if (await code.count()) {
+        await code.fill(process.env.SYNTHETIC_CODE || "123456");
+        await page.getByRole("button", { name: /verify code/i }).click().catch((e) => log.push({ step: "mobile-confirm-click", error: String(e).slice(0, 160) }));
+        await page.waitForTimeout(6000);
+        await snap("register-mobile-confirmed");
+        const finish = page.getByRole("button", { name: /complete|finish|continue/i }).first();
+        if (await finish.count()) {
+          await finish.click().catch((e) => log.push({ step: "complete-click", error: String(e).slice(0, 160) }));
+          await page.waitForTimeout(6000);
+          await snap("register-completed");
+        }
+      }
     }
   }
   if (await email.count()) {

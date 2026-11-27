@@ -15,6 +15,21 @@ export type OverviewView = {
   deliveries: Array<{ channel: string; outcome: string; count: number }>;
   services: Array<{ name: string; state: string }>;
   observedAt: string;
+  limits?: WhatsAppLimits | null;
+};
+
+// The Founder-approved WhatsApp limits. Registration codes and guest messages share all of them.
+export type WhatsAppLimits = {
+  windowStartsAt: string;
+  windowExpiresAt: string;
+  maximumMessages: number;
+  maximumMessagesPerMinute: number;
+  maximumSpendInr: number;
+  maximumCostPerMessageInr: number;
+  guestAdmission: boolean;
+  registrationCodes: boolean;
+  messagesReserved?: number | null;
+  spendReservedInr?: number | null;
 };
 
 export type BlockedMessage = {

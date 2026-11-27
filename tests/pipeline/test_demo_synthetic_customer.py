@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import stat
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,9 @@ def test_customers_have_synthetic_emails_and_unique_secrets() -> None:
     assert customers["A"]["password"] != customers["B"]["password"]
     assert customers["A"]["otpSecret"] != customers["B"]["otpSecret"]
     assert all(len(c["otpSecret"]) >= 32 for c in customers.values())
+    mobiles = [c["mobile"] for c in customers.values()]
+    assert len(set(mobiles)) == len(mobiles)
+    assert all(re.fullmatch(r"\+1555[0-9]{7}", mobile) for mobile in mobiles)
 
 
 def test_run_ids_are_valid_and_vary() -> None:

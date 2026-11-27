@@ -14,6 +14,11 @@ public sealed class AcceptanceSyntheticOptions
     public const string SectionName = "AcceptanceSyntheticTenants";
 
     public bool Enabled { get; set; }
+
+    /// <summary>Six-digit code a synthetic customer's registration accepts instead of a WhatsApp code (a test fixture, not a secret).</summary>
+    public const string DefaultTestVerificationCode = "123456";
+
+    public string TestVerificationCode { get; set; } = DefaultTestVerificationCode;
 }
 
 /// <summary>Defence in depth: a Business Platform that knows it is Production refuses to start with the registry on.</summary>
@@ -21,7 +26,12 @@ public sealed class AcceptanceSyntheticOptionsValidator(IConfiguration configura
     : IValidateOptions<AcceptanceSyntheticOptions>
 {
     public ValidateOptionsResult Validate(string? name, AcceptanceSyntheticOptions options) =>
-        options.Enabled
+        options.TestVerificationCode.Length != 6
+        || !options.TestVerificationCode.All(char.IsAsciiDigit)
+            ? ValidateOptionsResult.Fail(
+                "AcceptanceSyntheticTenants:TestVerificationCode must be six digits."
+            )
+        : options.Enabled
         && string.Equals(
             configuration["IdentityEnvironment:Environment"],
             "prod",
@@ -30,5 +40,5 @@ public sealed class AcceptanceSyntheticOptionsValidator(IConfiguration configura
             ? ValidateOptionsResult.Fail(
                 "AcceptanceSyntheticTenants:Enabled is not permitted in Production."
             )
-            : ValidateOptionsResult.Success;
+        : ValidateOptionsResult.Success;
 }

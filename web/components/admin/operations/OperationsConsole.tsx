@@ -22,6 +22,7 @@ import {
   type OperationsResult,
   type ResolveAction,
   type TimelineView,
+  type WhatsAppLimits,
 } from '@/lib/operations-client';
 import { stepUpResumingText, useResumeAfterStepUp } from '@/lib/step-up-resume';
 
@@ -44,6 +45,56 @@ const statusLabels: Record<CustomerStatus, string> = {
 };
 
 const humanize = (value: string) => value.replaceAll('_', ' ').toLowerCase();
+const inr = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
+
+// What the Founder approved for WhatsApp, and how much of it has been used. Registration codes count against the same
+// message and spend ceilings as guest messages, so one set of numbers is the whole picture.
+function WhatsAppLimitsPanel({ limits }: { limits: WhatsAppLimits }) {
+  const used = limits.messagesReserved;
+  const spent = limits.spendReservedInr;
+  return (
+    <section aria-labelledby="ops-whatsapp-limits">
+      <h3 id="ops-whatsapp-limits">WhatsApp limits you approved</h3>
+      <p>
+        One set of limits covers guest messages and registration codes together. Change them in the standing policy
+        file, not here.
+      </p>
+      <dl className="detail-list">
+        <div>
+          <dt>Window</dt>
+          <dd>
+            {when(limits.windowStartsAt)} to {when(limits.windowExpiresAt)}
+          </dd>
+        </div>
+        <div>
+          <dt>Messages</dt>
+          <dd>{used != null ? `${used} of ${limits.maximumMessages} used` : `Up to ${limits.maximumMessages}`}</dd>
+        </div>
+        <div>
+          <dt>Pace</dt>
+          <dd>Up to {limits.maximumMessagesPerMinute} a minute</dd>
+        </div>
+        <div>
+          <dt>Spend</dt>
+          <dd>
+            {spent != null
+              ? `${inr(spent)} of ${inr(limits.maximumSpendInr)} reserved`
+              : `Up to ${inr(limits.maximumSpendInr)}`}
+            {`, at most ${inr(limits.maximumCostPerMessageInr)} per message`}
+          </dd>
+        </div>
+        <div>
+          <dt>Guest messages</dt>
+          <dd>{limits.guestAdmission ? 'Open to the public' : 'Closed'}</dd>
+        </div>
+        <div>
+          <dt>Registration codes</dt>
+          <dd>{limits.registrationCodes ? 'On' : 'Off'}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
 const when = (value: string) => new Date(value).toLocaleString('en');
 
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -487,6 +538,7 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
                 </dd>
               </div>
             </dl>
+            {overview.limits ? <WhatsAppLimitsPanel limits={overview.limits} /> : null}
             <h3>Alert delivery, last 24 hours</h3>
             {overview.deliveries.length === 0 ? (
               <p>None recorded.</p>

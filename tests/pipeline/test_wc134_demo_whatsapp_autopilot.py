@@ -194,6 +194,13 @@ def test_committed_policy_matches_the_approved_demo_limits() -> None:
     }
     assert policy["window_days"] == 7
     assert policy["cohort"] == {"allow_public_admission": True, "allow_provisional_onboarding": True}
+    # Registration codes are approved for exactly the Meta-approved Authentication template and share the limits above.
+    assert policy["registration_verification"] == {
+        "TemplateId": "1476143084372706",
+        "TemplateName": "waooaw_registration_otp",
+        "Locale": "en",
+        "ApprovalReference": "META-WABA-TEMPLATE-1476143084372706-APPROVED-20261127",
+    }
 
 
 @pytest.mark.parametrize(
@@ -213,6 +220,24 @@ def test_committed_policy_matches_the_approved_demo_limits() -> None:
 def test_policy_outside_the_founder_ceiling_is_refused(change: dict[str, Any]) -> None:
     with pytest.raises(AutopilotError):
         load_policy(policy_bytes(**change))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"TemplateId": "not-a-number"},
+        {"TemplateName": "Has Capitals"},
+        {"Locale": "fr"},
+        {"ApprovalReference": ""},
+        {"Extra": "field"},
+    ],
+)
+def test_a_registration_template_that_is_not_exact_is_refused(change: dict[str, str]) -> None:
+    value = json.loads(POLICY.read_bytes())
+    value["registration_verification"].update(change)
+
+    with pytest.raises(AutopilotError):
+        load_policy(json.dumps(value).encode())
 
 
 def test_unknown_policy_fields_are_refused() -> None:
@@ -296,13 +321,39 @@ def test_successful_activation_is_accepted_by_the_real_validator_and_stays_insid
     assert set(evidence["receipts"]) == set(RECEIPTS)
 
 
+def test_the_activated_settings_turn_registration_codes_on_with_the_approved_template() -> None:
+    harness = Harness()
+
+    harness.pilot().activate()
+
+    assert harness.activated is not None
+    assert harness.activated["IdentityVerification__WhatsApp__Enabled"] == "true"
+    assert harness.activated["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "true"
+    assert harness.activated["IdentityVerification__WhatsApp__TemplateId"] == "1476143084372706"
+    assert harness.activated["IdentityVerification__WhatsApp__TemplateName"] == "waooaw_registration_otp"
+    assert harness.activated["IdentityVerification__WhatsApp__Locale"] == "en"
+
+
+def test_a_policy_without_a_registration_template_never_activates_registration_codes() -> None:
+    value = json.loads(POLICY.read_bytes())
+    del value["registration_verification"]
+    harness = Harness()
+
+    harness.pilot(json.dumps(value).encode()).activate()
+
+    assert harness.activated is not None
+    assert harness.activated["IdentityVerification__WhatsApp__Enabled"] == "false"
+    assert harness.activated["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "false"
+
+
 @pytest.mark.parametrize(
     "tamper",
     [
         lambda value: value["authority"].update(MaximumMessages=201),
         lambda value: value["authority"].update(MaximumSpendInr=501),
         lambda value: value["authority"].update(ExpiresAt="2026-12-30T00:00:00Z"),
-        lambda value: value["authority"].update(AllowRegistrationVerification=True),
+        lambda value: value["authority"].update(AllowRegistrationVerification=False),
+        lambda value: value["registration_verification"].update(TemplateName="waooaw_other_otp"),
         lambda value: value["templates"][0].update(Body="changed"),
     ],
 )

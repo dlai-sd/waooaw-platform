@@ -404,6 +404,46 @@ describe('OperationsConsole', () => {
     await waitFor(() => expect(calls.some((call) => call.url.includes('/acknowledge'))).toBe(true));
   });
 
+  it('shows the approved WhatsApp limits, what is used, and whether registration codes are on', async () => {
+    install({
+      ...baseRoutes,
+      'operations/overview': {
+        status: 200,
+        body: {
+          ...overview,
+          limits: {
+            windowStartsAt: '2026-11-26T18:10:00Z',
+            windowExpiresAt: '2026-12-03T18:10:00Z',
+            maximumMessages: 200,
+            maximumMessagesPerMinute: 6,
+            maximumSpendInr: 500,
+            maximumCostPerMessageInr: 5,
+            guestAdmission: true,
+            registrationCodes: true,
+            messagesReserved: 12,
+            spendReservedInr: 60,
+          },
+        },
+      },
+    });
+    render(<OperationsConsole canResolve />);
+
+    expect(await screen.findByRole('heading', { name: 'WhatsApp limits you approved' })).toBeInTheDocument();
+    expect(screen.getByText('12 of 200 used')).toBeInTheDocument();
+    expect(screen.getByText('Up to 6 a minute')).toBeInTheDocument();
+    expect(screen.getByText(/₹60\.00 of ₹500\.00 reserved, at most ₹5\.00 per message/)).toBeInTheDocument();
+    expect(screen.getByText('Open to the public')).toBeInTheDocument();
+    expect(screen.getByText('On')).toBeInTheDocument();
+  });
+
+  it('shows no limits block when no WhatsApp authority is configured', async () => {
+    install({ ...baseRoutes, 'operations/overview': { status: 200, body: { ...overview, limits: null } } });
+    render(<OperationsConsole canResolve />);
+
+    await screen.findByText('Alert delivery, last 24 hours');
+    expect(screen.queryByText('WhatsApp limits you approved')).not.toBeInTheDocument();
+  });
+
   it('says WhatsApp is not active instead of showing an empty queue as healthy', async () => {
     install({
       ...baseRoutes,

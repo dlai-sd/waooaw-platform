@@ -836,6 +836,7 @@ builder
     .Bind(builder.Configuration.GetSection(AcceptanceSyntheticOptions.SectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton<ISyntheticAcceptanceRegistry, PostgresSyntheticAcceptanceRegistry>();
+builder.Services.AddSingleton<ISyntheticVerificationCode, SyntheticVerificationCode>();
 builder.Services.AddSingleton<SyntheticTenantInheritance>();
 builder.Services.AddSingleton<ISyntheticDeliveryGate, SyntheticDeliveryGate>();
 builder.Services.AddSingleton<

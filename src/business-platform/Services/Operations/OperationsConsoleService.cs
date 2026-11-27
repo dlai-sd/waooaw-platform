@@ -83,6 +83,23 @@ public sealed record ServiceReadinessView(string Name, string State);
 
 public sealed record DeliveryOutcomeCount(string Channel, string Outcome, int Count);
 
+/// <summary>
+/// The Founder-approved WhatsApp limits for the running activation and what has been reserved against them so far.
+/// Registration codes and guest messages share one window, one message count, one rate and one spend ceiling.
+/// </summary>
+public sealed record WhatsAppLimitsView(
+    DateTimeOffset WindowStartsAt,
+    DateTimeOffset WindowExpiresAt,
+    int MaximumMessages,
+    int MaximumMessagesPerMinute,
+    decimal MaximumSpendInr,
+    decimal MaximumCostPerMessageInr,
+    bool GuestAdmission,
+    bool RegistrationCodes,
+    int? MessagesReserved,
+    decimal? SpendReservedInr
+);
+
 public sealed record OperationsOverview(
     string Environment,
     string WhatsApp,
@@ -94,7 +111,8 @@ public sealed record OperationsOverview(
     double? OldestBlockedMinutes,
     IReadOnlyList<DeliveryOutcomeCount> Deliveries,
     IReadOnlyList<ServiceReadinessView> Services,
-    DateTimeOffset ObservedAt
+    DateTimeOffset ObservedAt,
+    WhatsAppLimitsView? Limits = null
 );
 
 public sealed class BlockedMessageStateException : Exception;
@@ -112,7 +130,9 @@ public sealed class OperationsConsoleService(
     ConversationOperationsService operations,
     WhatsAppTenantExecutionScope tenantExecution,
     HealthCheckService health,
-    IOptions<Wc120ConversationOptions> options
+    IOptions<Wc120ConversationOptions> options,
+    IOptionsMonitor<WhatsAppCapabilityOptions>? capability = null,
+    IOptions<WhatsAppAuthenticationTemplateOptions>? verification = null
 )
 {
     public async Task<OperationsOverview> OverviewAsync(
@@ -124,6 +144,9 @@ public sealed class OperationsConsoleService(
         var whatsapp = "ACTIVE";
         string? reason = null;
         ConversationOperationalSnapshot? snapshot = null;
+        var authority = capability?.CurrentValue.Authority;
+        int? reserved = null;
+        decimal? reservedSpend = null;
         try
         {
             using var scope = tenantExecution.Begin();
@@ -131,6 +154,29 @@ public sealed class OperationsConsoleService(
                 tenantExecution.ServiceTenantId!.Value
             );
             snapshot = await operations.EvaluateAsync(now, cancellationToken);
+            if (authority is not null && authority.ActivationReference.Length > 0)
+            {
+                // The same digest the traffic budget writes, so the count is exactly what the limits are checked against.
+                var activationDigest = Convert.ToHexStringLower(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(authority.ActivationReference)
+                    )
+                );
+                await using var conversationDb = await conversationFactory.CreateDbContextAsync(
+                    cancellationToken
+                );
+                var used = await conversationDb
+                    .Set<WhatsAppTrafficReservation>()
+                    .AsNoTracking()
+                    .Where(value =>
+                        value.TenantId == authority.TenantId
+                        && value.ActivationDigest == activationDigest
+                    )
+                    .Select(value => value.ReservedCostInr)
+                    .ToListAsync(cancellationToken);
+                reserved = used.Count;
+                reservedSpend = used.Sum();
+            }
         }
         catch (WhatsAppCapabilityUnavailableException unavailable)
         {
@@ -171,7 +217,21 @@ public sealed class OperationsConsoleService(
             snapshot?.OldestDeadLetterAge?.TotalMinutes,
             deliveries,
             services,
-            now
+            now,
+            authority is null || authority.MaximumMessages <= 0
+                ? null
+                : new WhatsAppLimitsView(
+                    authority.StartsAt,
+                    authority.ExpiresAt,
+                    authority.MaximumMessages,
+                    authority.MaximumMessagesPerMinute,
+                    authority.MaximumSpendInr,
+                    authority.MaximumCostPerMessageInr,
+                    authority.AllowPublicAdmission,
+                    authority.AllowRegistrationVerification && verification?.Value.Enabled == true,
+                    reserved,
+                    reservedSpend
+                )
         );
     }
 

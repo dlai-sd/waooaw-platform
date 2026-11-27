@@ -188,6 +188,7 @@ public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
     private readonly IReadOnlyDictionary<string, byte[]> _hmacKeys;
     private readonly IIdentityVerificationDispatcher _dispatcher;
     private readonly IIdentityConstitutionalGateway? _constitutionalGateway;
+    private readonly AcceptanceSynthetic.ISyntheticVerificationCode? _syntheticVerificationCode;
     private readonly TimeProvider _clock;
 
     private const int Aal3FreshWindowMinutes = 5;
@@ -199,9 +200,11 @@ public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
         IOptions<IdentityHmacOptions> hmacOptions,
         IIdentityVerificationDispatcher dispatcher,
         IIdentityConstitutionalGateway? constitutionalGateway = null,
-        TimeProvider? clock = null
+        TimeProvider? clock = null,
+        AcceptanceSynthetic.ISyntheticVerificationCode? syntheticVerificationCode = null
     )
     {
+        _syntheticVerificationCode = syntheticVerificationCode;
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _constitutionalGateway = constitutionalGateway;
@@ -1057,8 +1060,13 @@ public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
                 throw new IdentityVerificationRateLimitedException(nextRequest);
         }
 
-        // Generate cryptographically secure 6-digit OTP; raw code must never be persisted
-        var rawCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        // A synthetic test customer registers with a fixed test code and nothing is sent; everyone else gets a
+        // cryptographically secure 6-digit OTP. The raw code is never persisted.
+        var syntheticCode =
+            reg is not null && actor is not null && _syntheticVerificationCode is not null
+                ? await _syntheticVerificationCode.CodeForAsync(actor.Issuer, actor.Subject, ct)
+                : null;
+        var rawCode = syntheticCode ?? RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         var codeHmac = ComputeHmac("otp", rawCode, _activeHmacVersion);
         var masked = MaskMobile(mobile);
 
@@ -1101,7 +1109,11 @@ public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
         }
         try
         {
-            if (reg is not null)
+            if (syntheticCode is not null)
+            {
+                // Test customer: no message, no budget; the fixed test code is the proof.
+            }
+            else if (reg is not null)
             {
                 await _dispatcher.DispatchRegistrationMobileAsync(
                     reg.RegistrationId,
