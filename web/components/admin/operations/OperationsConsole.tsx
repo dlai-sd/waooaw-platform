@@ -307,7 +307,7 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
   const [tab, setTab] = useState<TabId>('overview');
   const overviewRead = useRemote(readOverview, 'The overview');
   const blockedRead = useRemote(readBlocked, 'Blocked messages');
-  const pagesRead = useRemote(readPages, 'Pages');
+  const pagesRead = useRemote(readPages, 'Urgent alerts');
   const historyRead = useRemote(readResolutions, 'Recent changes');
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
@@ -383,7 +383,7 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
       id: 'blocked',
       label: blocked && blocked.length > 0 ? `Blocked messages (${blocked.length})` : 'Blocked messages',
     },
-    { id: 'pages', label: 'Pages' },
+    { id: 'pages', label: 'Urgent alerts' },
     ...(canResolve ? [{ id: 'customers' as const, label: 'Customers' }] : []),
     { id: 'work', label: 'Work and spend' },
   ];
@@ -580,8 +580,11 @@ export function OperationsConsole({ canResolve }: { canResolve: boolean }) {
         ) : null}
         {tab === 'pages' ? (
           <section aria-labelledby="ops-pages">
-            <h2 id="ops-pages">Pages</h2>
-            <p>{copy.emitted}. A standing alert is recorded once an hour, not every check.</p>
+            <h2 id="ops-pages">Urgent alerts</h2>
+            <p>
+              Alerts that ask a person to act now, such as a message stuck for over half an hour. {copy.emitted}. A
+              standing alert is recorded once an hour, not every check.
+            </p>
             <LoadProblem onRetry={pagesRead.retry} state={pagesRead.state} />
             {pages !== null && pages.length === 0 ? <p>{copy.noPages}</p> : null}
             <ul className="portal-list">

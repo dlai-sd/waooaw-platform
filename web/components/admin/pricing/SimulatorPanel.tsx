@@ -35,8 +35,15 @@ export function SimulatorPanel({ result }: { result: Simulation | null }) {
               <th scope="col">Profile</th>
               <th scope="col">Monthly cost</th>
               <th scope="col">Margin</th>
-              <th scope="col">Day-one exposure</th>
-              <th scope="col">Pro-rata refund</th>
+              <th
+                scope="col"
+                title="The most the platform could spend on day one if the customer uses everything allowed, then leaves on day two"
+              >
+                Day-one exposure
+              </th>
+              <th scope="col" title="The part of the price refunded if the customer leaves on day two">
+                Pro-rata refund
+              </th>
             </tr>
           </thead>
           <tbody>

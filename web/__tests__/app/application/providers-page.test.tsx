@@ -41,22 +41,22 @@ it('sends a visitor without a session home before loading anything', async () =>
   expect(loadProviders).not.toHaveBeenCalled();
 });
 
-it('sends a pricing administrator who is not the Founder home without reading the registry', async () => {
+it('sends a pricing administrator who is not the Founder to the not-permitted page without reading the registry', async () => {
   founderAccess(false);
 
   await expect(ProvidersPage()).rejects.toThrow('NEXT_REDIRECT');
 
-  expect(redirect).toHaveBeenCalledWith('/home');
+  expect(redirect).toHaveBeenCalledWith('/403');
   expect(loadProviders).not.toHaveBeenCalled();
 });
 
-it('sends the caller home when the owner refuses them', async () => {
+it('sends the caller to the not-permitted page when the owner refuses them', async () => {
   founderAccess(true);
   jest.mocked(loadProviders).mockResolvedValue({ kind: 'forbidden' });
 
   await expect(ProvidersPage()).rejects.toThrow('NEXT_REDIRECT');
 
-  expect(redirect).toHaveBeenCalledWith('/home');
+  expect(redirect).toHaveBeenCalledWith('/403');
 });
 
 it('shows a graceful state when the Business Platform cannot be reached', async () => {

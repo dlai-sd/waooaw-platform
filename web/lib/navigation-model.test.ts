@@ -52,6 +52,18 @@ describe('the global menu', () => {
     ).toEqual(['operations', 'pricing', 'providers', 'agent-operation', 'vault', 'access']);
   });
 
+  it('gives every staff tool its own icon so two entries are never mistaken for each other', () => {
+    const tools = operationsMenu({
+      showAccess: true,
+      showKeyVaultAdmin: true,
+      showOperations: true,
+      showPricingAdmin: true,
+      showProviderAdmin: true,
+    });
+    expect(new Set(tools.map((link) => link.icon)).size).toBe(tools.length);
+    expect(new Set(tools.map((link) => link.label)).size).toBe(tools.length);
+  });
+
   it('keeps the Founder shell to its own links', () => {
     expect(founderMenu('Founder home').map((link) => link.href)).toEqual(['/founder', '/founder/access']);
   });

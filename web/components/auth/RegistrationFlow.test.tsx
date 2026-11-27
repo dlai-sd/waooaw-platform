@@ -442,6 +442,45 @@ describe('F2 registration flow', () => {
     expect(JSON.stringify(sessionStorage)).not.toContain('+14155550100');
   });
 
+  it('says no code was sent when delivery was refused before WhatsApp was reached, and lets a fresh request follow', async () => {
+    jest
+      .mocked(crypto.randomUUID)
+      .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
+      .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
+      .mockReturnValueOnce('33333333-3333-4333-8333-333333333333');
+    global.fetch = jest
+      .fn()
+      .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction: 'VERIFY_MOBILE' }))
+      .mockImplementationOnce(() =>
+        jsonResponse({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', deliveryState: 'NOT_SENT' }, 503)
+      )
+      .mockImplementationOnce(() => jsonResponse({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE' }, 503));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+    fireEvent.change(await screen.findByLabelText('WhatsApp number'), { target: { value: '+14155550100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp verification code' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(getIdentityMessages('en').whatsappVerificationNotSent);
+    expect(screen.queryByText(getIdentityMessages('en').whatsappDeliveryUnresolved)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Request a new WhatsApp code' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send WhatsApp verification code' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    const commands = jest.mocked(fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)));
+    expect(commands[2].idempotencyKey).not.toBe(commands[1].idempotencyKey);
+  });
+
+  it('names the provider that verified the email only when it is known', async () => {
+    global.fetch = jest.fn(() => jsonResponse({ ...baseRegistration, providerLabel: 'synthetic' }));
+    const { unmount } = render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+    expect(await screen.findByLabelText('Verified email')).toBeInTheDocument();
+    expect(screen.queryByText(/Verified by/)).not.toBeInTheDocument();
+    unmount();
+
+    global.fetch = jest.fn(() => jsonResponse({ ...baseRegistration, providerLabel: 'facebook' }));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+    expect(await screen.findByText('Verified by Facebook')).toBeInTheDocument();
+  });
+
   it('keeps the number form available after a resend cooldown denial', async () => {
     global.fetch = jest
       .fn()

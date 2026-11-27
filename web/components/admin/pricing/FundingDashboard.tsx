@@ -49,10 +49,18 @@ function ComponentCostTable({ rows }: { rows: ComponentCost[] }) {
       <thead>
         <tr>
           <th scope="col">Component</th>
-          <th scope="col">Recipe cost</th>
-          <th scope="col">Actual cost</th>
-          <th scope="col">Implied margin</th>
-          <th scope="col">Tolerance</th>
+          <th scope="col" title="What the price assumed this component costs">
+            Recipe cost
+          </th>
+          <th scope="col" title="What was really spent in this period">
+            Actual cost
+          </th>
+          <th scope="col" title="The margin left when the actual cost is used instead of the recipe cost">
+            Implied margin
+          </th>
+          <th scope="col" title="Whether the actual cost stays within the allowed gap from the recipe cost">
+            Tolerance
+          </th>
         </tr>
       </thead>
       <tbody>

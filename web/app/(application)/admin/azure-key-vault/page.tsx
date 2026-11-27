@@ -7,7 +7,8 @@ import { getServerAccessToken } from '@/lib/server-auth';
 export default async function AzureKeyVaultPage() {
   const accessToken = await getServerAccessToken();
   // The platform Founder grant decides who may open this page; the Azure sign-in still restricts who may write.
-  if (!accessToken || !(await resolvePlatformAccess(accessToken)).founder) redirect('/home');
+  if (!accessToken) redirect('/home');
+  if (!(await resolvePlatformAccess(accessToken)).founder) redirect('/403');
   const target = keyVaultTarget();
   if (!target) {
     return (

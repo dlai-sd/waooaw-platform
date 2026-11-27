@@ -148,7 +148,7 @@ export const operationsCopy = {
   stepUp: 'This change needs a fresh multi-factor sign-in.',
   inactive: 'WhatsApp is not active in this environment, so there are no messages to show.',
   noBlocked: 'No blocked messages.',
-  noPages: 'No pages recorded.',
+  noPages: 'No urgent alerts recorded.',
   noCustomers: 'No customers match these filters.',
   stepUpResume: 'Confirm below and your action resumes automatically.',
   loading: 'Loading…',

@@ -126,7 +126,7 @@ describe('OperationsConsole', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Overview',
       'Blocked messages (1)',
-      'Pages',
+      'Urgent alerts',
       'Customers',
       'Work and spend',
     ]);
@@ -323,9 +323,11 @@ describe('OperationsConsole', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Retry' })[0]);
     expect(await screen.findByText(/blocked for 42 min/)).toBeInTheDocument();
 
-    openTab('Pages');
-    expect(await screen.findByText('Pages could not be loaded right now. Nothing was changed.')).toBeInTheDocument();
-    expect(screen.queryByText('No pages recorded.')).not.toBeInTheDocument();
+    openTab('Urgent alerts');
+    expect(
+      await screen.findByText('Urgent alerts could not be loaded right now. Nothing was changed.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No urgent alerts recorded.')).not.toBeInTheDocument();
   });
 
   it('shows Loading while a read is in flight, and an empty state only for a confirmed empty answer', async () => {
@@ -383,7 +385,7 @@ describe('OperationsConsole', () => {
     openTab(/Blocked messages/);
     expect(screen.queryByLabelText('Reason')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Retry send' })).not.toBeInTheDocument();
-    openTab('Pages');
+    openTab('Urgent alerts');
     expect(screen.queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
   });
 
@@ -394,7 +396,7 @@ describe('OperationsConsole', () => {
     });
     render(<OperationsConsole canResolve />);
     await screen.findByText(/operator page: emitted/);
-    openTab('Pages');
+    openTab('Urgent alerts');
 
     expect(await screen.findByText(/dead letter age breach: emitted · 3 times, first/)).toBeInTheDocument();
     expect(screen.getByText(/a person receiving it is not proven here/)).toBeInTheDocument();

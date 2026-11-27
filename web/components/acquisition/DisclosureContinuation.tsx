@@ -20,6 +20,7 @@ export function DisclosureContinuation({
   quoteVersion,
   hireUnavailable = false,
   hireUnavailableReason,
+  registrationRequired = false,
   trialAvailable,
   trialDurationDays,
 }: {
@@ -33,6 +34,7 @@ export function DisclosureContinuation({
   quoteVersion?: string;
   hireUnavailable?: boolean;
   hireUnavailableReason?: 'not-for-sale' | 'temporary';
+  registrationRequired?: boolean;
   trialAvailable: boolean;
   trialDurationDays?: number;
 }) {
@@ -126,6 +128,25 @@ export function DisclosureContinuation({
   }
 
   if (continuation) return <AcquisitionContinuation {...continuation} />;
+  if (registrationRequired) {
+    return (
+      <section className="disclosure-continuation" aria-labelledby="acquisition-register-title">
+        <h2 id="acquisition-register-title">Create your account to continue</h2>
+        <p>
+          A Trial or Hire needs a registered account with your name, business and a verified WhatsApp number. Nothing is
+          charged and nothing starts until you confirm.
+        </p>
+        <div className="command-row">
+          <Link className="primary-command" href={`/register?returnTo=${encodeURIComponent('/marketplace')}`}>
+            Complete registration
+          </Link>
+          <Link className="text-command" href="/marketplace">
+            Not now
+          </Link>
+        </div>
+      </section>
+    );
+  }
   if (!selectedIntent) {
     return (
       <section className="disclosure-continuation" aria-labelledby="acquisition-mode-title">
@@ -224,7 +245,7 @@ export function DisclosureContinuation({
         </div>
       )}
       <fieldset className="checkout-method-preview">
-        <legend>Razorpay payment options</legend>
+        <legend>{trialMode ? 'Payment' : 'Razorpay payment options'}</legend>
         <p>
           {trialMode
             ? 'Payment is not required during the free Trial.'
@@ -232,13 +253,15 @@ export function DisclosureContinuation({
               ? 'No payment method is required because the payable amount is INR 0.'
               : 'Choose your payment method in secure Razorpay Checkout after confirmation.'}
         </p>
-        <div className="command-row" aria-label="Razorpay payment methods">
-          {['Credit or debit card', 'UPI', 'Netbanking', 'Wallet'].map((method) => (
-            <button disabled={trialMode || zeroPayableHire} key={method} type="button">
-              {method}
-            </button>
-          ))}
-        </div>
+        {trialMode || zeroPayableHire ? null : (
+          <div className="command-row" aria-label="Razorpay payment methods">
+            {['Credit or debit card', 'UPI', 'Netbanking', 'Wallet'].map((method) => (
+              <button disabled key={method} type="button">
+                {method}
+              </button>
+            ))}
+          </div>
+        )}
       </fieldset>
       <div className="command-row">
         {selectedIntent === 'trial' ? (

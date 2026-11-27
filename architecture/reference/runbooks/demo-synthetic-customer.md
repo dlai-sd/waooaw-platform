@@ -22,6 +22,7 @@ Add `--harness-private DIR` to also write `run-state.json` so the journey harnes
 | Script | What it does |
 |---|---|
 | `scripts/run_demo_customer_walk.sh` | Signs in as a throwaway customer in a real browser, visits every customer and Founder route, records status, headings, tabs, buttons, console errors, failed requests and a screenshot per page, and probes which Founder pages can start a two-factor sign-in. |
+| `JOURNEY=explore\|register\|trial scripts/run_demo_customer_walk.sh` | Runs `tests/demo-customer-walk/journey.mjs`: opens Register, signs in, opens the Trial review, and with `trial` confirms it, with `register` fills the profile and stops at the WhatsApp step. Records every API call, status and a screenshot per step. Needs a throwaway customer and the Founder's approval. |
 | `scripts/run_acceptance_with_synthetic_customers.sh JOURNEY` | Runs one customer-journey-acceptance journey locally in Docker against those customers. |
 
 Both need `WAOOAW_RUNNER_TYPESCRIPT_IMAGE` (and the Python image for the journey runner).

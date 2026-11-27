@@ -27,7 +27,7 @@ async function loadSettings(accessToken: string): Promise<OperationSettings | nu
 export default async function AgentOperationAdminPage() {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/home');
-  if (!(await resolvePlatformAccess(accessToken)).founder) redirect('/home');
+  if (!(await resolvePlatformAccess(accessToken)).founder) redirect('/403');
   const settings = await loadSettings(accessToken);
   if (settings === null) {
     return (

@@ -77,8 +77,13 @@ test('a person without a customer account is told what to do first, not that the
   serve({ 'GET ': fakeResponse(403, { code: 'CONNECTION_ACCOUNT_REQUIRED' }) });
   render(<ConnectionsWorkspace />);
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(/Start a trial or hire an agent first/);
-  expect(screen.getByRole('alert')).not.toHaveTextContent(/not permitted/);
+  expect(await screen.findByText(/after you have registered and started a Trial or Hire/)).toBeInTheDocument();
+  // Having no account yet is a normal first state, so it is guidance and not an error alert.
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Complete registration' })).toHaveAttribute(
+    'href',
+    '/register?returnTo=%2Fconnections'
+  );
   expect(screen.getByRole('link', { name: 'Browse the marketplace' })).toHaveAttribute('href', '/marketplace');
   expect(screen.queryByRole('button', { name: /Connect Facebook/ })).not.toBeInTheDocument();
 });

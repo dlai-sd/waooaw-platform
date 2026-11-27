@@ -11,7 +11,7 @@ export default async function OperationsPage() {
   if (!accessToken) redirect('/home');
   const access = await resolvePlatformAccess(accessToken);
   // The Business Platform decides who may read or resolve; a person with no staff grant never sees this screen.
-  if (!access.founder && !access.administrator) redirect('/home');
+  if (!access.founder && !access.administrator) redirect('/403');
   return (
     <section aria-labelledby="operations-title" className="portal-page operations-console">
       <header className="portal-heading">

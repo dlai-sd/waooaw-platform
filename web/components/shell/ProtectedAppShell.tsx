@@ -18,6 +18,7 @@ import {
   Menu,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Store,
   Tag,
   UserCheck,
@@ -59,6 +60,7 @@ const menuIcons: Record<MenuIcon, LucideIcon> = {
   vault: Vault,
   pricing: Tag,
   providers: KeyRound,
+  'agent-operation': SlidersHorizontal,
   access: UserCheck,
   founder: ShieldCheck,
 };
@@ -107,9 +109,15 @@ export function ProtectedAppShell({
           alerts: portal.alerts,
           settings: messages.settings,
         });
+  // The Founder holds every staff tool, so the Founder menu reaches all of them; Staff access already sits in the main list.
   const operationsLinks: MenuLink[] =
     variant === 'founder'
-      ? []
+      ? operationsMenu({
+          showKeyVaultAdmin: true,
+          showOperations: true,
+          showPricingAdmin: true,
+          showProviderAdmin: true,
+        })
       : operationsMenu({ showAccess, showKeyVaultAdmin, showOperations, showPricingAdmin, showProviderAdmin });
   useEffect(() => {
     if (identitySession) recordAuthTransition('SESSION_RESOLVED');

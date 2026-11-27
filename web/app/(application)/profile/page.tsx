@@ -35,7 +35,7 @@ export default async function ProfilePage() {
           actionLabel="Browse Marketplace"
           kind="empty"
           title="Your customer profile is ready to begin"
-          description="Your login is secure. Organization, billing and customer profile details are created only when you choose Trial or Hire."
+          description="Your login is secure. Finish registration to add your name, business and a verified WhatsApp number. Billing details appear once you start a Trial or Hire."
         />
       );
     }
