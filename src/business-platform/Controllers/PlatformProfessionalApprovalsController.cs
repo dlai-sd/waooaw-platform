@@ -29,11 +29,12 @@ public sealed class PlatformProfessionalApprovalsController(
     public async Task<IActionResult> ListAsync(CancellationToken ct) =>
         IsFounder() ? Ok(new { items = await approvals.ListAsync(ct) }) : Denied();
 
-    [HttpPost("{type}/versions/{version}/{action}")]
+    // "{action}" is a reserved routing word and never matches, so the decision word has its own name.
+    [HttpPost("{type}/versions/{version}/{decision}")]
     public async Task<IActionResult> DecideAsync(
         string type,
         string version,
-        string action,
+        string decision,
         [FromBody] PlatformProfessionalDecisionBody? body,
         CancellationToken ct
     )
@@ -48,7 +49,9 @@ public sealed class PlatformProfessionalApprovalsController(
                 User.FindFirstValue("sub")
                 ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? "founder";
-            return Ok(await approvals.DecideAsync(type, version, action, actor, body?.Reason, ct));
+            return Ok(
+                await approvals.DecideAsync(type, version, decision, actor, body?.Reason, ct)
+            );
         }
         catch (PlatformApprovalException failure)
         {
