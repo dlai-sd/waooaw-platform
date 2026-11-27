@@ -1,0 +1,173 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-177
+contract_path: work-contracts/WC-177-deployment-time-and-database-update-path.md
+contract_digest: b1b996ce0a67af207411978a8fba3b31874d56a85bfaea968136b2f292434730
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Failing test first, then passing in the Docker Python runner (PYTHONPATH=/workspace:/workspace/scripts) and the local database qualification where code changes; a Demo run read-back for each Demo outcome; commands and results in the PR body at the exact head.
+  initial_state: expected-fail
+  dependencies: Founder authorizes the chunk in the current session; baseline origin/main at 18e76536 (PR 659 merged)
+  residual_risk: Items marked not verified in the contract are proved by the requirement itself before anything depends on them
+  completion_rule: Executable evidence and the live read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC177-R001
+    source: WC-177 Canonical Requirement Index, R001
+    observable_outcome: 'The database plan step chooses reuse, update or full from the repository, the sealed record and the live facts, never connects to the database, writes the path and reason, and selects full for every input it cannot read or does not recognise.'
+    test_path_or_plan: 'tests/pipeline/test_wc143_database_chain_record.py extended (or tests/pipeline/test_wc177_database_path.py): one case per decision-table row and per fail-closed input; workflow step wiring test.'
+
+  - <<: *defaults
+    requirement_id: WC177-R002
+    source: WC-177 Canonical Requirement Index, R002
+    observable_outcome: 'The sealed record is version 2 (applied init-file digests, last qualified vendor and PgBouncer digests, schema version), is written after a successful full or update, stays sealed, and a version-1 record selects full once without failing.'
+    test_path_or_plan: 'tests/pipeline/test_wc143_database_chain_record.py: v2 round trip, tamper rejection, v1 record selects full, write after update.'
+
+  - <<: *defaults
+    requirement_id: WC177-R003
+    source: WC-177 Canonical Requirement Index, R003
+    observable_outcome: 'Every deployment records, per stage group, the path taken, the reason and the seconds in the job summary and an evidence file.'
+    test_path_or_plan: 'Workflow structure test that every stage group writes the record; Demo read-back in R022 against the run 45983274213 baseline.'
+
+  - <<: *defaults
+    requirement_id: WC177-R004
+    source: WC-177 Canonical Requirement Index, R004
+    observable_outcome: 'New init files carry the wc177-apply header; the lint treats a missing header as full, rejects any update file that breaks the update rules (including a missing SET LOCAL ROLE for object creation), and existing files are untouched.'
+    test_path_or_plan: 'tests/pipeline/test_wc124_init_chain_lint.py: one passing and one failing case per update rule; test that the existing 144 files are unchanged and classified applied.'
+
+  - <<: *defaults
+    requirement_id: WC177-R005
+    source: WC-177 Canonical Requirement Index, R005
+    observable_outcome: 'The full path creates the update principal with no default role and no superuser, CREATEROLE or CREATEDB, grants exactly the allowed owner memberships, the connect right and the ledger access, reassigns bootstrap-owned objects to bp_owner, records memberships and the before and after count of bootstrap-owned objects, and the credential exists only in the catalog, the provisioner specifications and the update job.'
+    test_path_or_plan: 'tests/pipeline/test_wc124_db_provisioner.py and the secret-catalog tests extended; local qualification asserts memberships and zero bootstrap-owned objects after the reassign; first Demo full run read-back of the evidence counts.'
+    dependencies: 'Founder decision D2 (Enterprise Architect ruling on the two owner memberships); R004'
+
+  - <<: *defaults
+    requirement_id: WC177-R006
+    source: WC-177 Canonical Requirement Index, R006
+    observable_outcome: 'The job job-<env>-wc124-database-update applies only ledger-missing update files as the update principal through PgBouncer, each in one transaction with its ledger row, refuses changed digests, unclassified or full files and out-of-rule statements, and the database_path input exists.'
+    test_path_or_plan: 'Terraform module test (HCL parse and policy tests); apply program unit tests; workflow input test; image check recorded in the PR body before building.'
+    dependencies: 'R004, R005'
+
+  - <<: *defaults
+    requirement_id: WC177-R007
+    source: WC-177 Canonical Requirement Index, R007
+    observable_outcome: 'The update path stops no application, keeps the existing order, and a lock conflict gives a bounded retry then a failure naming the blocking statement.'
+    test_path_or_plan: 'Local qualification case holding a conflicting lock; workflow test that no Stop or quiesce step runs on the update path.'
+    dependencies: 'R006'
+
+  - <<: *defaults
+    requirement_id: WC177-R008
+    source: WC-177 Canonical Requirement Index, R008
+    observable_outcome: 'After an update a read-only verification as the update principal checks ledger digests, ownership of every new object, the Business Platform schema health object set and the principal''s memberships and attributes; a failure fails the deployment.'
+    test_path_or_plan: 'Verification script tests (pass and each failure); local qualification run; Demo read-back in R022.'
+    dependencies: 'R006'
+
+  - <<: *defaults
+    requirement_id: WC177-R009
+    source: WC-177 Canonical Requirement Index, R009
+    observable_outcome: 'The pre-activation evidence validator and activation bundle accept the labelled update evidence, still reject evidence bound to another execution or record, and the terminal authority checks and credential handoff verification run on every path.'
+    test_path_or_plan: 'tests/pipeline pre-activation evidence tests extended; workflow test that the terminal checks have no path condition.'
+    dependencies: 'R006, R008'
+
+  - <<: *defaults
+    requirement_id: WC177-R010
+    source: WC-177 Canonical Requirement Index, R010
+    observable_outcome: 'Vendor migrations and the Temporal qualification are skipped with labelled evidence only when recorded vendor and PgBouncer digests and job definitions equal the current ones and an earlier success is recorded; the quiesce step runs only with the qualification.'
+    test_path_or_plan: 'tests/pipeline/test_wc168_temporal_drain_wait.py and the record tests extended: one case per skip and per forced-run input; workflow condition test.'
+    dependencies: 'R002'
+
+  - <<: *defaults
+    requirement_id: WC177-R011
+    source: WC-177 Canonical Requirement Index, R011
+    observable_outcome: 'The local qualification runs the replica scenario through a transaction-mode PgBouncer, shows zero schema drift between the full chain and base plus update, refuses full-class, unclassified and changed-digest files, covers the lock case, and is in the release qualification gate.'
+    test_path_or_plan: 'scripts/wc124_init_chain_local.sh extended (Docker); evidence at test-results/wc124/init-chain-local/; release qualification gate listing test.'
+    initial_state: new
+    dependencies: 'R004, R005, R006'
+
+  - <<: *defaults
+    requirement_id: WC177-R012
+    source: WC-177 Canonical Requirement Index, R012
+    observable_outcome: 'A stage is skipped only when its own plan output proves it has nothing to do; no safety gate is removed; each skip records its proof; the saving is measured.'
+    test_path_or_plan: 'Workflow condition tests per skipped stage; Demo read-back of the recorded proofs in R022.'
+    dependencies: 'R003'
+
+  - <<: *defaults
+    requirement_id: WC177-R013
+    source: WC-177 Canonical Requirement Index, R013
+    observable_outcome: 'The cost of the five Terraform stages is measured, and a reduction ships only if plan provenance (binary, state lineage and serial, backend, run and attempt) still holds; otherwise the finding is documented and nothing changes.'
+    test_path_or_plan: 'Measurement table in the PR body; provenance tests (goal006_plan_provenance) unchanged and passing.'
+    dependencies: 'R003; Founder decision D3 for any gate-changing part'
+
+  - <<: *defaults
+    requirement_id: WC177-R014
+    source: WC-177 Canonical Requirement Index, R014
+    observable_outcome: 'The WhatsApp activation is measured by phase and reduced inside its existing proof gates; skipping or moving it is not done without D3.'
+    test_path_or_plan: 'tests for scripts/wc134_demo_whatsapp_autopilot.py extended for the polling change; measurement table in the PR body.'
+    dependencies: 'R003; Founder decision D3 for skipping or moving'
+
+  - <<: *defaults
+    requirement_id: WC177-R015
+    source: WC-177 Canonical Requirement Index, R015
+    observable_outcome: 'A failed deployment resumes at the failed stage group when every earlier checkpoint is intact and bound to the same release, plan digests and inputs; otherwise it starts from the beginning.'
+    test_path_or_plan: 'Checkpoint binding tests (intact, tampered, different release, missing); workflow input test; prior-art review recorded in the PR body.'
+    dependencies: 'R003'
+
+  - <<: *defaults
+    requirement_id: WC177-R016
+    source: WC-177 Canonical Requirement Index, R016
+    observable_outcome: 'UAT uses the same paths and guards as Demo with a restore marker written before each update; Production is refused by the plan and a test until D1 and D2 are answered; the Production design is written into the documents.'
+    test_path_or_plan: 'Plan tests for uat and prod; restore-marker unit test; documentation consistency test (R021).'
+    initial_state: blocked
+    dependencies: 'Founder decisions D1 and D2 (Production); R001, R006'
+
+  - <<: *defaults
+    requirement_id: WC177-R017
+    source: WC-177 Canonical Requirement Index, R017
+    observable_outcome: 'The Platform IT Expert specification describes the file classes, header, update rules, update principal, ledger and extended gates in section 2.5, and carries a skill for choosing and running the database path, with version and changelog rows consistent.'
+    test_path_or_plan: 'Specification consistency test (token presence and skill-count assertions); document diff in the PR.'
+    initial_state: new
+    dependencies: 'Updated inside the pull requests that ship R004 to R011'
+
+  - <<: *defaults
+    requirement_id: WC177-R018
+    source: WC-177 Canonical Requirement Index, R018
+    observable_outcome: 'The deployment topology document is updated: strategy items 3 and 4, the tooling map, the operator update, the stage-time table and the supersession of WC143-R001.'
+    test_path_or_plan: 'Documentation consistency test (R021); document diff in the PR.'
+    initial_state: new
+    dependencies: 'Updated inside the pull requests that ship R001 to R016'
+
+  - <<: *defaults
+    requirement_id: WC177-R019
+    source: WC-177 Canonical Requirement Index, R019
+    observable_outcome: 'The environment-readiness component (sections 8.1 and 8.2) and the lifecycle component (section 7.2) match what ships; no ADR is created or amended by Platform IT; an ADR need is raised to the Enterprise Architect.'
+    test_path_or_plan: 'Documentation consistency test (R021); document diff in the PR; EA request recorded if raised.'
+    initial_state: new
+    dependencies: 'Founder decision D2; updated inside the pull request that ships R005'
+
+  - <<: *defaults
+    requirement_id: WC177-R020
+    source: WC-177 Canonical Requirement Index, R020
+    observable_outcome: 'The runbook tells the operator how to read the plan evidence, when each path runs, how to force database_path=full, how to recover from an update refusal, and what the restore marker is.'
+    test_path_or_plan: 'Runbook link and token test; document diff in the PR.'
+    initial_state: new
+    dependencies: 'Updated inside the pull request that ships R006'
+
+  - <<: *defaults
+    requirement_id: WC177-R021
+    source: WC-177 Canonical Requirement Index, R021
+    observable_outcome: 'New tests are registered in the engineering validation catalog and the release qualification gate, the state refresh runs before every last commit, PROJECT_STATE records each state transition, and a pipeline test fails when workflow inputs, header token, principal name, record version and the R017 to R020 documents disagree.'
+    test_path_or_plan: 'tests/pipeline/test_wc177_documentation_currency.py; validation catalog tests; prepare_pr_body.py state check.'
+    initial_state: new
+    dependencies: 'Each chunk''s pull requests'
+
+  - <<: *defaults
+    requirement_id: WC177-R022
+    source: WC-177 Canonical Requirement Index, R022
+    observable_outcome: 'On Demo, started by the Founder: a no-change deployment takes the reuse path with about two minutes or less on the database stages; a deployment with one harmless idempotent update file takes the update path with applications running; a database_path=full dispatch completes; the measured times are recorded against the 40-minute baseline.'
+    test_path_or_plan: 'Demo run read-backs (path and stage evidence files, job step times) recorded in the contract Implementation Record.'
+    dependencies: 'Chunks A to E deployed; the Founder starts each run (the agent does not watch or poll runs)'
