@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-175
 contract_path: work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md
-contract_digest: 91baa362e77acd304d6e500dd2253f9d965a1e9cd6be882fc5023827e31511d6
+contract_digest: 8d8fa002bb3297058e3ba27e2b70c2b029b500809f4f96812f86e098b454e6ff
 implementation_scope: true
 result: PLANNED
 
@@ -141,7 +141,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC175-R020
     source: WC-175 Canonical Requirement Index, R020
-    observable_outcome: Registration verification is active on Demo and a customer receives a code and completes registration.
+    observable_outcome: Registration verification is active in each environment that configures it and a customer receives a code and completes registration.
     test_path_or_plan: Founder approval of the authentication template and standing policy version, then autopilot and configuration tests and a live registration.
     initial_state: Founder-reserved
     result: FOUNDER_RESERVED
