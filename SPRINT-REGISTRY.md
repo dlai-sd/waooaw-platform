@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-26 · **Version:** 1.45.0 · **Work Contracts:** 165 Work Contracts recorded · 112 with merged-PR evidence · 53 without
+**Last Updated:** 2026-11-26 · **Version:** 1.45.0 · **Work Contracts:** 166 Work Contracts recorded · 112 with merged-PR evidence · 54 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,12 +218,13 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
+| WC-175 | Demo Registration, Trial, Hire And Founder Screen Defects | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED | none recorded |
 | WC-174 | Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED | **GROOMED 2026-11-26 (documents only).** The build is not authorized | #650, #649 |
 | WC-172 | Safe To Charge Real Customers (Roadmap Iteration 5, Milestone M5) - GROOMED | **BUILT (application stories of Epics L, T and M and the code parts of U and G), pending the single Docker validation pa | #651, #648, #647, #645 |
 | WC-171 | Agent Navigation, Alerts And Oversight (Roadmap Iteration 4, Milestone M4) - GROOMED | **BUILT, pending the single Docker validation pass and Founder review.** The Founder authorized the build in the session | #648, #645 |
 | WC-170 | Agent Execution Instructions | accepted when the Founder merges the WC-170 grooming pull request. | #645, #643, #640 |
 | WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | IN PROGRESS (documents and database grants) | #645, #642, #641, #640 |
-| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #640 |
+| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | #654, #640 |
 | WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #640, #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |

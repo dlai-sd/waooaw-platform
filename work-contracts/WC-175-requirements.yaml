@@ -1,0 +1,161 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-175
+contract_path: work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md
+contract_digest: 91baa362e77acd304d6e500dd2253f9d965a1e9cd6be882fc5023827e31511d6
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Failing test first, then passing in the Docker Python, .NET and web runners where code changes; a Demo read-back or Skill 24 live re-test for each Demo outcome; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorizes implementation for the current session before any src/ or web/ code is written; baseline 60e944ea
+  residual_risk: Findings marked CODE or INFERRED in the contract are not yet seen live
+  completion_rule: Executable evidence and the live read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC175-R001
+    source: WC-175 Canonical Requirement Index, R001
+    observable_outcome: The cause of the registration verification failure is proven from Demo evidence and recorded before any fix.
+    test_path_or_plan: Grooming Log of the contract (live Business Platform settings, Founder policy, dispatcher code); Demo log correlation 2503982b-0b3c-4734-a25b-650e6e6a145d.
+    initial_state: existing-pass
+    result: PASS
+    evidence_refs:
+      - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
+      - release/wc134/demo-whatsapp-activation-policy.json
+      - src/business-platform/Services/WhatsAppIdentityVerificationDispatcher.cs
+
+  - <<: *defaults
+    requirement_id: WC175-R002
+    source: WC-175 Canonical Requirement Index, R002
+    observable_outcome: Registration delivery and inbound WhatsApp rejections log a bounded reason code and never a phone number, code or token.
+    test_path_or_plan: New .NET tests in tests/business-platform.Tests that assert the logged reason for each dispatcher and inbound proof trigger and that no sensitive value is logged.
+
+  - <<: *defaults
+    requirement_id: WC175-R003
+    source: WC-175 Canonical Requirement Index, R003
+    observable_outcome: With verification inactive the registration page says so and shows no send button; when active a failure separates try again from contact support.
+    test_path_or_plan: web/components/auth/RegistrationFlow.test.tsx cases for inactive, active and failed states; Skill 24 live check.
+
+  - <<: *defaults
+    requirement_id: WC175-R004
+    source: WC-175 Canonical Requirement Index, R004
+    observable_outcome: Each 403 trigger of the inbound proof check is classified from the R002 logs and fixed or recorded with its Founder or Meta action; the 401 events are shown to be deploy checks or fixed.
+    test_path_or_plan: Log Analytics query by reason code after the R002 deployment; tests for any fixed trigger.
+    dependencies: R002 deployed to Demo
+
+  - <<: *defaults
+    requirement_id: WC175-R005
+    source: WC-175 Canonical Requirement Index, R005
+    observable_outcome: Hire says Complete registration to see the price and links to registration for a customer with no account, and shows the price once registered.
+    test_path_or_plan: web/app/(application)/marketplace page tests for unregistered and registered customers; web/lib/api/hire-quote.test.ts; Skill 24 live check.
+
+  - <<: *defaults
+    requirement_id: WC175-R006
+    source: WC-175 Canonical Requirement Index, R006
+    observable_outcome: Trial and Hire ask for registration before the contract and payment steps.
+    test_path_or_plan: web/components/acquisition tests for the unregistered path; Skill 24 live check.
+
+  - <<: *defaults
+    requirement_id: WC175-R007
+    source: WC-175 Canonical Requirement Index, R007
+    observable_outcome: Profile text, Connections and Register match the real flow and show empty states, not errors, for an unregistered customer.
+    test_path_or_plan: web tests for the profile, connections and register views; Skill 24 live walk.
+
+  - <<: *defaults
+    requirement_id: WC175-R008
+    source: WC-175 Canonical Requirement Index, R008
+    observable_outcome: Registration names the real identity provider or none.
+    test_path_or_plan: web/components/auth/RegistrationFlow.test.tsx provider label cases.
+
+  - <<: *defaults
+    requirement_id: WC175-R009
+    source: WC-175 Canonical Requirement Index, R009
+    observable_outcome: A free Trial hides payment choices; a customer opening an admin route gets the same not-permitted page as /founder.
+    test_path_or_plan: web tests for the trial checkout and for admin route access by a customer.
+
+  - <<: *defaults
+    requirement_id: WC175-R010
+    source: WC-175 Canonical Requirement Index, R010
+    observable_outcome: Customer layout, stop control and menu labels meet the stated layout rules at 1366 and 390 pixel widths.
+    test_path_or_plan: Web component tests plus screenshots from the Skill 24 walk at both widths.
+
+  - <<: *defaults
+    requirement_id: WC175-R011
+    source: WC-175 Canonical Requirement Index, R011
+    observable_outcome: /billing shows an honest page instead of Page not found.
+    test_path_or_plan: web page test and Skill 24 walk.
+
+  - <<: *defaults
+    requirement_id: WC175-R012
+    source: WC-175 Canonical Requirement Index, R012
+    observable_outcome: Profile, Settings and Alerts show useful content for a registered customer.
+    test_path_or_plan: web tests with a registered session fixture; live check after R020 or R021.
+    dependencies: R020 or R021 for a live registered customer
+
+  - <<: *defaults
+    requirement_id: WC175-R013
+    source: WC-175 Canonical Requirement Index, R013
+    observable_outcome: Two-factor starts from every Founder page; a test enumerates every Founder route against the allow-list.
+    test_path_or_plan: web/lib/oidc-transaction.test.ts route enumeration; tests/demo-customer-walk/stepup.mjs live probe showing zero 400s.
+
+  - <<: *defaults
+    requirement_id: WC175-R014
+    source: WC-175 Canonical Requirement Index, R014
+    observable_outcome: Every Founder menu entry has its own icon and name and the /founder menu reaches every Founder tool.
+    test_path_or_plan: web/lib/navigation-model.test.ts uniqueness test; web/components/shell/ProtectedAppShell.test.tsx for the founder variant.
+
+  - <<: *defaults
+    requirement_id: WC175-R015
+    source: WC-175 Canonical Requirement Index, R015
+    observable_outcome: Founder wording is plain, labels are translated and element ids are unique.
+    test_path_or_plan: Component tests for Operations, Agent operation, Offerability and Pricing; a duplicate id test; Founder live review.
+
+  - <<: *defaults
+    requirement_id: WC175-R016
+    source: WC-175 Canonical Requirement Index, R016
+    observable_outcome: The Billing daily scan succeeds on Demo and its failure raises an alert.
+    test_path_or_plan: tests/billing-engine test that runs the scan under row security with a real PostgreSQL; Demo log read-back after deployment; alert rule plan.
+
+  - <<: *defaults
+    requirement_id: WC175-R017
+    source: WC-175 Canonical Requirement Index, R017
+    observable_outcome: The open WhatsApp page alert is resolved with a recorded reason and standing-condition logging is rate-limited.
+    test_path_or_plan: .NET test for the rate limit; Demo Log Analytics line count per hour after deployment; Founder acknowledgement recorded.
+
+  - <<: *defaults
+    requirement_id: WC175-R018
+    source: WC-175 Canonical Requirement Index, R018
+    observable_outcome: Business Platform keys persist and are protected across restarts and Keycloak production mode is set or the exception is Founder-accepted.
+    test_path_or_plan: .NET data-protection persistence test; Terraform plan for Keycloak mode; Demo restart read-back.
+
+  - <<: *defaults
+    requirement_id: WC175-R019
+    source: WC-175 Canonical Requirement Index, R019
+    observable_outcome: After deployment every customer and Founder outcome is re-tested live and the customers are deleted.
+    test_path_or_plan: Skill 24 run record, walk and journey output, Founder live session, deletion confirmation.
+    dependencies: Chunks A to E deployed; Founder approves the live run
+
+  - <<: *defaults
+    requirement_id: WC175-R020
+    source: WC-175 Canonical Requirement Index, R020
+    observable_outcome: Registration verification is active on Demo and a customer receives a code and completes registration.
+    test_path_or_plan: Founder approval of the authentication template and standing policy version, then autopilot and configuration tests and a live registration.
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
+    dependencies: Meta-approved authentication template; Founder policy version; Founder spend ceiling
+
+  - <<: *defaults
+    requirement_id: WC175-R021
+    source: WC-175 Canonical Requirement Index, R021
+    observable_outcome: A throwaway customer can complete registration on Demo without a WhatsApp message through a default-off synthetic-only path.
+    test_path_or_plan: Decision record, then .NET tests that the path is off by default, Demo only, role-guarded and marker-keyed.
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
+    dependencies: Founder architecture decision
