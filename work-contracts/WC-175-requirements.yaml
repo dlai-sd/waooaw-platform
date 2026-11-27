@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-175
 contract_path: work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md
-contract_digest: ee87db0c2bce6e2950a2b9f8342542861fa56d23bb7a50c06139f5c1c65f7c91
+contract_digest: b6f4cf9a5238f86e1c9e83c9e11b234ff8ebd14a16f011fe60cffad2e6705382
 implementation_scope: true
 result: PLANNED
 
@@ -166,12 +166,9 @@ requirements:
   - <<: *defaults
     requirement_id: WC175-R021
     source: WC-175 Canonical Requirement Index, R021
-    observable_outcome: Withdrawn; no synthetic registration path is built.
-    test_path_or_plan: Not applicable; the Founder will use real WhatsApp numbers.
-    initial_state: new
-    result: NOT_APPLICABLE
-    evidence_refs:
-      - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
+    observable_outcome: A throwaway customer registers with the fixed synthetic test code on its own fictitious number and nothing is sent; a real customer still gets a random delivered code; Production refuses the feature.
+    test_path_or_plan: tests/business-platform.Tests/AcceptanceSynthetic/SyntheticVerificationCodeTests.cs; Identity/CustomerIdentityProgramHostTests.cs synthetic and real-customer cases; tests/pipeline/test_demo_synthetic_customer.py unique numbers; live JOURNEY=register after deployment.
+    initial_state: expected-fail
 
   - <<: *defaults
     requirement_id: WC175-R022
