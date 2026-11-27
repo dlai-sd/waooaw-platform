@@ -1351,6 +1351,8 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 | Utility and realm-profile contract | `tests/pipeline/test_demo_synthetic_customer.py`, `tests/pipeline/test_acceptance_infrastructure.py` | Docker; run after any change to the utility or the realm user profile. |
 | Founder two-factor behaviour | `web/lib/oidc-transaction.test.ts`, `web/lib/step-up-resume.test.tsx`, `web/components/admin/StepUpCommand.test.tsx` and the `.test.tsx` files beside the Operations, Access approvals, Agent operation, Providers and Pricing authorize components | Docker web suite; pins the return-page allow-list and action resume. |
 
+**Registration code:** a throwaway customer registers with the platform's fixed synthetic test code (default `123456`) on its own fictitious `+1555` number; the server accepts it only for customers in the synthetic registry and never sends a WhatsApp message. Never ask the Founder for a real number or a real code for automated runs.
+
 **Procedure:**
 1. Confirm the target build is deployed and, for customer pages, that the realm change declaring `synthetic_idp` has been imported by that deployment.
 2. Obtain the Founder's approval, create the smallest number of customers, and keep the sign-in file private; never print or commit it.

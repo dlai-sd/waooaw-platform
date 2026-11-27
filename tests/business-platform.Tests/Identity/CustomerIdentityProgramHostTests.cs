@@ -22,6 +22,8 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
+using Waooaw.BusinessPlatform.Tests.AcceptanceSynthetic;
 using Xunit;
 using GoogleWorkspaceProofAdapter = Waooaw.BusinessPlatform.Services.VerifiedIdentityProofAdapter;
 
@@ -256,7 +258,8 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         bool brokerEnabled = true,
         bool googleEnabled = true,
         bool previewClaimsEnabled = false,
-        TestIdentityConstitutionalGateway? identityGateway = null
+        TestIdentityConstitutionalGateway? identityGateway = null,
+        ISyntheticAcceptanceRegistry? syntheticRegistry = null
     )
     {
         _oidc = new SyntheticOidcHandler(_configuration.ActorIssuer, _signer);
@@ -276,6 +279,8 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             ["Conversation:CursorHmacKey"] =
                 "synthetic-program-test-cursor-key-at-least-32-characters",
         };
+        if (syntheticRegistry is not null)
+            settings["AcceptanceSyntheticTenants:Enabled"] = "true";
         if (brokerEnabled)
         {
             settings["IdentityBrokerRead:Enabled"] = "true";
@@ -323,6 +328,11 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
                     .ConfigurePrimaryHttpMessageHandler(() => _broker);
                 services.RemoveAll<IIdentityVerificationDispatcher>();
                 services.AddSingleton<IIdentityVerificationDispatcher>(_verificationDispatcher);
+                if (syntheticRegistry is not null)
+                {
+                    services.RemoveAll<ISyntheticAcceptanceRegistry>();
+                    services.AddSingleton(syntheticRegistry);
+                }
                 if (identityGateway is not null)
                 {
                     services.RemoveAll<IIdentityConstitutionalGateway>();
@@ -473,6 +483,82 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             )
         );
         await AssertRestrictedPoolAsync();
+    }
+
+    [Fact]
+    public async Task Program_SyntheticCustomer_RegistersWithTheFixedTestCodeAndNothingIsSent()
+    {
+        var registry = new FakeSyntheticAcceptanceRegistry();
+        registry.Actors.Add((_configuration.ActorIssuer, "synthetic-actor"));
+        StartHost(syntheticRegistry: registry);
+        var token = Token();
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
+        var registration = (await ExpectAsync(started, HttpStatusCode.Created))
+            .GetProperty("registrationId")
+            .GetGuid();
+        var path = $"/api/v1/identity/registrations/{registration}/mobile-verifications";
+
+        using var sent = await SendAsync(
+            HttpMethod.Post,
+            path,
+            token,
+            new { mobile = "+15555550142" }
+        );
+        var challengeId = (await ExpectAsync(sent, HttpStatusCode.Accepted))
+            .GetProperty("challengeId")
+            .GetGuid();
+
+        // Nothing was handed to the WhatsApp dispatcher, and the fixed test code is the proof.
+        Assert.Equal(string.Empty, _verificationDispatcher.LastCode);
+        using var wrong = await SendAsync(
+            HttpMethod.Post,
+            path + "/confirm",
+            token,
+            new { challengeId, code = "654321" }
+        );
+        Assert.NotEqual(HttpStatusCode.OK, wrong.StatusCode);
+        using var confirmed = await SendAsync(
+            HttpMethod.Post,
+            path + "/confirm",
+            token,
+            new { challengeId, code = AcceptanceSyntheticOptions.DefaultTestVerificationCode }
+        );
+        Assert.True(
+            (await ExpectAsync(confirmed, HttpStatusCode.OK))
+                .GetProperty("mobileVerified")
+                .GetBoolean()
+        );
+    }
+
+    [Fact]
+    public async Task Program_ARealCustomerStillGetsADeliveredRandomCodeWhenTheSyntheticFeatureIsOn()
+    {
+        StartHost(syntheticRegistry: new FakeSyntheticAcceptanceRegistry());
+        var token = Token();
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
+        var registration = (await ExpectAsync(started, HttpStatusCode.Created))
+            .GetProperty("registrationId")
+            .GetGuid();
+
+        using var sent = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration}/mobile-verifications",
+            token,
+            new { mobile = "+14155550143" }
+        );
+        await ExpectAsync(sent, HttpStatusCode.Accepted);
+
+        Assert.Matches("^[0-9]{6}$", _verificationDispatcher.LastCode);
     }
 
     [Fact]

@@ -270,6 +270,7 @@ public sealed class SyntheticEffectsTests
             "Services/AcceptanceSynthetic/SyntheticAcceptanceRegistry.cs",
             "Services/AcceptanceSynthetic/SyntheticDeliveryGate.cs",
             "Services/AcceptanceSynthetic/SyntheticTenantInheritance.cs",
+            "Services/AcceptanceSynthetic/SyntheticVerificationCode.cs", // (d) registration code mimic, WC175-R021
             "Services/CustomerWorkspaceProvisioningService.cs", // (a) tenant creation inherits the label
             "Services/CustomerIdentityJourneyService.cs",
             "Services/WhatsAppCloudProviderAdapter.cs", // (b) delivery suppression

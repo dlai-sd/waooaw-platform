@@ -158,6 +158,11 @@ def realm_password() -> str:
     return f"{secrets.token_urlsafe(18)}-Aa{secrets.randbelow(10)}!"
 
 
+def synthetic_mobile() -> str:
+    """A fictitious number in the +1 555 range, unique per customer; it is never dialled because synthetic codes are not sent."""
+    return f"+1555{secrets.randbelow(10_000_000):07d}"
+
+
 def make_customers(run_id: str, labels: list[str]) -> dict[str, dict[str, str]]:
     customers = {}
     for label in labels:
@@ -167,6 +172,7 @@ def make_customers(run_id: str, labels: list[str]) -> dict[str, dict[str, str]]:
             "email": f"{username}@{EMAIL_DOMAIN}",
             "password": realm_password(),
             "otpSecret": b32(),
+            "mobile": synthetic_mobile(),
         }
     return customers
 
@@ -411,6 +417,7 @@ def create(count: int, run_id: str, harness_private: Path | None) -> Path:
             "runId": run_id,
             "customers": customers,
             "signIn": "https://cp.demo.waooaw.com/login (username, password, then authenticator code)",
+            "registrationCode": "123456 (the platform's synthetic test code; nothing is sent to the mobile)",
         },
     )
     if harness_private is not None:
