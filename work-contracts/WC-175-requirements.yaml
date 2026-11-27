@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-175
 contract_path: work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md
-contract_digest: 4f11718f4feec93146bd37e4e7916f3828dd2d21ab6be0f18ff21da3a51f1f79
+contract_digest: ee87db0c2bce6e2950a2b9f8342542861fa56d23bb7a50c06139f5c1c65f7c91
 implementation_scope: true
 result: PLANNED
 
@@ -159,21 +159,22 @@ requirements:
   - <<: *defaults
     requirement_id: WC175-R020
     source: WC-175 Canonical Requirement Index, R020
-    observable_outcome: Registration verification is active in each environment that configures it and a customer receives a code and completes registration.
-    test_path_or_plan: Founder approval of the authentication template and standing policy version, then autopilot and configuration tests and a live registration.
-    initial_state: Founder-reserved
-    result: FOUNDER_RESERVED
-    evidence_refs:
-      - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
-    dependencies: Meta-approved authentication template; Founder policy version; Founder spend ceiling
+    observable_outcome: Registration verification is on from the standing policy and a registrant receives a code and completes registration; an environment whose policy has no registration section keeps it off.
+    test_path_or_plan: tests/pipeline/test_wc134_demo_whatsapp_autopilot.py policy, candidate and activated-settings cases; Demo read-back of the Business Platform settings after deployment; a Skill 24 registration with a real WhatsApp number the Founder supplies.
+    dependencies: One Demo deployment; the Founder supplies a WhatsApp number for the live registration
 
   - <<: *defaults
     requirement_id: WC175-R021
     source: WC-175 Canonical Requirement Index, R021
-    observable_outcome: A throwaway customer can complete registration on Demo without a WhatsApp message through a default-off synthetic-only path.
-    test_path_or_plan: Decision record, then .NET tests that the path is off by default, Demo only, role-guarded and marker-keyed.
-    initial_state: Founder-reserved
-    result: FOUNDER_RESERVED
+    observable_outcome: Withdrawn; no synthetic registration path is built.
+    test_path_or_plan: Not applicable; the Founder will use real WhatsApp numbers.
+    initial_state: new
+    result: NOT_APPLICABLE
     evidence_refs:
       - work-contracts/WC-175-demo-registration-trial-hire-and-founder-defects.md#grooming-log
-    dependencies: Founder architecture decision
+
+  - <<: *defaults
+    requirement_id: WC175-R022
+    source: WC-175 Canonical Requirement Index, R022
+    observable_outcome: The Operations Overview shows the approved WhatsApp limits, what is used and whether registration codes are on.
+    test_path_or_plan: tests/business-platform.Tests/AlertAndOperationsServiceTests.cs overview limits cases; web/components/admin/operations/OperationsConsole.test.tsx limits cases; Founder live review.

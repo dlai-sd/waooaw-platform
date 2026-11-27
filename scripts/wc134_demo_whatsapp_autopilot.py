@@ -114,7 +114,8 @@ def load_policy(raw: bytes) -> dict[str, Any]:
         raise AutopilotError("standing policy is not valid JSON") from error
     _closed(
         policy,
-        {"schema", "approval", "cohort", "window_days", "limits", "tenant_id", "references", "policies", "template"},
+        {"schema", "approval", "cohort", "window_days", "limits", "tenant_id", "references", "policies", "template"}
+        | ({"registration_verification"} if "registration_verification" in policy else set()),
         "standing policy",
     )
     if policy["schema"] != POLICY_SCHEMA:
@@ -160,6 +161,24 @@ def load_policy(raw: bytes) -> dict[str, Any]:
     template = _closed(policy["template"], {"Name", "Version", "Locale", "Category", "Body"}, "template")
     if not all(isinstance(value, str) and value for value in template.values()):
         raise AutopilotError("template fields must be non-empty text")
+    if "registration_verification" in policy:
+        # Registration codes draw on the same window, message count, rate and spend limits as guest messages.
+        verification = _closed(
+            policy["registration_verification"],
+            {"TemplateId", "TemplateName", "Locale", "ApprovalReference"},
+            "registration verification",
+        )
+        if not (
+            isinstance(verification["TemplateId"], str)
+            and re.fullmatch(r"[0-9]{1,32}", verification["TemplateId"])
+            and isinstance(verification["TemplateName"], str)
+            and re.fullmatch(r"[a-z0-9_]{1,512}", verification["TemplateName"])
+            and isinstance(verification["Locale"], str)
+            and re.fullmatch(r"en(?:_[A-Z]{2})?", verification["Locale"])
+            and isinstance(verification["ApprovalReference"], str)
+            and REFERENCE.fullmatch(verification["ApprovalReference"])
+        ):
+            raise AutopilotError("registration verification must name an exact approved Authentication template")
     return policy
 
 
@@ -300,11 +319,13 @@ def build_profile(
             "MaximumCostPerMessageInr": limits["maximum_cost_per_message_inr"],
             "AllowProvisionalOnboarding": policy["cohort"]["allow_provisional_onboarding"],
             "AllowPublicAdmission": policy["cohort"]["allow_public_admission"],
+            **({"AllowRegistrationVerification": True} if "registration_verification" in policy else {}),
         },
         "binding_digests": {key: bindings[key] for key in ("AppBindingDigest", "WabaBindingDigest", "RecipientBindingDigest")},
         "policies": policy["policies"],
         "templates": [policy["template"]],
         "prerequisites": prerequisites,
+        **({"registration_verification": policy["registration_verification"]} if "registration_verification" in policy else {}),
     }
 
 
@@ -330,8 +351,11 @@ def verify_candidate(bundle: bytes, policy: dict[str, Any], now: datetime) -> No
     for key, value in expected.items():
         if authority.get(key) != value:
             raise AutopilotError(f"candidate differs from the standing policy at {key}")
-    if authority.get("AllowRegistrationVerification", False):
-        raise AutopilotError("candidate enables registration verification, which the policy does not approve")
+    approved_verification = policy.get("registration_verification")
+    if bool(authority.get("AllowRegistrationVerification", False)) != (approved_verification is not None):
+        raise AutopilotError("candidate registration verification differs from the standing policy")
+    if document.get("registration_verification") != approved_verification:
+        raise AutopilotError("candidate registration verification template differs from the standing policy")
     starts = datetime.strptime(authority["StartsAt"], TIME_FORMAT).replace(tzinfo=timezone.utc)
     expires = datetime.strptime(authority["ExpiresAt"], TIME_FORMAT).replace(tzinfo=timezone.utc)
     if not starts <= now < expires or expires - starts > timedelta(days=policy["window_days"]):
@@ -412,6 +436,7 @@ class Autopilot:
             {key: bindings[key] for key in ("AppBindingDigest", "WabaBindingDigest", "RecipientBindingDigest")},
             self.policy["policies"],
             [self.policy["template"]],
+            self.policy.get("registration_verification"),
         )
         query = render_alert_query(
             self.alert_template,

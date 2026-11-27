@@ -2,7 +2,7 @@
   "schema": "waooaw.demo-whatsapp-standing-policy/v1",
   "approval": {
     "approved_by": "dlai-sd",
-    "basis": "Founder decision of 2026-11-16: merging this file approves re-activation of Demo WhatsApp for public guests after every Demo deployment, strictly inside these limits and never beyond window_days."
+    "basis": "Founder decision of 2026-11-16: merging this file approves re-activation of Demo WhatsApp for public guests after every Demo deployment, strictly inside these limits and never beyond window_days. Founder decision of 2026-11-27: the same approval covers the Authentication template waooaw_registration_otp, so a registrant can receive one purpose-bound code on request; those codes use the same window, message count, per-minute rate and spend limits."
   },
   "cohort": {
     "allow_public_admission": true,
@@ -33,5 +33,11 @@
     "Locale": "en",
     "Category": "MARKETING",
     "Body": "Hello, You’re invited to try WAOOAW Demo, where you can interact with digital professionals through WhatsApp. Reply to this message to begin. This is a demo service. Reply STOP to stop messages."
+  },
+  "registration_verification": {
+    "TemplateId": "1476143084372706",
+    "TemplateName": "waooaw_registration_otp",
+    "Locale": "en",
+    "ApprovalReference": "META-WABA-TEMPLATE-1476143084372706-APPROVED-20261127"
   }
 }

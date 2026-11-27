@@ -522,7 +522,9 @@ public sealed class OperationsConsoleTests
         string[] roles,
         bool stepUp = true,
         bool whatsAppActive = true,
-        ICustomerDirectory? directory = null
+        ICustomerDirectory? directory = null,
+        WhatsAppActivationAuthority? limits = null,
+        bool registrationTemplate = false
     )
     {
         var conversations = new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N"));
@@ -569,7 +571,15 @@ public sealed class OperationsConsoleTests
             new ConversationOperationsService(conversations, options),
             execution,
             health.Object,
-            options
+            options,
+            limits is null
+                ? null
+                : Mock.Of<IOptionsMonitor<WhatsAppCapabilityOptions>>(value =>
+                    value.CurrentValue == new WhatsAppCapabilityOptions { Authority = limits }
+                ),
+            Options.Create(
+                new WhatsAppAuthenticationTemplateOptions { Enabled = registrationTemplate }
+            )
         );
         var pages = new OperatorPageService(relationships, clock.Object);
         var controller = new OperationsController(
@@ -689,6 +699,65 @@ public sealed class OperationsConsoleTests
             "identity-schema",
             overview.GetProperty("services")[0].GetProperty("name").GetString()
         );
+    }
+
+    [Fact]
+    public async Task TheOverviewShowsTheApprovedWhatsAppLimitsAndWhatRegistrationCodesShareWithGuests()
+    {
+        var limits = new WhatsAppActivationAuthority
+        {
+            TenantId = Tenant,
+            Environment = "demo",
+            ActivationReference = "ACT-TEST-1",
+            StartsAt = Now.AddDays(-1),
+            ExpiresAt = Now.AddDays(6),
+            MaximumMessages = 200,
+            MaximumMessagesPerMinute = 6,
+            MaximumSpendInr = 500m,
+            MaximumCostPerMessageInr = 5m,
+            AllowPublicAdmission = true,
+            AllowRegistrationVerification = true,
+        };
+        var harness = Create(["founder"], limits: limits, registrationTemplate: true);
+
+        var overview = Json(
+            Assert.IsType<OkObjectResult>(await harness.Controller.OverviewAsync(default)).Value
+        );
+        var shown = overview.GetProperty("limits");
+
+        Assert.Equal(200, shown.GetProperty("maximumMessages").GetInt32());
+        Assert.Equal(6, shown.GetProperty("maximumMessagesPerMinute").GetInt32());
+        Assert.Equal(500m, shown.GetProperty("maximumSpendInr").GetDecimal());
+        Assert.Equal(5m, shown.GetProperty("maximumCostPerMessageInr").GetDecimal());
+        Assert.True(shown.GetProperty("registrationCodes").GetBoolean());
+        Assert.True(shown.GetProperty("guestAdmission").GetBoolean());
+        Assert.Equal(0, shown.GetProperty("messagesReserved").GetInt32());
+        Assert.Equal(0m, shown.GetProperty("spendReservedInr").GetDecimal());
+    }
+
+    [Fact]
+    public async Task RegistrationCodesAreShownOffUnlessBothTheApprovalAndTheTemplateAreOn()
+    {
+        var limits = new WhatsAppActivationAuthority
+        {
+            TenantId = Tenant,
+            Environment = "demo",
+            ActivationReference = "ACT-TEST-1",
+            StartsAt = Now.AddDays(-1),
+            ExpiresAt = Now.AddDays(6),
+            MaximumMessages = 200,
+            MaximumMessagesPerMinute = 6,
+            MaximumSpendInr = 500m,
+            MaximumCostPerMessageInr = 5m,
+            AllowRegistrationVerification = true,
+        };
+        var harness = Create(["founder"], limits: limits, registrationTemplate: false);
+
+        var overview = Json(
+            Assert.IsType<OkObjectResult>(await harness.Controller.OverviewAsync(default)).Value
+        );
+
+        Assert.False(overview.GetProperty("limits").GetProperty("registrationCodes").GetBoolean());
     }
 
     [Fact]
