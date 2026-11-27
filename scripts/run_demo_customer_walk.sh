@@ -12,6 +12,6 @@ OUT=${2:-test-results/demo-customer-walk}
 IMAGE=${WAOOAW_RUNNER_TYPESCRIPT_IMAGE:?set WAOOAW_RUNNER_TYPESCRIPT_IMAGE to the validation typescript runner image}
 mkdir -p "$OUT"; chmod 0777 "$OUT"
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/tests/demo-customer-walk:/walk:ro" -v "$RUN_FILE:/users/run.json:ro" \
-  -v "$PWD/$OUT:/out" -e HOME=/tmp -e JOURNEY="${JOURNEY:-}" -e WALK_USER="${WALK_USER:-}" "$IMAGE" sh -c \
+  -v "$PWD/$OUT:/out" -e HOME=/tmp -e JOURNEY="${JOURNEY:-}" -e WALK_USER="${WALK_USER:-}" -e PROBE_PATHS="${PROBE_PATHS:-}" "$IMAGE" sh -c \
   'rm -rf /tmp/w && cp -a /walk /tmp/w && ln -s /opt/waooaw-web/node_modules /tmp/w/node_modules && cd /tmp/w &&
-   if [ -n "$JOURNEY" ]; then node journey.mjs; else node stepup.mjs && node walk.mjs; fi'
+   if [ "$JOURNEY" = probe ]; then node probe.mjs; elif [ -n "$JOURNEY" ]; then node journey.mjs; else node stepup.mjs && node walk.mjs; fi'

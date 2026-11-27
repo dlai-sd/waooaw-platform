@@ -1,0 +1,182 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-176
+contract_path: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md
+contract_digest: d715d69ce55a7711d75e8e9a0c856dde8f3f2b216344bd40e858b72aa3b535c0
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Failing test first, then passing in the Docker Python, .NET and web runners where code changes; a Demo read-back or Skill 24 live run for each Demo outcome; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorizes the chunk in the current session; baseline origin/main at 521b156e (PR 657 merged)
+  residual_risk: Items marked UNVERIFIED in the contract are proved by the requirement itself before any fix
+  completion_rule: Executable evidence and the live read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC176-R001
+    source: WC-176 Canonical Requirement Index, R001
+    observable_outcome: 'Every customer-facing Business Platform route carries the customer identity marker, so a registered customer''s Alerts inbox and categories load instead of answering 403 IDENTITY_ACTION_DENIED. A test enumerates every authorized controller action and fails unless it is marked customer, staff, internal-service or anonymous, with a short written allow-list for documented exceptions.'
+    test_path_or_plan: 'tests/business-platform.Tests route-marker enumeration test; AlertControls host test through the membership middleware (200 for a registered customer); Skill 24 probe `JOURNEY=probe` returns 200 for /api/alert-controls/categories and /alerts.'
+
+  - <<: *defaults
+    requirement_id: WC176-R002
+    source: WC-176 Canonical Requirement Index, R002
+    observable_outcome: 'The Alerts page shows a loading state, says plainly what to do when the inbox cannot load, and does not keep retrying in the background.'
+    test_path_or_plan: 'web/components/portal/AlertInbox.test.tsx loading, failure and no-retry cases; web/app alerts page test.'
+
+  - <<: *defaults
+    requirement_id: WC176-R003
+    source: WC-176 Canonical Requirement Index, R003
+    observable_outcome: 'The header Billing entry opens /billing, and "My Experts" becomes "My Agents" everywhere, so one label means one place.'
+    test_path_or_plan: 'web/components/shell/ProtectedAppShell.test.tsx and web/app/(application)/professionals/mine page tests; navigation-model test.'
+
+  - <<: *defaults
+    requirement_id: WC176-R004
+    source: WC-176 Canonical Requirement Index, R004
+    observable_outcome: 'Settings saves notification choices the customer changes, offers language as a choice of supported languages (not free text), and explains each security action in plain words.'
+    test_path_or_plan: 'web/components/portal/SettingsEditor.test.tsx; identity settings API test for notification preferences; Skill 24 settings check.'
+
+  - <<: *defaults
+    requirement_id: WC176-R005
+    source: WC-176 Canonical Requirement Index, R005
+    observable_outcome: 'A customer can change the WhatsApp number from the Profile page: a code proves control of the new number (the synthetic code for throwaway customers), and the old number stops working only after the new one is verified.'
+    test_path_or_plan: 'web/components/portal/WhatsAppPhoneChange.test.tsx wired into Profile; BP phone-change service tests; Skill 24 with the synthetic code.'
+
+  - <<: *defaults
+    requirement_id: WC176-R006
+    source: WC-176 Canonical Requirement Index, R006
+    observable_outcome: 'A customer can ask for a copy of their data and for their account to be erased from Settings, with plain words about what happens and when; the platform records the request and the Founder sees it as an operator task.'
+    test_path_or_plan: 'web Settings tests; BP request-record tests; spec reference UX-VOICE-08 and the privacy policy.'
+    dependencies: 'Founder decision D3 (scope and retention) before the erasure part'
+
+  - <<: *defaults
+    requirement_id: WC176-R007
+    source: WC-176 Canonical Requirement Index, R007
+    observable_outcome: 'The exact skill runtime bindings a relationship needs are created: when a workspace receives its admission from the Founder''s approval, one binding per skill is written from the agent package (specification, prompt and schema digests, release sequence), idempotently, append-only and tied to the approved version, so the operational mandate resolver reports ready for a configured relationship.'
+    test_path_or_plan: 'tests/business-platform.Tests binding creation unit and Postgres tests; OperationalMandateResolver readiness test with created bindings; digest derivation test against the digital-marketing-agent package files.'
+
+  - <<: *defaults
+    requirement_id: WC176-R008
+    source: WC-176 Canonical Requirement Index, R008
+    observable_outcome: 'The relationship workspace says in plain words what is still missing before the agent can work (admission, contract, skill setup, goal, connection) with one next action, and never leaves the customer at a dead end.'
+    test_path_or_plan: 'web/components/relationships tests for each missing prerequisite; BP readiness projection tests.'
+    dependencies: 'R007'
+
+  - <<: *defaults
+    requirement_id: WC176-R009
+    source: WC-176 Canonical Requirement Index, R009
+    observable_outcome: 'After a Trial starts, the customer reaches the induction conversation, sends a first message and receives the agent''s bounded reply (no paid API calls and no external actions during Trial), through the real Business Platform, Professional Runtime and agent adapter.'
+    test_path_or_plan: 'Integration test with the real adapter and a recorded model stub across BP, PR and the digital-marketing agent; Skill 24 live first-reply check.'
+    dependencies: 'R007, R008'
+
+  - <<: *defaults
+    requirement_id: WC176-R010
+    source: WC-176 Canonical Requirement Index, R010
+    observable_outcome: 'The Trial shows the real days left and the end date from the billing owner''s trial status, and the allowance used, replacing the fixed "Day of 14" display.'
+    test_path_or_plan: 'web/components/relationships/RelationshipEvaluation.test.tsx; BP trial status projection test.'
+
+  - <<: *defaults
+    requirement_id: WC176-R011
+    source: WC-176 Canonical Requirement Index, R011
+    observable_outcome: 'When a Trial ends the agent stops taking new work, the customer is told in an alert and shown a one-step way to Hire, and their data is kept for the period the policy states.'
+    test_path_or_plan: 'BP trial expiry workflow tests; alert raised test; web conversion prompt test.'
+    dependencies: 'Founder decision D6 (data kept after Trial) for the period'
+
+  - <<: *defaults
+    requirement_id: WC176-R012
+    source: WC-176 Canonical Requirement Index, R012
+    observable_outcome: 'When a skill needs a connected account, the workspace says so before the work needs it and links to Connections; the Trial runs in sandbox mode where the connection is not yet made.'
+    test_path_or_plan: 'web workspace prerequisite tests; BP agent-operation platform answer tests.'
+
+  - <<: *defaults
+    requirement_id: WC176-R013
+    source: WC-176 Canonical Requirement Index, R013
+    observable_outcome: 'At least one sellable monthly package for Digital Marketing exists on the Founder Pricing page with GST terms, so Hire shows its price and opens for a registered customer.'
+    test_path_or_plan: 'Skill 24 live check of the Hire review with a throwaway customer; Pricing page read-back.'
+    dependencies: 'Founder action D5 (set the price and publish)'
+
+  - <<: *defaults
+    requirement_id: WC176-R014
+    source: WC-176 Canonical Requirement Index, R014
+    observable_outcome: 'After a payment is captured the platform carries the Hire on by itself: contract acceptance, activation and induction run in order, replay-safe, and the customer sees progress and lands on the working agent instead of the agent list.'
+    test_path_or_plan: 'BP acquisition-to-activation integration test with a captured-payment stub including replay; web progress and landing tests; Skill 24 Hire in Razorpay test mode.'
+    dependencies: 'R007, R009, D2'
+
+  - <<: *defaults
+    requirement_id: WC176-R015
+    source: WC-176 Canonical Requirement Index, R015
+    observable_outcome: 'A payment captured at Razorpay is never lost: the webhook and a reconciliation job complete the Hire or refund it, and a browser failure after capture shows "we are completing your Hire" and recovers.'
+    test_path_or_plan: 'src/billing-engine reconciliation tests for captured-but-unbound checkouts; web hire-checkout failure-after-capture test.'
+    dependencies: 'D2'
+
+  - <<: *defaults
+    requirement_id: WC176-R016
+    source: WC-176 Canonical Requirement Index, R016
+    observable_outcome: 'Recurring billing starts at activation: the billing owner creates the subscription, collects renewals, handles failure and grace, and supports cancel, stop and refund as its lifecycle code and the policy define, and the customer sees each state.'
+    test_path_or_plan: 'tests/billing-engine lifecycle tests wired to activation; BP projection tests; Skill 24 renewal simulation in test mode.'
+    dependencies: 'R014, D2'
+
+  - <<: *defaults
+    requirement_id: WC176-R017
+    source: WC-176 Canonical Requirement Index, R017
+    observable_outcome: 'A tax invoice with GST is issued for each captured payment and the customer can open it from Billing.'
+    test_path_or_plan: 'tests/billing-engine invoice issuance tests on capture; web invoice list test.'
+    dependencies: 'Founder decision D1 (legal identity, address, SAC and invoice series)'
+
+  - <<: *defaults
+    requirement_id: WC176-R018
+    source: WC-176 Canonical Requirement Index, R018
+    observable_outcome: 'The Razorpay settings for each environment (keys, webhook address, test mode for Demo) are written in a runbook and verified read-only before each live run; live KYC remains the Founder''s.'
+    test_path_or_plan: 'architecture/reference/runbooks entry; a read-only readiness check script with a test.'
+    dependencies: 'Founder action D2'
+
+  - <<: *defaults
+    requirement_id: WC176-R019
+    source: WC-176 Canonical Requirement Index, R019
+    observable_outcome: 'The Billing page shows the customer''s plan, status, next renewal, invoices, payment method and allowance, with a way to manage or cancel, and an honest empty state before a Hire; it reads a customer billing projection served through Business Platform, specified in OpenAPI before it is built.'
+    test_path_or_plan: 'OpenAPI change in architecture/reference/api-specs first; BP projection tests; web/app/(application)/billing tests; generated client contract test.'
+    dependencies: 'R016'
+
+  - <<: *defaults
+    requirement_id: WC176-R020
+    source: WC-176 Canonical Requirement Index, R020
+    observable_outcome: 'Alerts are raised for the events a customer must see: Trial ending, payment failed or renewal due, connection needs repair, agent needs attention; each appears in the inbox with a plain next step.'
+    test_path_or_plan: 'BP alert producer tests per event; web inbox tests; WC-171 producer wiring evidence.'
+    dependencies: 'R010, R016'
+
+  - <<: *defaults
+    requirement_id: WC176-R021
+    source: WC-176 Canonical Requirement Index, R021
+    observable_outcome: 'My Agents lists every agent (paged), with the Trial or Hire state in plain words.'
+    test_path_or_plan: 'web/app/(application)/professionals/mine page tests with more than one page of relationships.'
+
+  - <<: *defaults
+    requirement_id: WC176-R022
+    source: WC-176 Canonical Requirement Index, R022
+    observable_outcome: 'Connections lists the providers the Founder has admitted, not only Facebook, each with connect, reconnect and revoke.'
+    test_path_or_plan: 'web/components/connections tests per provider state; BP provider registry read test.'
+    dependencies: 'Founder decision D4 (which providers)'
+
+  - <<: *defaults
+    requirement_id: WC176-R023
+    source: WC-176 Canonical Requirement Index, R023
+    observable_outcome: 'Automated end-to-end acceptance covers registration (synthetic code), Trial to first reply, Hire in Razorpay test mode and every customer page, runs in Docker with one documented command, and is the same journeys Skill 24 runs live.'
+    test_path_or_plan: 'scripts/run_acceptance_with_synthetic_customers.sh journeys added; tests/pipeline test that the journeys are listed in the release qualification gate.'
+    dependencies: 'R001 to R022'
+
+  - <<: *defaults
+    requirement_id: WC176-R024
+    source: WC-176 Canonical Requirement Index, R024
+    observable_outcome: 'After deployment, Skill 24 runs registration, Trial with a first reply, Hire in test mode with an invoice, and the Billing, Alerts, Profile and Settings pages with throwaway customers; every result is recorded and the customers are deleted.'
+    test_path_or_plan: 'Skill 24 run record in the contract; deletion confirmation.'
+    dependencies: 'Deployment of the chunks and the Founder''s approval of the professional and package'
+
+  - <<: *defaults
+    requirement_id: WC176-R025
+    source: WC-176 Canonical Requirement Index, R025
+    observable_outcome: 'A prerequisite runbook lists, in order, the Founder steps a live run needs (approve the professional, publish the package, Razorpay test keys, GST identity) and a read-only check reports which are done.'
+    test_path_or_plan: 'architecture/reference/runbooks entry and check-script test.'
+

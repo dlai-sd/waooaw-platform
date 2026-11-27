@@ -23,6 +23,7 @@ Add `--harness-private DIR` to also write `run-state.json` so the journey harnes
 |---|---|
 | `scripts/run_demo_customer_walk.sh` | Signs in as a throwaway customer in a real browser, visits every customer and Founder route, records status, headings, tabs, buttons, console errors, failed requests and a screenshot per page, and probes which Founder pages can start a two-factor sign-in. |
 | `JOURNEY=explore\|register\|trial scripts/run_demo_customer_walk.sh` | Runs `tests/demo-customer-walk/journey.mjs`: opens Register, signs in, opens the Trial review, and with `trial` confirms it, with `register` fills the profile and stops at the WhatsApp step. Records every API call, status and a screenshot per step. Needs a throwaway customer and the Founder's approval. |
+| `JOURNEY=probe PROBE_PATHS=/api/alert-controls/alerts,/alerts scripts/run_demo_customer_walk.sh` | Signs in as a throwaway customer and calls the listed same-origin paths (read-only GETs), printing status, time and a short body for each. Finds which customer API a page depends on and why it fails. |
 | `scripts/run_acceptance_with_synthetic_customers.sh JOURNEY` | Runs one customer-journey-acceptance journey locally in Docker against those customers. |
 
 Both need `WAOOAW_RUNNER_TYPESCRIPT_IMAGE` (and the Python image for the journey runner).
@@ -61,10 +62,3 @@ is registered as synthetic, Business Platform answers the WhatsApp registration 
   so two throwaway customers never share a number.
 - `JOURNEY=register scripts/run_demo_customer_walk.sh` enters that number and the code, confirms it and completes registration.
 - The real WhatsApp delivery (`waooaw_registration_otp`) is a separate, Founder-approved live check with a real number.
-
-## Before a Trial or Hire test: the Founder's approval
-
-A customer can start a Trial or Hire only for a professional version the Founder has approved on the Founder **Professionals**
-page (`/admin/professionals`). The approval covers every customer and is tied to the exact definition in the release; a
-suspended, retired or changed version stops new customers. A throwaway customer's Trial is refused with "Professional is not
-currently available" until the Founder has approved, so check the page first and never approve on the Founder's behalf.
