@@ -11,9 +11,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import sys
 import uuid
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -44,6 +46,9 @@ from promotions.coupon_versions import CouponError
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
 
+sys.path.insert(0, str(Path(__file__).parent))
+
+from wc176_capture_ddl import capture_ddl
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("payment_id", ["../orders", "pay_../orders", "https://attacker.invalid", "pay_id?expand=card"])
@@ -59,6 +64,7 @@ async def test_razorpay_fetch_payment_rejects_non_opaque_identifiers(payment_id)
 # ---------------------------------------------------------------------------
 
 _PAYMENT_DDL = [
+    *capture_ddl(),
     """CREATE TABLE IF NOT EXISTS coupon_codes (
         coupon_id TEXT PRIMARY KEY,
         code TEXT NOT NULL UNIQUE,

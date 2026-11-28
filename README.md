@@ -18,7 +18,7 @@ Deviation rule:    Any change to iterations, order, scope or Work Contract numbe
 ## Platform Status
 
 ```
-Version:              v1.45.0 — state as of 2026-11-28: WC-177 delivered (PR #661 merged as ebb227e427)
+Version:              v1.45.0 — state as of 2026-11-28: WC-177 delivered (PR #662 merged as 0dbd0d64ff)
 Epoch:                1 — Foundation
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 56
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
@@ -43,7 +43,7 @@ generates production-grade code, reviews its own PR, merges, and advances to the
 
 ```
 Last sprint:     WC-177 — Deployment Time Reduction, Phase 4: A Database Update Path And Faster Application Stages
-Sprint status:   DONE — 2026-11-28 · PR #661 merged as ebb227e427
+Sprint status:   DONE — 2026-11-28 · PR #662 merged as 0dbd0d64ff
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```

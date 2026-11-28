@@ -653,7 +653,10 @@ public sealed class RelationshipWorkspaceController(
                 eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
                 requiredGoalIds,
                 verifiedGoalIds,
-                blockedReasons = blockedReasons.ToArray(),
+                blockedReasons = ReadinessPlainWords
+                    .Translate(blockedReasons)
+                    .Select(item => $"{item.Missing} {item.NextStep}")
+                    .ToArray(),
                 reassessmentRequired = activeGoals.Any(item =>
                     item.HasPriorDecision && item.CurrentDecision is null
                 )
@@ -1782,11 +1785,23 @@ public sealed class RelationshipWorkspaceController(
                     operationsReady ? $"relationship-{relationship.StateVersion}" : null,
                     "Relationship, goals, owner truth and a complete immutable mandate are current.",
                     operationsReady ? []
-                        : ownerInputsReady ? mandateReadiness.BlockedReasons.ToArray()
-                        : ["One or more operational dependencies are not current."],
-                    operationsReady
-                        ? "Continue governed work."
-                        : "Resolve the named lifecycle dependencies."
+                        : ownerInputsReady
+                            ? ReadinessPlainWords
+                                .Translate(mandateReadiness.BlockedReasons)
+                                .Select(item => $"{item.Missing} {item.NextStep}")
+                                .ToArray()
+                        :
+                        [
+                            "Something your agent needs is not ready yet. Finish the steps above first.",
+                        ],
+                    operationsReady ? "Continue governed work."
+                        : ownerInputsReady
+                            ? ReadinessPlainWords
+                                .Translate(mandateReadiness.BlockedReasons)
+                                .FirstOrDefault()
+                                ?.NextStep
+                                ?? "Check back in a few minutes."
+                        : "Finish the steps above, one at a time."
                 ),
             },
         };

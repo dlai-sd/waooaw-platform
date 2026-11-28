@@ -1,5 +1,6 @@
 # Implements: adr/ADR-022-payment-processing-razorpay-india.md §Amendment 1.2
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R015
 # constitutional_basis: C-059 (Implementation Traceability), ADR-014 (secret management)
 # Constitutional basis: C-059, C-038, ADR-026
 """Razorpay HTTP client — all configuration from env vars (FA-029)."""
@@ -161,8 +162,10 @@ class RazorpayClient:
         return str(resp.json()["id"])
 
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
-        """Verify Razorpay webhook signature (HMAC-SHA256 of raw body)."""
+        """Verify Razorpay webhook signature (HMAC-SHA256 of raw body). Without a configured secret nothing verifies."""
         secret = self._settings.RAZORPAY_WEBHOOK_SECRET.encode()
+        if not secret:
+            return False
         expected = hmac.new(secret, body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 

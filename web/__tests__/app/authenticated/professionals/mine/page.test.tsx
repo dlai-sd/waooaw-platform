@@ -12,7 +12,7 @@ jest.mock('@/lib/api/relationships', () => ({ listEmploymentRelationships: jest.
 jest.mock('@/lib/i18n-server', () => ({
   getRequestI18n: async () => ({
     messages: {
-      myExperts: 'My Experts',
+      myExperts: 'My Agents',
       noProfessionalRelationships: 'No employed professionals yet.',
       returnHome: 'Return home',
     },
@@ -88,7 +88,7 @@ describe('MyProfessionalsPage', () => {
 
     render(await MyProfessionalsPage());
 
-    expect(screen.getByRole('heading', { name: 'My Experts' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'My Agents' })).toBeVisible();
     const experts = screen.getAllByRole('listitem');
     expect(experts).toHaveLength(2);
     expect(within(experts[0]).getByText('TRIAL MODE')).toBeVisible();

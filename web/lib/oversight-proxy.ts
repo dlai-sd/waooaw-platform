@@ -35,6 +35,14 @@ export const operationsRoutes: readonly Route[] = [
   { method: 'GET', pattern: new RegExp(`^relationships/${id}/work-timeline$`) },
   { method: 'GET', pattern: new RegExp(`^relationships/${id}/spend-chain$`) },
   { method: 'POST', pattern: new RegExp(`^relationships/${id}/spend-discrepancies/${id}/resolve$`) },
+  { method: 'GET', pattern: /^data-requests$/ },
+  { method: 'POST', pattern: new RegExp(`^data-requests/${id}/resolve$`) },
+];
+
+// A customer's copy and erasure requests: the one collection, nothing under it.
+export const customerDataRequestRoutes: readonly Route[] = [
+  { method: 'GET', pattern: /^$/ },
+  { method: 'POST', pattern: /^$/ },
 ];
 
 export function oversightRouteAllowed(routes: readonly Route[], method: string, segments: readonly string[]): boolean {

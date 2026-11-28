@@ -5,6 +5,7 @@ import { logServerFailure } from '@/lib/server-failure';
 import { Bell, Globe2, Link2, MoonStar, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { SessionManager } from '@/components/auth/SessionManager';
+import { DataRightsPanel } from '@/components/portal/DataRightsPanel';
 import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
@@ -55,12 +56,6 @@ export default async function SettingsPage() {
     const sessionToken = await getServerSessionToken();
     if (!sessionToken) throw new Error('Customer session is unavailable.');
     const [settings, sessions] = await Promise.all([getCustomerSettings(accessToken), listSessions(sessionToken)]);
-    const notificationRows = [
-      ['Approval requests', settings.notificationPreferences.approvalRequests],
-      ['Maturity reports', settings.notificationPreferences.maturityReports],
-      ['Monthly narratives', settings.notificationPreferences.monthlyNarratives],
-      ['Self-governance alerts', settings.notificationPreferences.selfGovernanceAlerts],
-    ] as const;
     return (
       <section className="portal-page" aria-labelledby="settings-title">
         <header className="portal-heading">
@@ -80,7 +75,7 @@ export default async function SettingsPage() {
             <h2>Language and time</h2>
             <dl className="detail-list">
               <div>
-                <dt>Locale</dt>
+                <dt>Language</dt>
                 <dd>{settings.locale}</dd>
               </div>
               <div>
@@ -107,17 +102,10 @@ export default async function SettingsPage() {
           <section className="settings-wide">
             <Bell aria-hidden="true" />
             <h2>Notifications</h2>
+            <p>Choose where each kind of message reaches you in the form above, then press Save settings.</p>
             <p>
               <Link href="/alerts">Choose which alerts reach your phone</Link>
             </p>
-            <dl className="detail-list">
-              {notificationRows.map(([label, channels]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{channels.length ? channels.map((channel) => channel.toLowerCase()).join(', ') : 'None'}</dd>
-                </div>
-              ))}
-            </dl>
           </section>
           <section className="settings-wide">
             <ShieldCheck aria-hidden="true" />
@@ -133,6 +121,7 @@ export default async function SettingsPage() {
             )}
           </section>
           <SessionManager initialSessions={sessions} />
+          <DataRightsPanel />
         </div>
       </section>
     );

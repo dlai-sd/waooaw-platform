@@ -25,6 +25,7 @@ public sealed record AlertCategoryMuteRequest(string SchemaVersion, bool Muted);
 /// </summary>
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/alert-controls")]
 public sealed class AlertControlsController(CustomerAlertService alerts, TimeProvider clock)
     : ControllerBase

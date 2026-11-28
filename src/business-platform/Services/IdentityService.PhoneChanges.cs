@@ -115,7 +115,11 @@ public sealed partial class IdentityService
         );
         if (evidence == Guid.Empty)
             throw new IdentityDeliveryUnavailableException("Phone-change evidence is unavailable.");
-        var rawCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        // A synthetic test customer proves the new number with the fixed test code and nothing is sent.
+        var syntheticCode = _syntheticVerificationCode is not null
+            ? await _syntheticVerificationCode.CodeForAsync(actor.Issuer, actor.Subject, ct)
+            : null;
+        var rawCode = syntheticCode ?? RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         var now = _clock.GetUtcNow();
         var challengeRecord = new IdentityVerificationChallengeRecord
         {
@@ -208,14 +212,15 @@ public sealed partial class IdentityService
         }
         try
         {
-            await _dispatcher.DispatchRegistrationMobileAsync(
-                registrationId,
-                challengeRecord.ChallengeId,
-                challengeRecord.ExpiresAt,
-                mobile,
-                rawCode,
-                ct
-            );
+            if (syntheticCode is null)
+                await _dispatcher.DispatchRegistrationMobileAsync(
+                    registrationId,
+                    challengeRecord.ChallengeId,
+                    challengeRecord.ExpiresAt,
+                    mobile,
+                    rawCode,
+                    ct
+                );
         }
         catch (IdentityDeliveryUnavailableException)
         {

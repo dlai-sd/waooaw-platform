@@ -22,6 +22,7 @@ using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
+using Waooaw.BusinessPlatform.Services.CustomerDataRequests;
 using Waooaw.BusinessPlatform.Services.PlatformAccess;
 using Waooaw.BusinessPlatform.Services.RealWork;
 using Waooaw.BusinessPlatform.Services.Spend;
@@ -497,6 +498,11 @@ builder.Services.AddSingleton<
     Waooaw.BusinessPlatform.Services.Alerts.ClosedAlertWhatsAppSender
 >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Alerts.AlertPolicyService>();
+builder
+    .Services.AddOptions<TrialEndOptions>()
+    .Bind(builder.Configuration.GetSection(TrialEndOptions.SectionName));
+builder.Services.AddScoped<TrialEndService>();
+builder.Services.AddHostedService<TrialEndHostedService>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperationsConsoleService>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Operations.OperatorPageService>();
 builder.Services.AddScoped<
@@ -1071,6 +1077,10 @@ builder.Services.AddScoped<IEmploymentCommandCoordinator, EmploymentCommandCoord
 builder.Services.AddSingleton<IRealWorkLedger>(_ => new PostgresRealWorkLedger(
     employmentRelationshipConn
 ));
+builder.Services.AddSingleton<ICustomerDataRequests>(services => new PostgresCustomerDataRequests(
+    employmentRelationshipConn,
+    services.GetRequiredService<TimeProvider>()
+));
 builder.Services.AddSingleton<RealWorkArtifactService>();
 builder.Services.AddSingleton<IDecisionSpaceVersions, WorkspaceDecisionSpaceVersions>();
 builder.Services.AddScoped<RealWorkDecisionService>();
@@ -1128,6 +1138,12 @@ builder.Services.AddSingleton<
     Waooaw.BusinessPlatform.Services.PlatformApprovals.PostgresPlatformProfessionalApprovalStore
 >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.PlatformApprovals.PlatformProfessionalApprovalService>();
+builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.PlatformApprovals.IAgentPackageSource>(
+    _ => new Waooaw.BusinessPlatform.Services.PlatformApprovals.FileAgentPackageSource(
+        Path.Combine(AppContext.BaseDirectory, "AgentPackages")
+    )
+);
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.PlatformApprovals.WorkspaceRuntimeBindingService>();
 builder.Services.AddScoped<
     Waooaw.BusinessPlatform.Services.AgentOperation.IOperationRelationshipSource,
     Waooaw.BusinessPlatform.Services.AgentOperation.WorkbenchOperationRelationshipSource

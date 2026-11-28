@@ -74,7 +74,7 @@ export function alertHref(alert: Pick<InboxAlert, 'destination' | 'relationshipI
   const routes: Record<string, string> = {
     MARKETPLACE: '/marketplace',
     ALERTS: '/alerts',
-    BILLING: '/profile',
+    BILLING: '/billing',
     PROFILE: '/profile',
     SETTINGS: '/settings',
   };
@@ -85,7 +85,9 @@ export const alertControlsCopy = {
   filterLabel: 'Show alerts for',
   allAgents: 'All agents',
   empty: 'No alerts.',
-  loadFailed: 'Alerts could not be loaded right now. Nothing was changed.',
+  loading: 'Loading your alerts…',
+  loadFailed: 'Your alerts could not be loaded. Nothing was changed. Please try again, or come back in a few minutes.',
+  retry: 'Try again',
   snooze: 'Snooze for a day',
   snoozed: 'Snoozed',
   acknowledge: 'Acknowledge',

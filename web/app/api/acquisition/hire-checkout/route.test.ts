@@ -331,7 +331,7 @@ describe('pre-hire checkout boundary', () => {
       expect.arrayContaining([expect.stringContaining(baseBody.idempotencyKey)])
     );
     expect(createMyAgentsSelection).toHaveBeenCalledWith('access-token', relationshipId, 'HIRE_PAID');
-    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
+    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: `/relationships/${relationshipId}` }));
     expect(response.headers.get('set-cookie')).toEqual(
       expect.stringMatching(/Path=\/professionals\/mine;.*Secure;.*HttpOnly;.*SameSite=strict/i)
     );
@@ -411,7 +411,7 @@ describe('pre-hire checkout boundary', () => {
     ).toHaveLength(0);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/confirm'))).toHaveLength(2);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/bind'))).toHaveLength(2);
-    expect(await completed.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
+    expect(await completed.json()).toEqual(expect.objectContaining({ resumePath: `/relationships/${relationshipId}` }));
   });
 
   it('reconciles the same captured payment after a confirmation timeout without starting another order', async () => {
@@ -480,6 +480,12 @@ describe('pre-hire checkout boundary', () => {
     );
 
     expect(response.status).toBe(503);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        code: 'HIRE_COMPLETING',
+        title: expect.stringContaining('We are completing your Hire'),
+      })
+    );
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 
@@ -505,6 +511,6 @@ describe('pre-hire checkout boundary', () => {
 
     expect(response.status).toBe(200);
     expect(createMyAgentsSelection).toHaveBeenCalledWith('access-token', relationshipId, 'HIRE_ZERO_PRICE');
-    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
+    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: `/relationships/${relationshipId}` }));
   });
 });

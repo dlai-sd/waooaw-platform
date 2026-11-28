@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { OnboardForm } from '@/components/relationships/OnboardForm';
 import { NotificationChannel } from '@/lib/api/generated/models/NotificationChannel';
 import { AlertFeed, type PortalAlert } from './AlertFeed';
@@ -88,6 +88,39 @@ describe('WC084 portal editors', () => {
     expect(document.cookie).toContain('waooaw-theme=dark');
   });
 
+  it('saves the chosen language and notification channels, and keeps one approval channel on', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+    global.fetch = fetchMock;
+    render(
+      <SettingsEditor
+        locale="en-IN"
+        notificationPreferences={{
+          approvalRequests: [NotificationChannel.InApp],
+          maturityReports: [NotificationChannel.Email],
+          monthlyNarratives: [NotificationChannel.Email],
+          selfGovernanceAlerts: [NotificationChannel.InApp],
+        }}
+        theme="DARK"
+        timestampVisibility="RELATIVE"
+      />
+    );
+    expect(screen.getByLabelText('Language')).toHaveValue('en');
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'hi' } });
+    const reports = screen.getByRole('group', { name: 'Maturity reports' });
+    fireEvent.click(within(reports).getByLabelText('WhatsApp'));
+    fireEvent.submit(requiredForm(screen.getByRole('button', { name: 'Save settings' })));
+    expect(await screen.findByText('Settings saved.')).toBeVisible();
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body)).settings;
+    expect(sent.locale).toBe('hi');
+    expect(sent.notificationPreferences.maturityReports.sort()).toEqual(['EMAIL', 'WHATSAPP']);
+
+    fetchMock.mockClear();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Approval requests' })).getByLabelText('In the app'));
+    fireEvent.submit(requiredForm(screen.getByRole('button', { name: 'Save settings' })));
+    expect(await screen.findByText(/Keep at least one way to receive approval requests/)).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('does not update presentation cookies after a failed settings save', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false });
     render(
@@ -104,7 +137,7 @@ describe('WC084 portal editors', () => {
       />
     );
     fireEvent.submit(requiredForm(screen.getByRole('button', { name: 'Save settings' })));
-    expect(await screen.findByText('Settings could not be saved.')).toBeVisible();
+    expect(await screen.findByText(/Settings could not be saved/)).toBeVisible();
     expect(document.cookie).not.toContain('waooaw-theme=light');
   });
 

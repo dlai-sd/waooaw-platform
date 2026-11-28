@@ -21,6 +21,11 @@ const quoteVersionPattern = /^[0-9a-f]{64}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderPattern = /^order_[A-Za-z0-9_-]{1,120}$/;
 const paymentPattern = /^pay_[A-Za-z0-9_-]{1,122}$/;
+// Said whenever a payment has been taken but the Hire has not yet been carried on: the customer's money is safe.
+const completingHire = {
+  code: 'HIRE_COMPLETING',
+  title: 'Your payment was received. We are completing your Hire. You do not need to pay again.',
+};
 
 interface HireCheckoutCommand {
   action?: 'start' | 'confirm' | 'cancel';
@@ -124,6 +129,7 @@ async function hireCheckout(request: NextRequest) {
         } | null)
       : null;
 
+  let paymentTaken = false;
   try {
     const correlationId = body.idempotencyKey;
     const disclosure = await getProfessionalDisclosure(body.professionalType);
@@ -240,6 +246,8 @@ async function hireCheckout(request: NextRequest) {
         headers: { 'Cache-Control': 'no-store' },
       });
     }
+    // From here the payment is taken: any failure means "we are completing your Hire", never "payment failed".
+    paymentTaken = true;
 
     const api = new ProfessionalsApi(
       new Configuration({
@@ -275,20 +283,16 @@ async function hireCheckout(request: NextRequest) {
       cache: 'no-store',
     });
     if (!bindResponse.ok) {
-      return NextResponse.json(
-        {
-          title: 'Payment was received, but Hire setup is still being reconciled. Retry the same request.',
-        },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } }
-      );
+      return NextResponse.json(completingHire, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
     const selection = await createMyAgentsSelection(
       accessToken,
       continuation.relationshipId,
       outcome.outcome_kind === 'CAPTURED' ? 'HIRE_PAID' : 'HIRE_ZERO_PRICE'
     );
+    // The customer lands on the new agent's own page, where setup carries on, not on the list of agents.
     const response = NextResponse.json(
-      { ...outcome, resumePath: '/professionals/mine' },
+      { ...outcome, resumePath: `/relationships/${continuation.relationshipId}` },
       { headers: { 'Cache-Control': 'no-store' } }
     );
     response.cookies.set(myAgentsSelectionCookie, selection.handle, {
@@ -301,6 +305,9 @@ async function hireCheckout(request: NextRequest) {
     return response;
   } catch (error) {
     logServerFailure('web.acquisition.hire.checkout.request_failed', error);
+    if (paymentTaken) {
+      return NextResponse.json(completingHire, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
     if (error instanceof ResponseError) {
       const payload = await readServerResponse(error.response, 'web.acquisition.hire.checkout.response_invalid', {
         title: 'Hire could not continue.',

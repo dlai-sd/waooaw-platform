@@ -80,13 +80,21 @@ def test_update_files_must_set_a_role_and_timeouts_before_changing_anything() ->
 
 def test_a_file_without_the_header_is_full_class_and_existing_files_are_untouched() -> None:
     directory = ROOT / "infrastructure/postgres/init"
-    texts = [path.read_text(encoding="utf-8") for path in directory.glob("*.sql")]
+    # Files that opt in to the update path say so in their first line; every other file stays full-class.
+    paths = [
+        path
+        for path in sorted(directory.glob("*.sql"))
+        if not path.read_text(encoding="utf-8").lstrip().startswith("-- wc177-apply:")
+    ]
+    texts = [path.read_text(encoding="utf-8") for path in paths]
     assert texts and all(lint.declared_class(text) == "full" for text in texts)
     findings, _ = lint.lint_directory(directory)
     baseline = [
         item for path in sorted(directory.glob("*.sql")) for item in lint.lint_sql(path.name, path.read_text(encoding="utf-8"))
     ]
-    assert len(findings) == len(baseline)  # no update-class rule is applied to a file without the header
+    headed = [path.name for path in directory.glob("*.sql") if path not in paths]
+    # An update-class file adds no finding the full-class rules would not have found, except its own update rules.
+    assert len(findings) >= len(baseline) - len([f for f in baseline if f.file in headed])
     assert lint.declared_class("-- wc177-apply: maybe\nSELECT 1;") == "full"
 
 

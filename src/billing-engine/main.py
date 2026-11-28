@@ -1,5 +1,6 @@
 # Implements: work-contracts/WC-030-*.md §WC030-01bb:main.py
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R015, WC176-R016
 # constitutional_basis: C-059 (Implementation Traceability)
 # Constitutional basis: C-059, C-038, ADR-026
 from __future__ import annotations
@@ -19,11 +20,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings
 from database import init_db, close_db, get_session_factory
+from payment.capture_reconciliation import run_capture_reconciliation
 from payment.lifecycle_jobs import run_lifecycle_sweep
 from payment.money_gate import ChargeRefused
 from payment.money_jobs import make_charge_guard, run_money_reconciliation
 from payment.money_mode import require_consistent_mode
 from payment.razorpay_client import set_charge_guard
+from payment.renewals import run_renewal_sweep
 from markup.router import router as pricing_router
 from markup import thread_catalog
 from meter.router import router as meter_router
@@ -113,6 +116,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         trigger=IntervalTrigger(minutes=15),
         id="wbe_lifecycle_sweep",
         name="WBE package lifecycle sweep (grace expiry, fee refunds)",
+        replace_existing=True,
+        kwargs={"open_session": get_session_factory()},
+    )
+
+    scheduler.add_job(
+        run_renewal_sweep,
+        trigger=IntervalTrigger(minutes=15),
+        id="wbe_renewal_sweep",
+        name="WBE renewal collection (credit renewals, renewal orders, grace start)",
+        replace_existing=True,
+        kwargs={"open_session": get_session_factory()},
+    )
+
+    scheduler.add_job(
+        run_capture_reconciliation,
+        trigger=IntervalTrigger(minutes=15),
+        id="wbe_capture_reconciliation",
+        name="WBE captured-payment reconciliation (complete the Hire and invoice, or mark refund due)",
         replace_existing=True,
         kwargs={"open_session": get_session_factory()},
     )

@@ -218,7 +218,8 @@ public sealed class PlatformProfessionalApprovalService(
     IProfessionalCatalog catalog,
     IPlatformProfessionalApprovalStore store,
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
-    TimeProvider clock
+    TimeProvider clock,
+    WorkspaceRuntimeBindingService? bindings = null
 )
 {
     public const string WorkspacePolicyVersion = "founder-platform-approval-v1";
@@ -411,6 +412,15 @@ public sealed class PlatformProfessionalApprovalService(
                     admission.UpdatedAt = clock.GetUtcNow();
                     await db.SaveChangesAsync(ct);
                 }
+                if (bindings is not null)
+                    await bindings.EnsureAsync(
+                        tenantId,
+                        admission.AdmissionId,
+                        ownerSubjectId,
+                        professionalType,
+                        professionalVersion,
+                        ct
+                    );
                 return admission.AdmissionId;
             }
             catch (DbUpdateException) when (attempt == 0)

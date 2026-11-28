@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using Waooaw.BusinessPlatform.Controllers;
@@ -406,6 +407,82 @@ public sealed class PlatformProfessionalApprovalTests
             );
 
         Assert.Equal(400, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task AWorkspaceAdmissionGetsOneRevisionAndOneBindingPerSkillExactlyOnce()
+    {
+        var environment = new Mock<IHostEnvironment>();
+        environment.SetupGet(value => value.ContentRootPath).Returns(FindBusinessPlatformRoot());
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var packageDirectory = Path.GetDirectoryName(
+            RepositoryPaths.Resolve(
+                "src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json"
+            )
+        )!;
+        var source = new FileAgentPackageSource(packageDirectory);
+        var clock = new FixedClock(Now);
+        var service = new PlatformProfessionalApprovalService(
+            new ProfessionalCatalog(environment.Object),
+            new InMemoryPlatformProfessionalApprovalStore(),
+            factory,
+            clock,
+            new WorkspaceRuntimeBindingService(factory, source, clock)
+        );
+        await service.DecideAsync(
+            Type,
+            "1.0.0",
+            PlatformApprovalActions.Approve,
+            "founder-1",
+            null,
+            default
+        );
+        var tenant = Guid.NewGuid();
+
+        var first = await service.EnsureWorkspaceAdmissionAsync(
+            tenant,
+            Guid.NewGuid(),
+            Type,
+            "1.0.0",
+            default
+        );
+        var second = await service.EnsureWorkspaceAdmissionAsync(
+            tenant,
+            Guid.NewGuid(),
+            Type,
+            "1.0.0",
+            default
+        );
+
+        Assert.Equal(first, second);
+        await using var db = factory.CreateDbContext();
+        var bindings = await db
+            .AgentSkillRuntimeBindings.Where(value => value.TenantId == tenant)
+            .ToListAsync();
+        Assert.Equal(
+            ["CONTENT_STRATEGY_AND_CALENDAR", "CUSTOMER_PROFILING", "MARKET_RESEARCH_AND_MATURITY"],
+            bindings.Select(value => value.SkillId).Order(StringComparer.Ordinal).ToArray()
+        );
+        Assert.All(
+            bindings,
+            value =>
+            {
+                Assert.Equal(first, value.AdmissionId);
+                Assert.Matches("^sha256:[0-9a-f]{64}$", value.PromptDigest);
+                Assert.Matches("^sha256:[0-9a-f]{64}$", value.InputSchemaDigest);
+                Assert.Equal("3.1", value.SpecificationRevision);
+                Assert.Equal(1, value.ReleaseSequence);
+            }
+        );
+        Assert.Single(
+            await db.AgentAdmissionRevisions.Where(value => value.TenantId == tenant).ToListAsync()
+        );
+        Assert.Equal(
+            1,
+            (
+                await db.AgentAdmissions.SingleAsync(value => value.TenantId == tenant)
+            ).CurrentRevision
+        );
     }
 
     private static string FindBusinessPlatformRoot() =>

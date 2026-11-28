@@ -1,4 +1,5 @@
 # Implements: architecture/reference/components/conversation-core.md §9 F3 Acceptance Mapping
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # constitutional_basis: C-001, C-023, C-059, C-063, C-076
 from __future__ import annotations
 
@@ -54,6 +55,7 @@ from routers.conversation_models import (
     batch_source_list_digest,
 )
 from workload_identity import DelegatedContext
+from trial_induction import TRIAL_NOTICE, TrialInductionError
 from workflows import conversation_execution_workflow as workflow_module
 from workflows.conversation_execution_workflow import (
     CancellationSignal,
@@ -3650,3 +3652,93 @@ async def test_paas_workflow_accepts_canonical_no_payload_emergency_stop() -> No
     legacy_payload = EmergencyStopSignalPayload(stopped_by="customer", reason="requested")
     await legacy_workflow.signal_emergency_stop(legacy_payload)
     assert legacy_workflow._emergency_stop_payload is legacy_payload
+
+
+class FakeTrialInduction:
+    def __init__(self, *, error: str | None = None) -> None:
+        self.error = error
+        self.calls: list[dict[str, Any]] = []
+
+    async def induction_turn(self, **call: Any) -> dict[str, Any]:
+        self.calls.append(call)
+        if self.error is not None:
+            raise TrialInductionError(self.error)
+        return {
+            "kind": "INDUCTION_TURN",
+            "opening": None,
+            "labels": [],
+            "nextQuestion": {
+                "requirementRef": "DMA-IND-002",
+                "kind": "ASK",
+                "text": "Please tell me about your selected business outcomes.",
+            },
+            "summaryState": "INCOMPLETE",
+            "sideEffects": [],
+        }
+
+
+def _trial_body() -> dict[str, Any]:
+    body = _body(conversationOperation=None)
+    mandate = body["operationalMandate"]
+    mandate.update(relationshipLifecycle="TRIAL_ACTIVE", engagementMode="TRIAL")
+    canonical = json.dumps(
+        {key: value for key, value in mandate.items() if key != "mandateDigest"},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    mandate["mandateDigest"] = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+    return body
+
+
+async def test_trial_first_message_gets_the_agents_bounded_induction_reply_without_ai_or_actions(
+    client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = FakeEmploymentAirGateway()
+    app.state.employment_air_gateway = gateway
+    induction = FakeTrialInduction()
+    monkeypatch.setattr(app.state, "trial_induction_client", induction, raising=False)
+
+    _, execution = await _start(client, body=_trial_body())
+
+    handle = app.state.temporal_client.handles[execution["executionId"]]
+    delta = next(event for event in handle.events if event["eventType"] == "response.delta")
+    assert delta["data"]["partial"] is True
+    assert delta["data"]["appendText"].startswith(TRIAL_NOTICE)
+    assert "selected business outcomes" in delta["data"]["appendText"]
+    assert handle.events[-1]["eventType"] == "execution.completed"
+    assert handle.events[-1]["data"]["completionReason"] == "COMPLETE"
+    assert len(induction.calls) == 1
+    assert induction.calls[0]["mandate"].engagement_mode == "TRIAL"
+    assert gateway.generations == [] and gateway.proposals == []
+
+
+async def test_trial_reply_that_the_adapter_cannot_give_ends_with_a_plain_retryable_failure(
+    client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app.state.employment_air_gateway = FakeEmploymentAirGateway()
+    monkeypatch.setattr(app.state, "trial_induction_client", FakeTrialInduction(error="ADAPTER_UNAVAILABLE"), raising=False)
+
+    _, execution = await _start(client, body=_trial_body())
+
+    events = app.state.temporal_client.handles[execution["executionId"]].events
+    assert not any(event["eventType"] in {"response.delta", "execution.completed"} for event in events)
+    assert next(event for event in events if event["eventType"] == "response.system")["data"]["code"] == "INTERNAL_FAILURE"
+    assert events[-1]["eventType"] == "execution.failed"
+    assert events[-1]["data"]["errorCode"] == "INTERNAL_FAILURE"
+
+
+async def test_live_skill_without_an_operation_never_takes_the_trial_induction_path(
+    client: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app.state.employment_air_gateway = FakeEmploymentAirGateway()
+    induction = FakeTrialInduction()
+    monkeypatch.setattr(app.state, "trial_induction_client", induction, raising=False)
+
+    _, execution = await _start(client, body=_body(conversationOperation=None))
+
+    events = app.state.temporal_client.handles[execution["executionId"]].events
+    assert induction.calls == []
+    assert events[-1]["data"]["errorCode"] == "OPERATION_UNSUPPORTED"

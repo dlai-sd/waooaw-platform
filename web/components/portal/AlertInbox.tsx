@@ -125,7 +125,15 @@ export function AlertInbox({ agents, relationshipId, showControls = false, local
         </label>
       ) : null}
       <output aria-live="polite">{message ?? ''}</output>
-      {failed ? <p role="alert">{copy.loadFailed}</p> : null}
+      {alerts === null && !failed ? <output>{copy.loading}</output> : null}
+      {failed ? (
+        <div role="alert">
+          <p>{copy.loadFailed}</p>
+          <button className="secondary-link" onClick={() => void load()} type="button">
+            {copy.retry}
+          </button>
+        </div>
+      ) : null}
       {alerts !== null && alerts.length === 0 && !failed ? <p>{copy.empty}</p> : null}
       <ul className="portal-list alert-list">
         {(alerts ?? []).map((alert) => (

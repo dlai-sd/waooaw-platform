@@ -1,4 +1,5 @@
 # Implements: architecture/reference/components/professional-runtime.md
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # constitutional_basis: C-025 (PAAS exclusive), C-001 (Emergency Stop ≤250ms),
 #   C-059, C-063, ADR-015 (Temporal), ADR-018 (Emergency Stop signal)
 
@@ -45,6 +46,7 @@ from relationship_workspace import router as relationship_workspace_router
 from employment_protocol import configure_employment_protocol
 from employment_air_gateway import EmploymentAirGateway
 from real_work_gateway import BusinessPlatformRealWorkGateway
+from trial_induction import AdapterTrialInductionClient, workload_uri_from_credentials
 from spend_client import WbeSpendClient
 from activities.conversation_dispatch import ConversationDispatchActivity
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
@@ -156,6 +158,20 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             Path(workload_credentials),
         )
         application.state.employment_air_gateway = employment_air_gateway
+    application.state.trial_induction_client = None
+    trial_induction_client: AdapterTrialInductionClient | None = None
+    dma_adapter_base_url = os.getenv("DMA_ADAPTER_BASE_URL")
+    pr_workload_uri = os.getenv("PR_WORKLOAD_URI") or (
+        workload_uri_from_credentials(Path(workload_credentials)) if workload_credentials else None
+    )
+    if dma_adapter_base_url and air_secret and pr_workload_uri:
+        trial_induction_client = AdapterTrialInductionClient(
+            dma_adapter_base_url,
+            air_secret,
+            pr_workload_uri,
+            httpx.AsyncClient(timeout=30.0),
+        )
+        application.state.trial_induction_client = trial_induction_client
     application.state.real_work_gateway = None
     application.state.real_work_spend_client = None
     real_work_gateway: BusinessPlatformRealWorkGateway | None = None
@@ -220,7 +236,9 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         await air_client.aclose()
     if employment_air_gateway is not None:
         await employment_air_gateway.close()
-    application.state.real_work_gateway = None
+    application.state.trial_induction_client = None
+    if trial_induction_client is not None:
+        await trial_induction_client.close()
     application.state.real_work_spend_client = None
     if real_work_gateway is not None:
         await real_work_gateway.close()

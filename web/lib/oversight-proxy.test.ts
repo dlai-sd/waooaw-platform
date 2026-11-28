@@ -4,7 +4,13 @@
 // Constitutional basis: C-001, C-023, C-059, C-063
 
 import { NextRequest } from 'next/server';
-import { alertControlRoutes, operationsRoutes, oversightRouteAllowed, proxyOversight } from './oversight-proxy';
+import {
+  alertControlRoutes,
+  customerDataRequestRoutes,
+  operationsRoutes,
+  oversightRouteAllowed,
+  proxyOversight,
+} from './oversight-proxy';
 
 const id = '0f5d4d3a-6f0c-4b6e-9f30-2d4f6a0c1b11';
 
@@ -40,8 +46,25 @@ describe('oversight route allow-list', () => {
     ['GET', ['relationships', id, 'work-timeline']],
     ['GET', ['relationships', id, 'spend-chain']],
     ['POST', ['relationships', id, 'spend-discrepancies', id, 'resolve']],
+    ['GET', ['data-requests']],
+    ['POST', ['data-requests', id, 'resolve']],
   ])('forwards the operation %s %j', (method, segments) => {
     expect(oversightRouteAllowed(operationsRoutes, method, segments)).toBe(true);
+  });
+
+  it.each([
+    ['GET', []],
+    ['POST', []],
+  ])('forwards the customer data request %s %j', (method, segments) => {
+    expect(oversightRouteAllowed(customerDataRequestRoutes, method, segments)).toBe(true);
+  });
+
+  it.each([
+    ['DELETE', []],
+    ['GET', [id]],
+    ['PUT', []],
+  ])('does not forward %s %j as a customer data request', (method, segments) => {
+    expect(oversightRouteAllowed(customerDataRequestRoutes, method, segments)).toBe(false);
   });
 
   it.each([
