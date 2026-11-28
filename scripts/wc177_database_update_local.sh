@@ -41,8 +41,9 @@ WORK="$WC124_WORKDIR"
 mkdir -p "$WORK/repo-base/infrastructure/postgres/init"
 cp "$ROOT"/infrastructure/postgres/init/*.sql "$WORK/repo-base/infrastructure/postgres/init/"
 INIT_BASE="$WORK/repo-base/infrastructure/postgres/init"
-FIXTURE=99zzzzzzzz-wc177-zz-fixture.sql
-LOCK_PROBE=99zzzzzzzz-wc177-zzz-lock-probe.sql
+# Fixture names sort after every real init file (99zzzzzzzz-*), so a new real file never sorts after them.
+FIXTURE=99zzzzzzzzzzzz-wc177-zz-fixture.sql
+LOCK_PROBE=99zzzzzzzzzzzz-wc177-zzz-lock-probe.sql
 
 write_fixture() {
   cat > "$1/$FIXTURE" <<'EOF'
@@ -370,9 +371,9 @@ run_update "$WORK/pl-lock" > "$WORK/lock-retry-clean.log"
 grep -q '"status":"passed"' "$WORK/lock-retry-clean.log"
 test "$(psql_su "$BASE" -c "SELECT count(*) FROM wc124_provisioning.init_chain_ledger WHERE file_name = '$LOCK_PROBE'")" = 1
 # Short lock: the first attempt times out, the retry applies. Use a fresh file name so the ledger is empty for it.
-mv "$WORK/repo-lock/infrastructure/postgres/init/$LOCK_PROBE" "$WORK/repo-lock/infrastructure/postgres/init/99zzzzzzzz-wc177-zzzz-lock-retry.sql"
-sed -i 's/lock_probe/lock_retry/' "$WORK/repo-lock/infrastructure/postgres/init/99zzzzzzzz-wc177-zzzz-lock-retry.sql"
-payload_for "$WORK/repo-lock" "$WORK/pl-retry" 99zzzzzzzz-wc177-zzzz-lock-retry.sql
+mv "$WORK/repo-lock/infrastructure/postgres/init/$LOCK_PROBE" "$WORK/repo-lock/infrastructure/postgres/init/99zzzzzzzzzzzz-wc177-zzzz-lock-retry.sql"
+sed -i 's/lock_probe/lock_retry/' "$WORK/repo-lock/infrastructure/postgres/init/99zzzzzzzzzzzz-wc177-zzzz-lock-retry.sql"
+payload_for "$WORK/repo-lock" "$WORK/pl-retry" 99zzzzzzzzzzzz-wc177-zzzz-lock-retry.sql
 hold_lock 4
 run_update "$WORK/pl-retry" -e UPDATE_LOCK_RETRIES=3 -e UPDATE_LOCK_PAUSE_SECONDS=1 > "$WORK/lock-retry.log" 2>&1
 retry_result=$(grep -o 'WC177_UPDATE_RESULT {.*}' "$WORK/lock-retry.log" | sed 's/^WC177_UPDATE_RESULT //')
