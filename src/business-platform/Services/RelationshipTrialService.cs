@@ -133,15 +133,18 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly WorkloadIdentityClient _identity;
     private readonly HttpClient _professionalRuntime;
+    private readonly Microsoft.Extensions.Logging.ILogger? _logger;
 
     public bool IsConfigured => true;
 
     public HttpRelationshipTrialOwnerGateway(
         IHttpClientFactory httpClientFactory,
         WorkloadIdentityClient identity,
-        Uri professionalRuntimeBaseAddress
+        Uri professionalRuntimeBaseAddress,
+        Microsoft.Extensions.Logging.ILogger<HttpRelationshipTrialOwnerGateway>? logger = null
     )
     {
+        _logger = logger;
         _httpClientFactory = httpClientFactory;
         _identity = identity;
         _professionalRuntime = identity.CreateClient(
@@ -200,7 +203,14 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
                 return ParseWbeEntitlement(status);
             }
             if (!response.IsSuccessStatusCode)
+            {
+                // The billing owner's answer is the cause of an unavailable Trial, so it is logged (status only, no body).
+                _logger?.LogWarning(
+                    "The billing owner refused the Trial start with status {StatusCode}.",
+                    (int)response.StatusCode
+                );
                 return null;
+            }
             using var document = await JsonDocument.ParseAsync(
                 await response.Content.ReadAsStreamAsync(cancellationToken),
                 cancellationToken: cancellationToken
@@ -216,6 +226,10 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
                         or FormatException
             )
         {
+            _logger?.LogWarning(
+                exception,
+                "The billing owner could not be reached or answered unreadably for the Trial start."
+            );
             return null;
         }
     }

@@ -1,0 +1,70 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-178
+contract_path: work-contracts/WC-178-demo-live-journey-defects.md
+contract_digest: 715cc9c6b997d46e68deae97a248c8704635b7d1767bd555f699eb3238dc18ef
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: An automated test where code or SQL changes, then a live read-back with a throwaway customer on Demo; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: A Founder-started Demo deployment carries every fix; hand-applied hotfixes are listed in the contract's Defect Register
+  residual_risk: A fix found by a live run may reveal the next defect behind it; each is recorded as its own requirement
+  completion_rule: The test passes at the exact head recorded in the PR body and the matching walk step returns the expected result on Demo
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC178-R001
+    source: WC-178 Canonical Requirement Index, R001
+    observable_outcome: 'The Business Platform reaches the billing engine at its internal address, so Trial start, Trial status and subscription calls leave the Business Platform.'
+    test_path_or_plan: 'infrastructure/terraform/phase2/modules/workload/workload-identity.tf renders BillingEngine__BaseUrl; live: POST /trial/start appears in the billing engine log for a Trial attempt.'
+
+  - <<: *defaults
+    requirement_id: WC178-R002
+    source: WC-178 Canonical Requirement Index, R002
+    observable_outcome: 'The web server calls the billing engine at its internal address for Hire checkout, confirmation and cancellation.'
+    test_path_or_plan: 'infrastructure/terraform/phase2/modules/workload/main.tf renders BILLING_ENGINE_URL for the web app; live: Hire checkout start answers from the billing engine once a package is published.'
+
+  - <<: *defaults
+    requirement_id: WC178-R003
+    source: WC-178 Canonical Requirement Index, R003
+    observable_outcome: 'A Trial of DIGITAL_MARKETING_LOCAL_SERVICE has a free local-classification allowance in Demo and UAT, so the billing engine no longer answers 422 TRIAL_CONFIG_MISSING.'
+    test_path_or_plan: 'main.tf renders TRIAL_FREE_UNITS for the billing engine in Demo and UAT; live: the billing engine log shows no TRIAL_CONFIG_MISSING for a Trial attempt.'
+
+  - <<: *defaults
+    requirement_id: WC178-R004
+    source: WC-178 Canonical Requirement Index, R004
+    observable_outcome: 'business.trial_allocations.agent_type holds a 31-character agent type and accepts any well-formed code.'
+    test_path_or_plan: 'tests/business-platform.Tests/TrialAllocationsPolicyPostgresTests.cs against a real PostgreSQL; scripts/wc124_init_chain_lint.py on 99zzzzzzzz-wc176-03-trial-agent-type.sql.'
+
+  - <<: *defaults
+    requirement_id: WC178-R005
+    source: WC-178 Canonical Requirement Index, R005
+    observable_outcome: 'The billing engine application role can record a Trial under forced row security; every other role still cannot.'
+    test_path_or_plan: 'tests/business-platform.Tests/TrialAllocationsPolicyPostgresTests.cs (refused before the policy, accepted after, other role refused, replay safe); update-class lint on 99zzzzzzzz-wc178-01-trial-allocations-billing-policy.sql.'
+
+  - <<: *defaults
+    requirement_id: WC178-R006
+    source: WC-178 Canonical Requirement Index, R006
+    observable_outcome: 'A refusal from the billing owner during Trial start is logged with its status and without its body.'
+    test_path_or_plan: 'tests/business-platform.Tests/OwnerGatewayCoverageTests.cs TrialOwner_RefusalIsLoggedWithItsStatusAndNoBody.'
+
+  - <<: *defaults
+    requirement_id: WC178-R007
+    source: WC-178 Canonical Requirement Index, R007
+    observable_outcome: 'A pre-deployment check fails when a service setting the code reads has no rendered value in Terraform.'
+    test_path_or_plan: 'A tests/pipeline test that reads the settings each service requires and the rendered Terraform environment (not yet written).'
+
+  - <<: *defaults
+    requirement_id: WC178-R008
+    source: WC-178 Canonical Requirement Index, R008
+    observable_outcome: 'A Trial is recorded for the customer without a foreign key violation: the identifier the Business Platform sends is the one business.trial_allocations references.'
+    test_path_or_plan: 'Waits for the Founder decision between options A and B in the contract; then a Postgres test with the real foreign key and a live Trial walk.'
+
+  - <<: *defaults
+    requirement_id: WC178-R009
+    source: WC-178 Canonical Requirement Index, R009
+    observable_outcome: 'Defects supplied by the Founder are recorded here with their evidence.'
+    test_path_or_plan: 'Added as the Founder supplies them.'

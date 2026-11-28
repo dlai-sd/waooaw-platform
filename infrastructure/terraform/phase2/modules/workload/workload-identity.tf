@@ -99,6 +99,9 @@ locals {
       WAOOAW_WID_REFRESH_SECONDS = "300"
       }, workload == "business-platform" ? {
       # Container Apps service names; the TLS identity is checked by workload identity URI, never by host name.
+      # Trial start, subscriptions and the Temporal activities call the billing engine's ordinary internal address;
+      # without it they used a name that does not exist and a Trial could not start.
+      BillingEngine__BaseUrl                            = local.service_urls.billing_engine
       BillingEngine__RelationshipWorkspaceBaseUrl       = "https://ca-${var.environment}-billing-engine:${local.wid_private_listeners["billing-engine"]}"
       ProfessionalRuntime__RelationshipWorkspaceBaseUrl = "https://ca-${var.environment}-professional-runtime:${local.wid_private_listeners["professional-runtime"]}"
       # WC-149: the provider probe needs the AI runtime peer certificate, so it uses the private mutual-TLS listener.
