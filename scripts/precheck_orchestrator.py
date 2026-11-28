@@ -192,9 +192,10 @@ def _load_reusable_results(
             continue
         prior_nodes = evidence.get("nodes")
         source_head = evidence.get("commit_sha")
+        # A node's own PASS is bound to its inputs, runner, artifact digests and carry-forward proof, so it stays
+        # reusable when another gate in the same run failed; only a fully green run may bind a PR (prepare_pr_body).
         if (
             evidence.get("schema") != EVIDENCE_SCHEMA
-            or evidence.get("passed") is not True
             or not isinstance(prior_nodes, list)
             or not isinstance(source_head, str)
             or len(source_head) != 40
