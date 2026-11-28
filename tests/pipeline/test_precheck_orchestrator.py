@@ -126,6 +126,25 @@ def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path:
     assert marker.read_text() == "x"
 
 
+def test_gates_that_passed_in_a_failed_run_are_reused_when_only_the_failed_gate_is_fixed(tmp_path: Path) -> None:
+    marker = tmp_path / "passing-executions"
+    passing = python_node(
+        "passing",
+        f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+    )
+    broken = python_node("broken", "import sys; sys.exit(1)")
+    fixed = python_node("broken", "print('now passes')")
+
+    first = run([passing, broken], tmp_path / "artifacts", preflight=lambda: (True, []))
+    second = run([passing, fixed], tmp_path / "artifacts", preflight=lambda: (True, []))
+
+    assert first["passed"] is False
+    assert second["passed"] is True
+    assert [node["name"] for node in second["nodes"] if node["reuse"]["reused"]] == ["passing"]
+    assert second["executed_count"] == 1
+    assert marker.read_text() == "x"
+
+
 def test_volatile_node_executes_again_for_identical_candidate(tmp_path: Path) -> None:
     marker = tmp_path / "executions"
     node = replace(
