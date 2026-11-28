@@ -624,3 +624,13 @@ def test_only_demo_enables_synthetic_acceptance_tenants_in_the_committed_setting
 
     settings = json.loads((SETTINGS_DIR / f"{environment}.json").read_text(encoding="utf-8"))
     assert settings.get("feature_settings", {}).get("acceptance_synthetic_tenants_enabled") is expected
+
+
+def test_the_database_principals_the_inputs_script_names_match_the_terraform_validation() -> None:
+    # The workload module accepts exactly these principals in Demo; a missing or extra one fails planning after a long apply.
+    import re
+
+    variables = (SETTINGS_DIR.parents[1] / "infrastructure/terraform/phase2/modules/workload/variables.tf").read_text(encoding="utf-8")
+    block = re.search(r'var\.environment == "demo" \? \[(.*?)\] : \[', variables, re.S)
+    assert block is not None
+    assert set(re.findall(r'"([a-z-]+)"', block.group(1))) == set(DATABASE_SECRET_NAMES)
