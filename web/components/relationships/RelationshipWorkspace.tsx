@@ -231,7 +231,7 @@ export function RelationshipWorkspace({
           />
         </section>
         <section>
-          <h3>Operations eligibility</h3>
+          <h3>What your agent still needs</h3>
           <p>
             <strong>{stateLabel(views.operations.eligibilityState)}</strong>
           </p>
@@ -242,7 +242,7 @@ export function RelationshipWorkspace({
               ))}
             </ul>
           ) : (
-            <p>No server-reported blockers.</p>
+            <p>Nothing is missing. Your agent can work.</p>
           )}
         </section>
         <section>

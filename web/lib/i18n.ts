@@ -41,7 +41,7 @@ const english = {
   constitutionalDescription:
     'Every WAOOAW professional works within an agreed role and limits. You can review important actions, ask for changes, or stop the work at any time.',
   home: 'Home',
-  myExperts: 'My WaooaW Experts',
+  myExperts: 'My Agents',
   settings: 'Settings',
   founder: 'Founder',
   founderNavigation: 'Founder navigation',

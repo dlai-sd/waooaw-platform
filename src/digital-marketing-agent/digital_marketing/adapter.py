@@ -1,6 +1,7 @@
 """Digital Marketing domain behavior behind the common runtime contract."""
 
 # Implements: architecture/reference/components/dma-employment-conformance-work-component.md §4, §20
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # Constitutional basis: C-035, C-059, C-071, C-079
 
 from __future__ import annotations
@@ -27,6 +28,9 @@ OPERATIONS = {
     ("CONTENT_STRATEGY_AND_CALENDAR", "RESEARCH_CALENDAR_EVENTS"): research_calendar_events,
     ("CONTENT_STRATEGY_AND_CALENDAR", "BUILD_PLAN_LEVEL"): build_plan_level,
     ("CUSTOMER_PROFILING", "INDUCTION_TURN"): induction_turn,
+    # WC176-R009: the induction is shared by the three Trial skills, so the first Trial reply works for whichever is selected.
+    ("MARKET_RESEARCH_AND_MATURITY", "INDUCTION_TURN"): induction_turn,
+    ("CONTENT_STRATEGY_AND_CALENDAR", "INDUCTION_TURN"): induction_turn,
     ("CUSTOMER_PROFILING", "PROPOSE_GOALS"): propose_goals,
     ("MARKET_RESEARCH_AND_MATURITY", "PUBLIC_ENRICHMENT"): enrich_public_footprint,
     ("SOCIAL_CONTENT_CREATION_AND_PUBLISHING", "CREATE_DRAFTS"): create_platform_drafts,

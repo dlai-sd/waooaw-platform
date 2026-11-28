@@ -178,7 +178,7 @@ export function ProtectedAppShell({
             <UserRound aria-hidden="true" size={18} />
             Profile
           </Link>
-          <Link href="/profile#billing">
+          <Link href="/billing">
             <CreditCard aria-hidden="true" size={18} />
             Billing
           </Link>

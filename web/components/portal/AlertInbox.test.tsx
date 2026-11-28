@@ -70,7 +70,7 @@ describe('AlertInbox', () => {
       '/relationships/22222222-2222-4222-8222-222222222222?surface=decisions'
     );
     expect(alertHref(alert())).toBe('/relationships/22222222-2222-4222-8222-222222222222?surface=overview');
-    expect(alertHref(alert({ relationshipId: null, destination: { surface: 'BILLING' } }))).toBe('/profile');
+    expect(alertHref(alert({ relationshipId: null, destination: { surface: 'BILLING' } }))).toBe('/billing');
     expect(alertHref(alert({ relationshipId: null, destination: { surface: 'UNKNOWN' } }))).toBe('/home');
   });
 
@@ -127,6 +127,24 @@ describe('AlertInbox', () => {
     install(() => ({ status: 503, body: {} }));
     render(<AlertInbox />);
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be loaded');
+  });
+
+  it('shows a loading state, then retries only when the customer asks', async () => {
+    let attempts = 0;
+    install(() => {
+      attempts += 1;
+      return attempts === 1 ? { status: 403, body: {} } : { status: 200, body: inbox([alert()]) };
+    });
+    render(<AlertInbox />);
+    expect(screen.getByText('Loading your alerts…')).toBeInTheDocument();
+    const failure = await screen.findByRole('alert');
+    expect(failure).toHaveTextContent('Please try again');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(attempts).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Your posts are behind pace.')).toBeInTheDocument();
+    expect(attempts).toBe(2);
   });
 
   it('builds the mute list from routine alerts plus existing mutes and never from floor categories', () => {

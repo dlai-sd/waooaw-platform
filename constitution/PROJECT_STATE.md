@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
 **State Revision:** 384
-**Last Updated:** 2026-11-28 (repository state through PR #661 merged as ebb227e427; checkpoint text below is hand-maintained)
+**Last Updated:** 2026-11-28 (repository state through PR #662 merged as 0dbd0d64ff; checkpoint text below is hand-maintained)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
@@ -28,14 +28,15 @@ Founder pricing screen repairs (#614); WC-147 cloud workload credential issuance
 provider and credential screen (#617); WC-149 paid provider consumption (#618); WC-150 private listener start-up
 guard (#619); WC-151 WID leaf issuer root-key defect (#620). WC-141 digest-gated validation reuse is scoped only.
 
-IN PROGRESS (2026-11-28): WC-177 database update path and faster deployment stages is implemented on branch
-`ib/177/database-update-path` in one pull request on Founder direction (all stories, Docker validation once at
-the end, then a read-only-first live workflow rehearsal with the Founder's Azure session). Founder decisions
-D1 (Production update-first with a restore marker) and D2 (update principal holds `bp_owner` and `wbe_owner`;
-the Enterprise Architect is asked to rule on the 8.2 wording and any ADR) are approved; D3 stays "no". Production
-apply stays prohibited; the plan refuses Production. Release Qualification is OFF by default in PR bodies until
-the Founder requests it. No Demo run of the update path has happened; measured times replace the estimates in
-WC-177 only after the Founder-started runs of R022.
+IN PROGRESS (2026-11-28): WC-176 chunks A to C (customer journeys: route markers, Alerts, Settings, data requests,
+runtime bindings, plain readiness, Trial end, Hire hand-off, captured-payment safety, renewals, GST invoice view,
+runbooks) are implemented on branch `ib/176/customer-journeys-abc` in one pull request on Founder direction
+(Release Qualification ON for this PR; Docker validation once at the end). WC-177 (#661, #662) is merged. Open:
+R009 first Trial reply is partly built (bounded adapter reply, needs a live check and the DMA 1.2.0 conversation
+operation for configured agents); Founder steps remain: publish the package and activate it on the Pricing page
+(runbook `dma-starter-package-demo.md`); Founder decision D6 (data kept after a Trial) is conservative at 90 days
+and configurable; D3 data erasure is a recorded request, not an automatic erasure. No Demo run of WC-176 has
+happened; Skill 24 live proof follows a Founder-started deployment.
 
 OPEN, NOT CLOSED BY MERGES: WC-134 full completion still needs separately authorized protected Meta readback,
 exact-candidate activation and spend, working alert receipt and own-number/public-sender live cohorts; WhatsApp

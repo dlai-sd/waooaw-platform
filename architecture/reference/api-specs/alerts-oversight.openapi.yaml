@@ -117,6 +117,44 @@ paths:
       responses:
         "202": { description: Acknowledged }
         "403": { description: OPERATIONS_FORBIDDEN }
+  /api/v1/operations/data-requests:
+    get:
+      operationId: listOperatorDataRequests
+      summary: Customers' open requests for a copy of their data or for their account to be erased, oldest first (WC176-R006)
+      responses:
+        "200": { description: Open requests; no contact detail or content is returned, content: { application/json: { schema: { $ref: "#/components/schemas/OperatorDataRequestListV1" } } } }
+        "403": { description: OPERATIONS_FORBIDDEN }
+  /api/v1/operations/data-requests/{requestId}/resolve:
+    post:
+      operationId: resolveOperatorDataRequest
+      summary: Close an open data request as completed or declined, with a note the customer can see; needs a fresh multi-factor sign-in
+      parameters:
+        - { name: requestId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveDataRequestBodyV1" } } }
+      responses:
+        "200": { description: The closed request, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDataRequestV1" } } } }
+        "403": { description: OPERATIONS_FORBIDDEN or OPERATIONS_STEP_UP_REQUIRED }
+        "409": { description: The request is not open }
+  /api/v1/customer-data-requests:
+    get:
+      operationId: listCustomerDataRequests
+      summary: The customer's own copy and erasure requests, newest first (WC176-R006)
+      responses:
+        "200": { description: The requests, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDataRequestListV1" } } } }
+    post:
+      operationId: createCustomerDataRequest
+      summary: Ask for a copy of the data or for the account to be erased; only the account owner may ask, and only one request of each kind is open at a time
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDataRequestBodyV1" } } }
+      responses:
+        "201": { description: The request was recorded, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDataRequestV1" } } } }
+        "200": { description: The same or an already open request, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerDataRequestV1" } } } }
+        "403": { description: DATA_REQUEST_OWNER_ONLY }
   /api/v1/operations/relationships/{relationshipId}/work-timeline:
     get:
       operationId: getOperationsWorkTimeline
@@ -281,6 +319,55 @@ components:
         schemaVersion: { type: string, enum: ["1.0.0"] }
         action: { type: string, enum: [RETRY, CLOSE_WITH_REASON, MARK_UNDELIVERABLE] }
         reason: { type: string, minLength: 5, maxLength: 240 }
+    CustomerDataRequestBodyV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        kind: { type: string, enum: [EXPORT, ERASURE] }
+    ResolveDataRequestBodyV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, completed, note]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        completed: { type: boolean }
+        note: { type: string, minLength: 1, maxLength: 500 }
+    CustomerDataRequestV1:
+      type: object
+      required: [requestId, kind, state, requestedAt]
+      properties:
+        requestId: { type: string, format: uuid }
+        kind: { type: string, enum: [EXPORT, ERASURE] }
+        state: { type: string, enum: [RECEIVED, COMPLETED, DECLINED] }
+        requestedAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, "null"], format: date-time }
+        resolutionNote: { type: [string, "null"] }
+    CustomerDataRequestListV1:
+      type: object
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerDataRequestV1" }
+    OperatorDataRequestListV1:
+      type: object
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0.0"] }
+        items:
+          type: array
+          items:
+            type: object
+            required: [requestId, tenantId, kind, state, requestedAt]
+            properties:
+              requestId: { type: string, format: uuid }
+              tenantId: { type: string, format: uuid }
+              kind: { type: string, enum: [EXPORT, ERASURE] }
+              state: { type: string, enum: [RECEIVED] }
+              requestedAt: { type: string, format: date-time }
     ResolveDiscrepancyRequestV1:
       type: object
       additionalProperties: false

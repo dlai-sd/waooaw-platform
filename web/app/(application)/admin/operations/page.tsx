@@ -2,6 +2,7 @@
 // Constitutional basis: C-023, C-049, C-059, C-063
 
 import { OperationsConsole } from '@/components/admin/operations/OperationsConsole';
+import { DataRequestsPanel } from '@/components/admin/operations/DataRequestsPanel';
 import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { redirect } from 'next/navigation';
@@ -23,6 +24,7 @@ export default async function OperationsPage() {
         </p>
       </header>
       <OperationsConsole canResolve={access.founder} />
+      {access.founder ? <DataRequestsPanel canResolve /> : null}
     </section>
   );
 }

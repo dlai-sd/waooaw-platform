@@ -1,6 +1,7 @@
 """WC-174 DMA behaviour: proposals for the three modes, never actions."""
 
 # Implements: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md WC174-R006, R008, R011, R013, R014, R016, R021
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # Constitutional basis: C-058, C-061, C-062, C-063, C-071, C-094
 
 from __future__ import annotations
@@ -361,5 +362,25 @@ def test_every_operation_is_a_skill_invocation_inside_a_declared_skill_and_adds_
     declared = set(create_adapter().describe().skill_versions)
 
     assert {skill for skill, _ in OPERATIONS} <= declared
-    assert len(OPERATIONS) == 7
+    assert len(OPERATIONS) == 9
     assert all(callable(handler) for handler in OPERATIONS.values())
+
+
+def test_first_trial_turn_comes_from_the_packaged_requirements_and_asks_one_plain_question() -> None:
+    turn = induction_turn({"engagementMode": "TRIAL"})
+
+    assert turn["kind"] == "INDUCTION_TURN" and turn["sideEffects"] == [] and turn["labels"] == []
+    assert turn["summaryState"] == "INCOMPLETE"
+    assert turn["nextQuestion"] == {
+        "requirementRef": "DMA-IND-002",
+        "kind": "ASK",
+        "text": "Please tell me about your selected business outcomes.",
+    }
+    assert induction_turn({})["nextQuestion"]["requirementRef"] == "DMA-IND-001"
+    with pytest.raises(SkillInputDenied):
+        induction_turn({"requirements": []})
+
+
+def test_the_induction_turn_is_reachable_from_each_trial_skill() -> None:
+    for skill in ("CUSTOMER_PROFILING", "MARKET_RESEARCH_AND_MATURITY", "CONTENT_STRATEGY_AND_CALENDAR"):
+        assert OPERATIONS[(skill, "INDUCTION_TURN")] is induction_turn

@@ -1,6 +1,7 @@
 """WC-174 DMA behaviour for the three modes: proposals the platform stores as suggestions, never actions."""
 
 # Implements: work-contracts/WC-174-agent-operation-modes-calendar-and-dma-journey.md WC174-R006, R008, R011, R013, R014, R016, R021
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # Implements: architecture/reference/agents/digital-marketing-agent.md §Skill 2 (content planning), §3.21 (theme cascade)
 # Constitutional basis: C-058, C-061, C-062, C-063, C-071, C-094
 
@@ -13,6 +14,7 @@ from datetime import date, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
+from .employment import _load_json
 from .skills import SkillInputDenied, _is_private_host
 
 SENSITIVE_LAYERS = frozenset({"RELIGION", "POLITICS"})
@@ -313,9 +315,25 @@ def _media_state(payload: dict[str, Any]) -> dict[str, Any]:
     return {"state": "METADATA_ONLY", "message": "Asset details recorded; the platform generates it under an authorized rate."}
 
 
+def _packaged_induction_requirements(engagement_mode: Any) -> list[dict[str, Any]]:
+    """The first turn of a Trial: nothing is confirmed yet except the mode the platform itself decided."""
+    mode_is_known = engagement_mode in {"TRIAL", "LIVE"}
+    return [
+        {
+            "ref": item["requirementRef"],
+            "label": item["label"],
+            "state": "CONFIRMED" if mode_is_known and item["requirementRef"] == "DMA-IND-001" else "MISSING",
+            "mandatory": item["mandatoryRule"] == "ALWAYS",
+        }
+        for item in _load_json("induction-requirements.v1.json")["requirements"]
+    ]
+
+
 def induction_turn(payload: dict[str, Any]) -> dict[str, Any]:
     """One focused conversation turn: what is already found, labels to confirm, and exactly one new question."""
     requirements = payload.get("requirements")
+    if requirements is None:
+        requirements = _packaged_induction_requirements(payload.get("engagementMode"))
     findings = payload.get("findings", [])
     platforms = payload.get("platforms", [])
     trust = payload.get("trust", {})
@@ -355,7 +373,8 @@ def induction_turn(payload: dict[str, Any]) -> dict[str, Any]:
                 "text": f"Before I ask about {item['label']}, here is why it helps and how it is kept safe.",
             }
         else:
-            question = {"requirementRef": item["ref"], "kind": "ASK", "text": f"What is your {str(item['label']).lower()}?"}
+            label = str(item["label"]).lower()
+            question = {"requirementRef": item["ref"], "kind": "ASK", "text": f"Please tell me about your {label}."}
         break
     if question is None and unanswered:
         label = str(unanswered[0].get("label", "this platform"))

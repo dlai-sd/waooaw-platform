@@ -7,6 +7,7 @@ COPY src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.
 COPY src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/
 RUN dotnet restore --runtime linux-musl-x64
 COPY src/digital-marketing-agent/integration/business-platform/ /digital-marketing-agent/integration/business-platform/
+COPY src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json /digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json
 COPY src/business-platform/ .
 COPY src/shared/InferenceWorkloadValidator.cs /shared/InferenceWorkloadValidator.cs
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \

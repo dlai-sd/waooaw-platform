@@ -618,7 +618,16 @@ locals {
       REDIS_URL                      = local.auth_redis_url
       WAOOAW_ENVIRONMENT             = var.environment
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine
-    }, local.feature_settings_runtime["billing-engine"])
+      }, contains(["demo", "uat"], var.environment) ? {
+      # WC-176 R017: the non-secret GST identity printed on every tax invoice. Production stays unset until the Founder's
+      # tax professional confirms the SAC code; with no identity the billing engine issues nothing and reconciliation reports it.
+      GST_ADDRESS      = "C8, Everest Heights, Park Road, Viman Nagar, Pune 411014, Maharashtra, India"
+      GST_GSTIN        = "27AAKCD8188R1ZH"
+      GST_LEGAL_NAME   = "DLAI Satellite Data (OPC) Pvt Ltd"
+      GST_RATE_PERCENT = "18"
+      GST_SAC_CODE     = "9984"
+      GST_STATE_CODE   = "27"
+    } : {}, local.feature_settings_runtime["billing-engine"])
     "agent-runtime-adapter-digital-marketing" = {
       DMA_ADMISSION_CONTENT_DIGEST = var.dma_admission_content_digest
       DMA_ARTIFACT_DIGEST          = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]

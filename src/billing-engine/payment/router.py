@@ -1,6 +1,7 @@
 # Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R015
 # Constitutional basis: C-059, C-088, C-090
 """Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
 
@@ -31,8 +32,10 @@ from payment.models import (
     RelationshipCheckoutResult,
 )
 from payment.commercial_outcomes import ZeroPriceCommercialOutcomeStore
+from payment.capture_records import SOURCE_WEBHOOK, CaptureLedger, event_id_of, notes_of
 from payment.onboarding import OnboardingService
 from payment.razorpay_client import RazorpayClient
+from payment.renewals import start_grace_once
 from payment.webhook import WebhookHandler
 from promotions.coupon_versions import CouponError
 from promotions.service import PromotionsService
@@ -41,6 +44,7 @@ from wallet.service import WalletService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["payments"])
+_HANDLED_WEBHOOK_EVENTS = frozenset({"payment.captured", "payment.failed", "refund.processed"})
 
 _settings = Settings()
 
@@ -1081,9 +1085,10 @@ async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
 
 @router.post("/webhooks/razorpay")
 async def razorpay_webhook(request: Request) -> dict:
-    """Razorpay webhook endpoint — handles payment.captured.
+    """Razorpay webhook endpoint — handles payment.captured, payment.failed and refund.processed.
 
-    Signature verified via HMAC-SHA256 (ADR-014). Idempotent (payment_intents table).
+    Signature verified via HMAC-SHA256 (ADR-014). Each event id is recorded once and a capture is recorded before it is
+    completed, so a replay changes nothing and a capture whose completion failed is finished by the reconciliation.
     """
     signature = request.headers.get("X-Razorpay-Signature", "")
     raw_body = await request.body()
@@ -1093,22 +1098,91 @@ async def razorpay_webhook(request: Request) -> dict:
         raise HTTPException(status_code=400, detail={"code": "INVALID_WEBHOOK_BODY"}) from None
 
     event_type = payload.get("event", "")
-    if event_type != "payment.captured":
+    if event_type not in _HANDLED_WEBHOOK_EVENTS:
         # Acknowledge unhandled events gracefully
         return {"status": "ignored", "event": event_type}
     razorpay_client = RazorpayClient(settings=_settings)
     if not razorpay_client.verify_webhook_signature(raw_body, signature):
         raise HTTPException(status_code=400, detail={"code": "INVALID_SIGNATURE"})
 
-    payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
-    notes = payment.get("notes", {})
+    entities = payload.get("payload", {})
+    event_id = event_id_of(request.headers.get("X-Razorpay-Event-Id", ""), raw_body)
+    if event_type == "refund.processed":
+        return await _record_refund_processed(event_id, event_type, raw_body, entities.get("refund", {}).get("entity", {}))
+    payment = entities.get("payment", {}).get("entity", {})
+    if event_type == "payment.failed":
+        return await _record_payment_failed(event_id, event_type, raw_body, payment)
+
+    notes = notes_of(payment)
+    if notes.get("checkout_kind") != "UPGRADE_FEE":
+        try:
+            UUID(notes.get("customer_id", ""))
+        except (ValueError, AttributeError, TypeError):
+            raise HTTPException(status_code=400, detail={"code": "MISSING_CUSTOMER_ID"}) from None
+    payment_id = str(payment.get("id", ""))
+    async with get_session_factory()() as db:
+        ledger = CaptureLedger(db)
+        if not await ledger.begin_event(event_id, event_type, payment_id, raw_body):
+            return {"status": "replayed", "event": event_type, "payment_reference": payment_id}
+        await ledger.record_capture(payment, SOURCE_WEBHOOK)
+    try:
+        result = await complete_captured_payment(payment, signature, razorpay_client)
+    except HTTPException as error:
+        code = error.detail.get("code", "") if isinstance(error.detail, dict) else ""
+        async with get_session_factory()() as db:
+            await CaptureLedger(db).mark_failed(payment_id, str(code))
+        raise
+    async with get_session_factory()() as db:
+        ledger = CaptureLedger(db)
+        await ledger.mark_completed(payment_id)
+        await ledger.finish_event(event_id, str(result.get("status", "COMPLETED")))
+    return result
+
+
+async def _record_payment_failed(event_id: str, event_type: str, raw_body: bytes, payment: dict) -> dict:
+    """A failed payment is recorded; a failed renewal also starts its grace period (once)."""
+    notes = notes_of(payment)
+    async with get_session_factory()() as db:
+        ledger = CaptureLedger(db)
+        if not await ledger.begin_event(event_id, event_type, str(payment.get("id", "")) or None, raw_body):
+            return {"status": "replayed", "event": event_type}
+        outcome = "RECORDED"
+        tenant_id, relationship_id = _optional_uuid(notes.get("tenant_id")), _optional_uuid(notes.get("relationship_id"))
+        if notes.get("checkout_kind") == "RENEWAL" and tenant_id is not None and relationship_id is not None:
+            outcome = await start_grace_once(db, tenant_id, relationship_id)
+        await ledger.finish_event(event_id, outcome)
+    return {"status": outcome, "event": event_type}
+
+
+async def _record_refund_processed(event_id: str, event_type: str, raw_body: bytes, refund: dict) -> dict:
+    """A processed refund closes the capture it returned in full; its credit note is issued by the lifecycle sweep."""
+    payment_id = str(refund.get("payment_id", ""))
+    async with get_session_factory()() as db:
+        ledger = CaptureLedger(db)
+        if not await ledger.begin_event(event_id, event_type, payment_id or None, raw_body):
+            return {"status": "replayed", "event": event_type}
+        amount = refund.get("amount")
+        closed = bool(payment_id) and isinstance(amount, int) and await ledger.mark_refunded(
+            payment_id, str(refund.get("id", "")), amount
+        )
+        outcome = "REFUNDED" if closed else "RECORDED"
+        await ledger.finish_event(event_id, outcome)
+    return {"status": outcome, "event": event_type}
+
+
+async def complete_captured_payment(payment: dict, signature: str, razorpay_client: RazorpayClient) -> dict:
+    """Complete one captured payment: the single path of the webhook and of the reconciliation.
+
+    Every branch is replay-safe, so completing the same payment twice changes nothing the second time.
+    """
+    notes = notes_of(payment)
 
     if notes.get("checkout_kind") == "UPGRADE_FEE":
         return await _capture_upgrade_fee(payment, notes)
 
     try:
         customer_id = UUID(notes.get("customer_id", ""))
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, TypeError):
         raise HTTPException(status_code=400, detail={"code": "MISSING_CUSTOMER_ID"}) from None
 
     if notes.get("checkout_kind") == "RENEWAL":

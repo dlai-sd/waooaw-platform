@@ -7,16 +7,30 @@ import {
   UserRoundCheck,
 } from 'lucide-react';
 import type { RelationshipEvaluationProjection } from '@/lib/api/relationships';
+import Link from 'next/link';
 
 const display = (value: string) => value.replaceAll('_', ' ').toLowerCase();
+const dayMs = 86_400_000;
+
+// The countdown comes from the trial's own start and end dates (the billing owner's trial), never a fixed length.
+export function trialCountdown(startsAt: string, expiresAt: string, now: number = Date.now()) {
+  const start = new Date(startsAt).getTime();
+  const end = new Date(expiresAt).getTime();
+  const totalDays = Math.max(1, Math.round((end - start) / dayMs));
+  const daysLeft = Math.min(totalDays, Math.max(0, Math.ceil((end - now) / dayMs)));
+  return {
+    totalDays,
+    daysLeft,
+    dayNumber: Math.min(totalDays, Math.max(1, totalDays - daysLeft + 1)),
+    ended: now >= end,
+  };
+}
 
 export function RelationshipEvaluation({ evaluation }: { evaluation: RelationshipEvaluationProjection }) {
   const trialStart = evaluation.trial ? new Date(evaluation.trial.startsAt) : null;
   const trialEnd = evaluation.trial ? new Date(evaluation.trial.expiresAt) : null;
-  const trialDay =
-    trialStart && trialEnd
-      ? Math.min(14, Math.max(1, Math.floor((Date.now() - trialStart.getTime()) / 86_400_000) + 1))
-      : null;
+  const countdown = evaluation.trial ? trialCountdown(evaluation.trial.startsAt, evaluation.trial.expiresAt) : null;
+  const totalDays = countdown?.totalDays ?? 14;
 
   return (
     <section className="evaluation-journey" aria-labelledby="evaluation-journey-title">
@@ -25,12 +39,14 @@ export function RelationshipEvaluation({ evaluation }: { evaluation: Relationshi
         <h2 id="evaluation-journey-title">Inspect, demonstrate, then configure</h2>
       </div>
       <ol className="journey-rail" aria-label="Discover to configure progress">
-        {['Discover', 'Disclosure', 'Interview', 'Context', '14-day trial', 'Configure'].map((step, index) => (
-          <li className={index < 2 || evaluation.interviewState !== 'NOT_STARTED' ? 'complete' : ''} key={step}>
-            <span>{index + 1}</span>
-            {step}
-          </li>
-        ))}
+        {['Discover', 'Disclosure', 'Interview', 'Context', `${totalDays}-day trial`, 'Configure'].map(
+          (step, index) => (
+            <li className={index < 2 || evaluation.interviewState !== 'NOT_STARTED' ? 'complete' : ''} key={step}>
+              <span>{index + 1}</span>
+              {step}
+            </li>
+          )
+        )}
       </ol>
 
       <div className="evaluation-panels">
@@ -69,38 +85,60 @@ export function RelationshipEvaluation({ evaluation }: { evaluation: Relationshi
         </article>
         <article className="trial-plan">
           <h3>
-            <CalendarDays aria-hidden="true" size={20} /> 14-day demonstration
+            <CalendarDays aria-hidden="true" size={20} /> {totalDays}-day demonstration
           </h3>
-          {evaluation.trial && trialStart && trialEnd ? (
+          {evaluation.trial && trialStart && trialEnd && countdown ? (
             <>
               <div className="trial-meter">
-                <span style={{ width: `${((trialDay ?? 1) / 14) * 100}%` }} />
+                <span style={{ width: `${(countdown.dayNumber / countdown.totalDays) * 100}%` }} />
               </div>
               <p>
-                <strong>Day {trialDay} of 14</strong> · {display(evaluation.trial.status)} · ends{' '}
+                <strong>
+                  {countdown.ended
+                    ? 'Your trial has ended'
+                    : countdown.daysLeft === 1
+                      ? '1 day left'
+                      : `${countdown.daysLeft} days left`}
+                </strong>{' '}
+                · {display(evaluation.trial.status)} · {countdown.ended ? 'ended' : 'ends'}{' '}
                 <time dateTime={evaluation.trial.expiresAt}>{trialEnd.toLocaleDateString('en-IN')}</time>
               </p>
-              <div className="trial-phases">
-                <span>
-                  Days 1–3
-                  <br />
-                  <small>Understand and plan</small>
-                </span>
-                <span>
-                  Days 4–10
-                  <br />
-                  <small>Skill demonstrations</small>
-                </span>
-                <span>
-                  Days 11–14
-                  <br />
-                  <small>Review and configure</small>
-                </span>
-              </div>
+              {countdown.totalDays === 14 ? (
+                <div className="trial-phases">
+                  <span>
+                    Days 1–3
+                    <br />
+                    <small>Understand and plan</small>
+                  </span>
+                  <span>
+                    Days 4–10
+                    <br />
+                    <small>Skill demonstrations</small>
+                  </span>
+                  <span>
+                    Days 11–14
+                    <br />
+                    <small>Review and configure</small>
+                  </span>
+                </div>
+              ) : null}
               <p className="quota-state">
                 <CircleDollarSign aria-hidden="true" size={17} /> Trial quota is unavailable from its billing owner. No
                 estimate is shown.
               </p>
+              {countdown.ended ? (
+                <p>
+                  <Link className="primary-command" href="/marketplace">
+                    Hire your agent to keep it working
+                  </Link>
+                </p>
+              ) : (
+                <p className="connection-hint">
+                  Some skills work through your social accounts. Connect them in{' '}
+                  <Link href="/connections">Connections</Link> when you are ready. Until then your agent works in
+                  practice mode during the trial: nothing is published and nothing is spent.
+                </p>
+              )}
             </>
           ) : (
             <p>Trial has not started. No countdown or entitlement is assumed.</p>

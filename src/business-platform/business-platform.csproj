@@ -64,6 +64,11 @@
             Link="Catalog/Professionals/%(Filename)%(Extension)"
             CopyToOutputDirectory="PreserveNewest"
         />
+        <Content
+            Include="../digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json"
+            Link="AgentPackages/%(Filename)%(Extension)"
+            CopyToOutputDirectory="PreserveNewest"
+        />
     </ItemGroup>
 
     <ItemGroup>

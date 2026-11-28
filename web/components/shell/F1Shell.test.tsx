@@ -66,7 +66,7 @@ describe('F1 shell primitives', () => {
     expect(screen.getAllByRole('link', { name: 'Marketplace' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'Alerts' })).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
-    expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/profile#billing');
+    expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/billing');
     expect(screen.getByRole('button', { name: 'Sign out' })).toHaveTextContent('Sign out');
   });
 

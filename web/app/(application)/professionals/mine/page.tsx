@@ -49,7 +49,7 @@ export default async function MyProfessionalsPage() {
         actionHref="/login"
         actionLabel="Sign in"
         kind="error"
-        title="My Experts unavailable"
+        title="My Agents unavailable"
         description="Sign in again to view your employed professionals."
       />
     );
@@ -137,7 +137,7 @@ export default async function MyProfessionalsPage() {
         correlationId={failure.correlationId}
         kind="error"
         reasonCode={failure.reasonCode}
-        title="My Experts unavailable"
+        title="My Agents unavailable"
         description="Your authoritative relationship list could not be retrieved."
       />
     );

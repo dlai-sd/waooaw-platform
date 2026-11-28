@@ -1,4 +1,5 @@
 # Implements: architecture/reference/components/conversation-core.md §4 Internal PR Execution and Stream Contract
+# Implements: work-contracts/WC-176-customer-journeys-registration-trial-hire-and-pages.md WC176-R009
 # constitutional_basis: C-001, C-023, C-025, C-059, C-063, C-076; ADR-015, ADR-018, ADR-031
 from __future__ import annotations
 
@@ -52,6 +53,7 @@ from workflows.conversation_execution_workflow import (
 from workload_identity import DelegatedContext
 from workload_identity import ServiceAuthError
 from relationship_workspace import authorize_service_request
+from trial_induction import AdapterTrialInductionClient, TrialInductionError, render_reply
 
 router = APIRouter(prefix="/api/v1/internal/conversations", tags=["Conversation Execution"])
 logger = logging.getLogger(__name__)
@@ -563,6 +565,76 @@ async def _dispatch_professional_generation(
     )
 
 
+async def _dispatch_trial_induction(
+    client: AdapterTrialInductionClient,
+    handle: WorkflowHandle[Any, Any],
+    body: StartExecutionRequestV1,
+    context: BPServiceContext,
+    key: uuid.UUID,
+    execution_id: uuid.UUID,
+    correlation_id: uuid.UUID,
+) -> None:
+    """WC176-R009: the agent's deterministic induction turn; no model, no paid API call, no external action."""
+    try:
+        turn = await client.induction_turn(
+            mandate=body.operational_mandate,
+            execution_id=execution_id,
+            idempotency_key=key,
+            correlation_id=correlation_id,
+        )
+        text = render_reply(turn)
+    except TrialInductionError as error:
+        logger.warning("Trial induction reply unavailable: code=%s", error.code)
+        await handle.signal(
+            "AppendConversationExecutionEvent",
+            ExecutionEventSignal(
+                event_type="response.system",
+                data={
+                    "code": "INTERNAL_FAILURE",
+                    "text": "The agent could not prepare its first reply. No professional work was completed. "
+                    "Please send your message again in a moment.",
+                },
+                occurred_at=_now_iso(),
+                dispatch_result_key=f"trial-induction-system:{execution_id}",
+            ),
+        )
+        await handle.signal(
+            "AppendConversationExecutionEvent",
+            ExecutionEventSignal(
+                event_type="execution.failed",
+                data={
+                    "state": "FAILED",
+                    "partial": False,
+                    "completionReason": "PARTIAL_FAILURE",
+                    "errorCode": "INTERNAL_FAILURE",
+                },
+                occurred_at=_now_iso(),
+                dispatch_result_key=f"trial-induction-completion:{execution_id}",
+            ),
+        )
+        return
+    if not _mandate_is_valid(body, context, key):
+        raise ValueError("Execution mandate is no longer valid")
+    await handle.signal(
+        "AppendConversationExecutionEvent",
+        ExecutionEventSignal(
+            event_type="response.delta",
+            data={"contentIndex": 0, "appendText": text, "partial": True},
+            occurred_at=_now_iso(),
+            dispatch_result_key=f"trial-induction-text:{execution_id}",
+        ),
+    )
+    await handle.signal(
+        "AppendConversationExecutionEvent",
+        ExecutionEventSignal(
+            event_type="execution.completed",
+            data={"state": "COMPLETED", "partial": False, "completionReason": "COMPLETE"},
+            occurred_at=_now_iso(),
+            dispatch_result_key=f"trial-induction-completion:{execution_id}",
+        ),
+    )
+
+
 async def _dispatch_employment_proposal(
     request: Request,
     temporal: TemporalClient,
@@ -654,6 +726,23 @@ async def _dispatch_employment_proposal(
                 execution_id,
                 trusted_context,
                 reconcile_only,
+            )
+            return
+        trial_induction = getattr(request.app.state, "trial_induction_client", None)
+        if (
+            operation is None
+            and trial_induction is not None
+            and body.operational_mandate.engagement_mode == "TRIAL"
+            and body.operational_mandate.relationship_lifecycle == "TRIAL_ACTIVE"
+        ):
+            await _dispatch_trial_induction(
+                trial_induction,
+                handle,
+                body,
+                context,
+                idempotency_key,
+                execution_id,
+                correlation_id,
             )
             return
         if operation is None:

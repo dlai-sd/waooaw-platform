@@ -16,18 +16,18 @@ public sealed class CustomerPhoneChangeSchemaFixture : IAsyncLifetime
 {
     private readonly Testcontainers.PostgreSql.PostgreSqlContainer _postgres =
         new Testcontainers.PostgreSql.PostgreSqlBuilder("pgvector/pgvector:pg16")
-        .WithDatabase("waooaw")
-        .WithUsername("waooaw")
-        .WithPassword("synthetic-phone-owner")
-        .WithResourceMapping(
-            new DirectoryInfo(
-                Path.GetDirectoryName(
-                    RepositoryPaths.Resolve("infrastructure/postgres/init/01-schemas.sql")
-                )!
-            ),
-            "/docker-entrypoint-initdb.d"
-        )
-        .Build();
+            .WithDatabase("waooaw")
+            .WithUsername("waooaw")
+            .WithPassword("synthetic-phone-owner")
+            .WithResourceMapping(
+                new DirectoryInfo(
+                    Path.GetDirectoryName(
+                        RepositoryPaths.Resolve("infrastructure/postgres/init/01-schemas.sql")
+                    )!
+                ),
+                "/docker-entrypoint-initdb.d"
+            )
+            .Build();
 
     public string OwnerConnection => _postgres.GetConnectionString();
     public string AppConnection =>
@@ -467,6 +467,57 @@ public sealed class CustomerPhoneChangePostgresTests(CustomerPhoneChangeSchemaFi
             )
         );
         await AssertOldAuthorityAsync(owner);
+    }
+
+    [Fact]
+    public async Task SyntheticCustomer_ChangesNumberWithTheFixedTestCode_AndNothingIsSent()
+    {
+        var owner = await SeedAsync();
+        var synthetic = new IdentityService(
+            new Factory(schema.AppConnection),
+            Options.Create(new IdentityHmacOptions { Key = IdentityTestHelpers.TestHmacKey }),
+            _delivery,
+            _evidence,
+            null,
+            new FixedSyntheticCode("123456")
+        );
+        var started = await synthetic.StartPhoneChangeAsync(
+            owner.Actor,
+            owner.Membership,
+            Number(),
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            CancellationToken.None
+        );
+        Assert.Equal(0, _delivery.Sends);
+        Assert.Equal("OTP_REQUIRED", started.State);
+        var confirmed = await synthetic.ConfirmPhoneChangeAsync(
+            owner.Actor,
+            owner.Membership,
+            started.ChallengeId,
+            "123456",
+            true,
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            CancellationToken.None
+        );
+        Assert.Equal("COMPLETED", confirmed.State);
+    }
+
+    [Fact]
+    public async Task NonSyntheticCustomer_StillGetsARealDeliveredCode()
+    {
+        var owner = await SeedAsync();
+        var started = await StartAsync(owner);
+        Assert.Equal(1, _delivery.Sends);
+        Assert.Equal("OTP_REQUIRED", started.State);
+    }
+
+    private sealed class FixedSyntheticCode(string code)
+        : Services.AcceptanceSynthetic.ISyntheticVerificationCode
+    {
+        public Task<string?> CodeForAsync(string issuer, string subject, CancellationToken ct) =>
+            Task.FromResult<string?>(code);
     }
 
     [Fact]

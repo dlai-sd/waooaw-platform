@@ -312,6 +312,63 @@ describe('AcquisitionContinuation', () => {
     );
   });
 
+  it('carries on by itself when the payment is taken but the Hire is still being completed', async () => {
+    jest.useFakeTimers();
+    try {
+      let checkoutOptions: Record<string, unknown> | undefined;
+      window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
+        checkoutOptions = options;
+        return { on: jest.fn(), open: jest.fn() };
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+            checkout_intent_id: props.idempotencyKey,
+            provider_order_reference: 'order_test123',
+            public_checkout_key: 'rzp_test_public',
+            amount_inr_paise: 118000,
+            currency: 'INR',
+            merchant_display_name: 'WAOOAW',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({
+            code: 'HIRE_COMPLETING',
+            title: 'Your payment was received. We are completing your Hire.',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+        });
+
+      render(<AcquisitionContinuation {...props} intent="hire" />);
+      await waitFor(() => expect(checkoutOptions).toBeDefined());
+      await act(async () => {
+        (checkoutOptions?.handler as (payment: object) => void)({
+          razorpay_order_id: 'order_test123',
+          razorpay_payment_id: 'pay_test123',
+          razorpay_signature: 'a'.repeat(64),
+        });
+      });
+      expect(await screen.findByText(/We are completing your Hire/)).toBeVisible();
+      expect(replace).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+
+      expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222');
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('shows the Razorpay provider failure without recording Hire success', async () => {
     const on = jest.fn();
     window.Razorpay = jest.fn().mockImplementation(() => ({ on, open: jest.fn() }));

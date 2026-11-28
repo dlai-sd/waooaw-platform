@@ -58,6 +58,8 @@ declare global {
 }
 
 const razorpayScriptId = 'razorpay-checkout-script';
+// Seconds to wait before asking again after "we are completing your Hire" (about a minute in all).
+export const confirmationRetryWaits = [3, 6, 12, 24] as const;
 const razorpayLogoUrl =
   'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png';
 
@@ -143,18 +145,28 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     setPendingPayment(response);
     setBusy(true);
     setStatus('Razorpay received the payment. WAOOAW is verifying the signed confirmation...');
-    const confirmation = await fetch('/api/acquisition/hire-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...props,
-        action: 'confirm',
-        razorpayOrderId: response.razorpay_order_id,
-        razorpayPaymentId: response.razorpay_payment_id,
-        razorpaySignature: response.razorpay_signature,
-      }),
-    });
-    const outcome = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome;
+    const confirm = () =>
+      fetch('/api/acquisition/hire-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...props,
+          action: 'confirm',
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+        }),
+      });
+    let confirmation = await confirm();
+    let outcome = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome;
+    // The payment is taken but the Hire has not carried on yet: ask again, the same safe request, a few times.
+    for (const waitSeconds of confirmationRetryWaits) {
+      if (confirmation.ok || outcome.code !== 'HIRE_COMPLETING') break;
+      setStatus(outcome.title ?? 'We are completing your Hire.');
+      await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+      confirmation = await confirm();
+      outcome = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome;
+    }
     if (!confirmation.ok || !outcome.resumePath) {
       setStatus(outcome.title ?? 'Payment confirmation is unresolved. Retry to reconcile the same payment.');
       setBusy(false);

@@ -19,6 +19,7 @@ public sealed record CustomerAlertMutationRequest(
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/notifications/alerts")]
 public sealed class NotificationsController(CustomerAlertService alerts) : ControllerBase
 {
