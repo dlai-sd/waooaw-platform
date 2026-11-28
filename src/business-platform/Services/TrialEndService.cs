@@ -84,7 +84,7 @@ public sealed class TrialEndService(
         {
             try
             {
-                var status = await owners.GetWbeTrialStatusAsync(item.CustomerId, item.TrialId, ct);
+                var status = await owners.GetWbeTrialStatusAsync(item.TenantId, item.TrialId, ct);
                 if (status?.Status != "EXPIRED")
                     continue;
                 // Alert first: it is deduplicated, so a retry after a failed transition never repeats it.

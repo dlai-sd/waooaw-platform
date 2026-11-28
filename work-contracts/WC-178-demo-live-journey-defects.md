@@ -43,8 +43,9 @@ and proof so none is lost and none is fixed twice.
 | WC178-R005 | [DEFECT, M] The billing engine's application role can record a Trial. The insert into `business.trial_allocations` is refused by row-level security ("new row violates row-level security policy"), which migration 60 forces on business tables. The table needs a policy for the billing application role, proved against a real PostgreSQL as the non-owner role. |
 | WC178-R006 | [DEFECT, S] A failed call from the Business Platform to the billing owner is logged with its status and reason. `StartWbeTrialAsync` returned null for every failure without a log line, so the customer saw "Acquisition continuation unavailable" and the cause took four log queries to find. The refusal status is now logged (never the body). |
 | WC178-R007 | [PROCESS, S] Before a deployment, a check compares each service's required settings (addresses, allowances) with what Terraform renders, so a missing setting is found before the customer finds it. |
-| WC178-R008 | [DEFECT, L, FOUNDER DECISION] The Trial is recorded for the right customer. `business.trial_allocations.customer_id` references `business.organisations(id)`, but the Business Platform sends the relationship's initiating participant id (`binding.CustomerId`), and Hire checkout sends the account reference. Neither is an organisation id, so the insert fails with `trial_allocations_customer_id_fkey` and no Trial can start. The billing engine's tests use SQLite without the foreign key, so they never saw it. Options: (A) the Business Platform looks up the organisation id of the tenant and sends that for Trial start, Trial status and Hire (recommended: wallets and trials are already keyed by organisation); (B) key the billing records by tenant id and change the foreign key. Both change what "customer" means for billing, so the Founder decides before it is built. |
-| WC178-R009 | [DEFECT, ?] Founder-supplied defects are added here from R009 onward, each with its evidence. |
+| WC178-R008 | [DEFECT, L, FOUNDER DECIDED: OPTION A] The Trial is recorded for the right customer. `business.trial_allocations.customer_id` references `business.organisations(id)`, but the Business Platform sent the relationship's initiating participant id, so the insert failed with `trial_allocations_customer_id_fkey`. The organisation id of an identity-managed customer is its tenant id (`CustomerWorkspaceProvisioningService` sets both to the same value), so Trial start, Trial status and the Trial-end check now send the tenant id and no lookup is needed. The billing engine's tests use SQLite without the foreign key, so they never saw it. Hire checkout is covered by R010. |
+| WC178-R010 | [DEFECT, M, NOT YET BUILT] Hire checkout sends the account reference as the billing customer id, which is not an organisation id, so the first Hire hits the same foreign key failure as R008. The web server is never given the tenant id by design, so the Business Platform must resolve it (for example the hire-checkout intent returns the billing customer id). Not live-tested: the DMA Starter package is not yet published on the Pricing page. |
+| WC178-R011 | [DEFECT, ?] Founder-supplied defects are added here from R011 onward, each with its evidence. |
 
 ## Defect Register
 
@@ -57,7 +58,7 @@ and proof so none is lost and none is fixed twice.
 | R005 | 2026-11-28 11:42 | Billing engine 500, `InsufficientPrivilegeError` | Forced row security, no policy for the billing role on `trial_allocations` | `99zzzzzzzz-wc178-01-trial-allocations-billing-policy.sql`, update-class (this PR); applied once on Demo through the update job | After R008 |
 | R006 | 2026-11-28 11:44 | Log reading | Silent null return | `RelationshipTrialService.cs` logs the refusal status (this PR) | Next deployment |
 | R007 | 2026-11-28 | Pattern across R001 to R003 | No pre-deployment check of required settings | Open | Open |
-| R008 | 2026-11-28 11:50 | Billing engine 500, `ForeignKeyViolationError` on `trial_allocations_customer_id_fkey` | The Business Platform sends a participant id where the table needs an organisation id | Open: Founder decision (options A and B in the requirement) | Open |
+| R008 | 2026-11-28 11:50 | Billing engine 500, `ForeignKeyViolationError` on `trial_allocations_customer_id_fkey` | The Business Platform sends a participant id where the table needs an organisation id | `RelationshipTrialService.cs` and `TrialEndService.cs` send the tenant id (this PR); test `StartPassesTenantAndVerifiedIdentityHashToTheWalletOwner` | Live Trial walk after the deployment |
 
 ## Authority And Scope
 
@@ -86,3 +87,4 @@ Out of scope: Production; real customers; changing Razorpay or WhatsApp accounts
 | Date | Item | Result |
 |---|---|---|
 | 2026-11-28 | Contract created | Six defects found in one live Trial attempt; R001 to R005 fixed in the repository and applied to Demo by hand so the walk could continue; R006 logging added; R008 (customer identity key) found next and needs a Founder decision |
+| 2026-11-28 | R008 decided | Founder chose option A; built as the tenant id (it is the organisation id); Hire checkout split out as R010 |

@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-178
 contract_path: work-contracts/WC-178-demo-live-journey-defects.md
-contract_digest: 715cc9c6b997d46e68deae97a248c8704635b7d1767bd555f699eb3238dc18ef
+contract_digest: 3c63c1964ce86dc4ccbd59e3385a49bbc777ca50ef77b0711c4261e0faccdc9f
 implementation_scope: true
 result: PLANNED
 
@@ -61,10 +61,16 @@ requirements:
     requirement_id: WC178-R008
     source: WC-178 Canonical Requirement Index, R008
     observable_outcome: 'A Trial is recorded for the customer without a foreign key violation: the identifier the Business Platform sends is the one business.trial_allocations references.'
-    test_path_or_plan: 'Waits for the Founder decision between options A and B in the contract; then a Postgres test with the real foreign key and a live Trial walk.'
+    test_path_or_plan: 'tests/business-platform.Tests/RelationshipTrialServiceTests.cs StartPassesTenantAndVerifiedIdentityHashToTheWalletOwner; live Trial walk after the deployment.'
 
   - <<: *defaults
-    requirement_id: WC178-R009
-    source: WC-178 Canonical Requirement Index, R009
+    requirement_id: WC178-R010
+    source: WC-178 Canonical Requirement Index, R010
+    observable_outcome: 'Hire checkout sends the billing customer id that business.organisations holds, so the first Hire is not refused by the foreign key.'
+    test_path_or_plan: 'Not yet built; a web route test and a live Hire walk once the Founder publishes the DMA Starter package.'
+
+  - <<: *defaults
+    requirement_id: WC178-R011
+    source: WC-178 Canonical Requirement Index, R011
     observable_outcome: 'Defects supplied by the Founder are recorded here with their evidence.'
     test_path_or_plan: 'Added as the Founder supplies them.'

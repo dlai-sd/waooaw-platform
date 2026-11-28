@@ -402,7 +402,7 @@ public sealed class RelationshipTrialService(
                 if (binding.Status != "ACTIVE" || !binding.TrialId.HasValue)
                     return (binding.RelationshipId, binding.Status);
                 var authoritative = await owners.GetWbeTrialStatusAsync(
-                    binding.CustomerId,
+                    tenantId,
                     binding.TrialId.Value,
                     cancellationToken
                 );
@@ -471,7 +471,7 @@ public sealed class RelationshipTrialService(
                     binding.ExpiresAt.Value
                 )
                 : await owners.StartWbeTrialAsync(
-                    binding.CustomerId,
+                    tenantId,
                     relationship.ProfessionalType,
                     relationship.ProfessionalVersion
                         ?? throw new InvalidOperationException(
@@ -564,8 +564,9 @@ public sealed class RelationshipTrialService(
         string? identitySubjectHash = null
     )
     {
+        // Billing files a Trial under the customer organisation, whose id is the tenant id.
         var wbe = await owners.StartWbeTrialAsync(
-            customerId,
+            tenantId,
             professionalType,
             professionalVersion,
             relationshipId,
