@@ -753,3 +753,16 @@ def test_documents_and_code_agree_on_the_names_of_the_update_path() -> None:
         text = (ROOT / relative).read_text(encoding="utf-8")
         for token in tokens:
             assert token in text, (relative, token)
+
+
+def test_local_lane_fixtures_sort_after_every_real_init_file() -> None:
+    # A fixture that sorts before a real file makes the plan choose full and fails the lane on main.
+    script = (ROOT / "scripts/wc177_database_update_local.sh").read_text(encoding="utf-8")
+    fixtures = re.findall(r"\b(99z+-wc177-[a-z-]+\.sql)", script)
+    assert fixtures
+    last_real = max(
+        (path.name for path in (ROOT / "infrastructure/postgres/init").glob("*.sql")),
+        key=str.encode,
+    )
+    for name in fixtures:
+        assert name.encode() > last_real.encode(), (name, last_real)

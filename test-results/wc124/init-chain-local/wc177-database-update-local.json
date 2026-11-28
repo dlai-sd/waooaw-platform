@@ -3,8 +3,8 @@
   "postgres_image": "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
   "bootstrap": "non-superuser CREATEROLE principal",
   "base_chain": {
-    "files": 144,
-    "applied": 144,
+    "files": 148,
+    "applied": 148,
     "update_principal": {
       "principal": "database_updater",
       "memberships": [
@@ -16,8 +16,8 @@
     }
   },
   "reference_chain": {
-    "files": 145,
-    "applied": 145,
+    "files": 149,
+    "applied": 149,
     "update_principal": {
       "principal": "database_updater",
       "memberships": [
@@ -32,7 +32,7 @@
     "schema": "waooaw.wc177-database-update-result/v1",
     "login": "database_updater",
     "applied": [
-      "99zzzzzzzz-wc177-zz-fixture.sql"
+      "99zzzzzzzzzzzz-wc177-zz-fixture.sql"
     ],
     "skipped": [],
     "attempts": 1,
@@ -48,21 +48,21 @@
     "login": "database_updater",
     "applied": [],
     "skipped": [
-      "99zzzzzzzz-wc177-zz-fixture.sql"
+      "99zzzzzzzzzzzz-wc177-zz-fixture.sql"
     ],
     "attempts": 0,
     "login_owned_objects_before": 118,
     "login_owned_objects_after": 118,
     "identity_tables": 8,
     "memberships": "bp_owner,wbe_owner",
-    "seconds": 0,
+    "seconds": 1,
     "status": "passed"
   },
   "lock_retry": {
     "schema": "waooaw.wc177-database-update-result/v1",
     "login": "database_updater",
     "applied": [
-      "99zzzzzzzz-wc177-zzzz-lock-retry.sql"
+      "99zzzzzzzzzzzz-wc177-zzzz-lock-retry.sql"
     ],
     "skipped": [],
     "attempts": 2,
