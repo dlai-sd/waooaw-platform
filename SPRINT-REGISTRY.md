@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-27 · **Version:** 1.45.0 · **Work Contracts:** 168 Work Contracts recorded · 115 with merged-PR evidence · 53 without
+**Last Updated:** 2026-11-28 · **Version:** 1.45.0 · **Work Contracts:** 168 Work Contracts recorded · 115 with merged-PR evidence · 53 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,7 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-177 | Deployment Time Reduction, Phase 4: A Database Update Path And Faster Application Stages | GROOMED AND VERIFIED LOCALLY, AWAITING FOUNDER REVIEW | #660 |
+| WC-177 | Deployment Time Reduction, Phase 4: A Database Update Path And Faster Application Stages | GROOMED AND VERIFIED LOCALLY, AWAITING FOUNDER REVIEW | #661, #660 |
 | WC-176 | Registration, Trial, Hire And Customer Pages To Full Extent | GROOMED, AWAITING FOUNDER REVIEW OF SCOPE AND THE SIX FOUNDER DECISIONS | #658 |
 | WC-175 | Demo Registration, Trial, Hire And Founder Screen Defects | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED | #659, #657, #656, #655 |
 | WC-174 | Agent Operation: Modes, Calendar And The DMA Journey (Agent Operation Track, Milestone AO-M1) - GROOMED | **GROOMED 2026-11-26 (documents only).** The build is not authorized | #650, #649 |
