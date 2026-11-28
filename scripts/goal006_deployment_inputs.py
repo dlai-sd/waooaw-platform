@@ -34,7 +34,7 @@ DATABASE_SECRET_NAMES = {
     "business-platform": "db-bp-runtime",
     "billing-engine": "db-billing-runtime",
     "billing-migration": "db-billing-migration",
-    "keycloak": "db-keycloak-runtime",
+    "database-update": "db-database-update",
     "keycloak-migration": "db-keycloak-migration",
     "pgbouncer": "db-pgbouncer-auth",
     "temporal": "db-temporal-runtime-demo",

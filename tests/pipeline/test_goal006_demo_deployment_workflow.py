@@ -555,7 +555,7 @@ def test_pgbouncer_reconciliation_import_executes_with_runner_module_path() -> N
             "-c",
             (
                 "from wc124_db_provisioner import environment_specs, parse_authfile; "
-                "assert len(environment_specs('demo')) == 17; "
+                "assert len(environment_specs('demo')) == 18; "
                 'assert parse_authfile(\'"role" "SCRAM-SHA-256$4096:salt$stored:server"\\n\') == '
                 "{'role': 'SCRAM-SHA-256$4096:salt$stored:server'}"
             ),
@@ -917,14 +917,15 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
 
 
 def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
-    assert WORKFLOW.count("Processing|Running)") == 8
+    assert WORKFLOW.count("Processing|Running)") == 9
     assert WORKFLOW.count("Processing|Running|Waiting)") == 3
-    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 10
+    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 11
 
 
 def test_job_polls_use_short_sleeps_with_at_least_the_previous_budget() -> None:
     # WC142-R002/R003: sleep 3 s per poll; attempts x 3 s never falls below the former attempts x 10 s.
-    for attempts, old_attempts, count in ((600, 180, 2), (200, 60, 2), (400, 120, 1)):
+    # WC-177 adds the database update job to the 400-attempt group.
+    for attempts, old_attempts, count in ((600, 180, 2), (200, 60, 2), (400, 120, 2)):
         assert attempts * 3 >= old_attempts * 10
         assert len(re.findall(rf"for (?:poll|attempt) in \$\(seq 1 {attempts}\)", WORKFLOW)) == count
     for old in ("seq 1 180)", "seq 1 60)", "seq 1 120)", "seq 1 360)", "seq 1 240)"):

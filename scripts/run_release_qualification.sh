@@ -43,6 +43,7 @@ fi
 
 tests_pid=
 postgres_pid=
+database_update_pid=
 demo_data_pid=
 simulator_pid=
 azure_pid=
@@ -94,6 +95,8 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/pipeline/test_wc123_impact_manifest.py \
     tests/pipeline/test_wc123_session_readiness.py \
     tests/pipeline/test_wc124_db_provisioner.py \
+    tests/pipeline/test_wc143_database_chain_record.py \
+    tests/pipeline/test_wc177_database_update.py \
     tests/contract/test_agent_admission_schema.py \
     tests/contract/test_wc120_contract_and_recovery.py \
     tests/pipeline/test_billing_ce_validator.py \
@@ -103,6 +106,8 @@ fi
 if test "$RELEASE_RUN_POSTGRES" = true; then
   run_release_lane postgres scripts/test-wc059-postgres.sh &
   postgres_pid=$!
+  run_release_lane database-update bash scripts/wc177_database_update_local.sh &
+  database_update_pid=$!
 fi
 if test "$RELEASE_RUN_DEMO_DATA" = true; then
   run_release_lane demo-data bash scripts/run_wc091_demo_data_verification.sh &
@@ -123,7 +128,7 @@ if test "$RELEASE_RUN_AZURE" = true; then
 fi
 
 status=0
-for lane_pid in "$tests_pid" "$postgres_pid" "$demo_data_pid" "$simulator_pid" "$azure_pid"; do
+for lane_pid in "$tests_pid" "$postgres_pid" "$database_update_pid" "$demo_data_pid" "$simulator_pid" "$azure_pid"; do
   if test -n "$lane_pid"; then
     wait "$lane_pid" || status=$?
   fi

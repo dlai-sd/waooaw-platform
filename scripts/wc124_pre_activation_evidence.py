@@ -77,6 +77,28 @@ def validate_temporal(temporal: dict[str, Any], expected_execution: str) -> None
         raise ValueError("Temporal observation window evidence is missing")
 
 
+def validate_database_update(update: dict[str, Any] | None, chain_reuse: dict[str, Any] | None) -> str | None:
+    """The ``update`` database path carries its own labelled evidence, bound to the same record (WC-177)."""
+    path = chain_reuse.get("database_path") if chain_reuse is not None else None
+    if path != "update":
+        if update is not None:
+            raise ValueError("database update evidence is present but the plan did not choose the update path")
+        return None
+    if update is None:
+        raise ValueError("the update path requires database update evidence")
+    if update.get("schema") != "waooaw.wc177-database-update/v1" or update.get("status") != "applied-verified":
+        raise ValueError("database update evidence is not an applied and verified update")
+    if update.get("record_sha256") != chain_reuse.get("record_sha256"):
+        raise ValueError("database update evidence is bound to a different chain record")
+    result = update.get("result")
+    if not isinstance(result, dict) or result.get("status") != "passed" or result.get("memberships") != "bp_owner,wbe_owner":
+        raise ValueError("database update verification did not pass with the exact owner memberships")
+    execution = update.get("execution")
+    if not isinstance(execution, str) or not execution:
+        raise ValueError("database update evidence has no execution name")
+    return execution
+
+
 def validate_evidence(
     *,
     environment: str,
@@ -85,11 +107,13 @@ def validate_evidence(
     temporal: dict[str, Any] | None,
     temporal_execution: dict[str, Any] | None,
     chain_reuse: dict[str, Any] | None = None,
+    database_update: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     identity_name = execution_name(identity_execution, "identity provisioning")
     validate_identity(identity, identity_name)
     if chain_reuse is not None and chain_reuse.get("execution") != identity_name:
         raise ValueError("database chain reuse record is bound to a different identity execution")
+    update_execution = validate_database_update(database_update, chain_reuse)
     temporal_name: str | None = None
     if environment == "demo":
         if temporal is None or temporal_execution is None:
@@ -102,6 +126,8 @@ def validate_evidence(
         "identity_execution": identity_name,
         "identity_reused": chain_reuse is not None,
         "identity_record_sha256": chain_reuse.get("record_sha256") if chain_reuse else None,
+        "database_path": chain_reuse.get("database_path", "reuse") if chain_reuse else "full",
+        "database_update_execution": update_execution,
         "temporal_execution": temporal_name,
         "status": "accepted-for-activation",
     }
@@ -115,6 +141,7 @@ def main() -> int:
     parser.add_argument("--temporal", type=Path)
     parser.add_argument("--temporal-execution", type=Path)
     parser.add_argument("--chain-reuse", type=Path)
+    parser.add_argument("--database-update", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     try:
@@ -125,6 +152,7 @@ def main() -> int:
             temporal=load_object(arguments.temporal) if arguments.temporal else None,
             temporal_execution=load_object(arguments.temporal_execution) if arguments.temporal_execution else None,
             chain_reuse=load_object(arguments.chain_reuse) if arguments.chain_reuse else None,
+            database_update=load_object(arguments.database_update) if arguments.database_update else None,
         )
         arguments.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     except (OSError, json.JSONDecodeError, ValueError) as error:

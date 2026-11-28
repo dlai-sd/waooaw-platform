@@ -67,12 +67,14 @@ Coverage:         NN% (threshold: NN%)
 ## Release Qualification Control
 
 <!--
-ON: run release qualification when changed paths require it.
+ON: run release qualification when changed paths require it. Use ON only when the Founder has
+explicitly requested release qualification for this PR.
 OFF: skip the costly release qualification for this PR. OFF requires an explicit Founder authority
-record below. Pushes to main always retain their required qualification behavior.
+record below. OFF is the standing default (Founder instruction, 2026-11-28, WC-177 session); keep the
+authority line unchanged. Pushes to main always retain their required qualification behavior.
 -->
-**Release Qualification:** ON
-**Release Qualification Authority:** N/A
+**Release Qualification:** OFF
+**Release Qualification Authority:** Founder standing instruction 2026-11-28 - OFF by default; ON only when the Founder requests it for the PR
 
 ---
 

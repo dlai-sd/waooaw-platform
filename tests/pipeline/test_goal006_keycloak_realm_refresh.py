@@ -114,7 +114,7 @@ def test_workflow_refreshes_keycloak_after_dependency_readiness_and_before_activ
     assert names.index("Require runtime dependency revisions before application activation") < position
     assert position < names.index("Plan application activation after migration")
     step = steps[position]
-    assert step["if"] == "inputs.apply"
+    assert step["if"] == "inputs.apply && steps.vendor-plan.outputs.vendor_reuse != 'true'"
     assert "--migration-execution wc124-keycloak-migration-execution.json" in step["run"]
 
 

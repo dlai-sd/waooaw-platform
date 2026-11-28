@@ -2772,6 +2772,73 @@ resource "azurerm_container_app_job" "billing_migration" {
   ]
 }
 
+resource "azurerm_user_assigned_identity" "database_update" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${var.environment}-database-update"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "database_update_database_secret" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["database-update"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.database_update[0].principal_id
+}
+
+# WC-177: applies new additive init files as database_updater through PgBouncer. Every execution is
+# started with a typed template (scripts/wc177_database_update_job.py) that carries the reviewed
+# apply program and the pending files; this definition only fixes identity, secret and image.
+resource "azurerm_container_app_job" "database_update" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                         = "job-${var.environment}-wc124-database-update"
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = var.container_app_environment_id
+  replica_retry_limit          = 0
+  replica_timeout_in_seconds   = 900
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.database_update[0].id]
+  }
+
+  secret {
+    name                = "update-database"
+    identity            = azurerm_user_assigned_identity.database_update[0].id
+    key_vault_secret_id = var.database_secret_uris["database-update"]
+  }
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  template {
+    container {
+      name    = "database-update"
+      image   = "docker.io/library/postgres@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-c"]
+      args    = ["echo 'database update job runs only from its typed start template' >&2; exit 1"]
+
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "update-database"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_container_app.pgbouncer,
+    azurerm_role_assignment.database_update_database_secret,
+  ]
+}
+
 resource "azurerm_container_app_job" "verification" {
   count = var.workload_enabled && var.verification_principal_id != null ? 1 : 0
 

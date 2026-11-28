@@ -50,6 +50,18 @@ on:
         required: false
         default: false
         type: boolean
+      database_path:
+        description: "auto: the read-only plan chooses reuse, update or full. full: force the complete database chain."
+        required: false
+        default: auto
+        type: choice
+        options: [auto, full]
+      resume_from:
+        description: "start, or activation to continue a failed run after its recorded database and migration checkpoint."
+        required: false
+        default: start
+        type: choice
+        options: [start, activation]
 
 permissions:
   contents: read
@@ -73,6 +85,8 @@ jobs:
       image_home: ${{ steps.dispatch.outputs.image_home }}
       provider_operation: ${{ steps.dispatch.outputs.provider_operation }}
       reset_demo_database: ${{ steps.dispatch.outputs.reset_demo_database }}
+      database_path: ${{ steps.dispatch.outputs.database_path }}
+      resume_from: ${{ steps.dispatch.outputs.resume_from }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -84,6 +98,8 @@ jobs:
           IMAGE_HOME: ${{ inputs.image_home || 'github' }}
           PROVIDER_OPERATION: ${{ inputs.provider_operation || 'none' }}
           RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database && 'true' || 'false' }}
+          DATABASE_PATH: ${{ inputs.database_path || 'auto' }}
+          RESUME_FROM: ${{ inputs.resume_from || 'start' }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
@@ -101,6 +117,15 @@ jobs:
             false) ;;
             *) exit 1 ;;
           esac
+          case "$DATABASE_PATH" in
+            auto|full) ;;
+            *) exit 1 ;;
+          esac
+          case "$RESUME_FROM" in
+            start) ;;
+            activation) test "$DATABASE_PATH:$RESET_DEMO_DATABASE" = auto:false ;;
+            *) exit 1 ;;
+          esac
           jq -e . >/dev/null <<< "$normalized"
           {
             echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")"
@@ -109,6 +134,8 @@ jobs:
             echo "image_home=$(jq -r '.image_home' <<< "$normalized")"
             echo "provider_operation=$PROVIDER_OPERATION"
             echo "reset_demo_database=$RESET_DEMO_DATABASE"
+            echo "database_path=$DATABASE_PATH"
+            echo "resume_from=$RESUME_FROM"
           } >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
@@ -170,6 +197,8 @@ jobs:
       provider_document: ${{ inputs.provider_document || '{}' }}
       provider_approved_digest: ${{ inputs.provider_approved_digest || '' }}
       reset_demo_database: ${{ needs.authorize.outputs.reset_demo_database == 'true' }}
+      database_path: ${{ needs.authorize.outputs.database_path }}
+      resume_from: ${{ needs.authorize.outputs.resume_from }}
     secrets: inherit
 
   publish-url:

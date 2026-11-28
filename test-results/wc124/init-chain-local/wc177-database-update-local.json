@@ -1,0 +1,98 @@
+{
+  "schema": "waooaw.wc177-database-update-local/v1",
+  "postgres_image": "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
+  "bootstrap": "non-superuser CREATEROLE principal",
+  "base_chain": {
+    "files": 144,
+    "applied": 144,
+    "update_principal": {
+      "principal": "database_updater",
+      "memberships": [
+        "bp_owner",
+        "wbe_owner"
+      ],
+      "bootstrap_owned_objects_before": 42,
+      "bootstrap_owned_objects_after": 0
+    }
+  },
+  "reference_chain": {
+    "files": 145,
+    "applied": 145,
+    "update_principal": {
+      "principal": "database_updater",
+      "memberships": [
+        "bp_owner",
+        "wbe_owner"
+      ],
+      "bootstrap_owned_objects_before": 44,
+      "bootstrap_owned_objects_after": 0
+    }
+  },
+  "update": {
+    "schema": "waooaw.wc177-database-update-result/v1",
+    "login": "database_updater",
+    "applied": [
+      "99zzzzzzzz-wc177-zz-fixture.sql"
+    ],
+    "skipped": [],
+    "attempts": 1,
+    "login_owned_objects_before": 118,
+    "login_owned_objects_after": 118,
+    "identity_tables": 8,
+    "memberships": "bp_owner,wbe_owner",
+    "seconds": 1,
+    "status": "passed"
+  },
+  "update_rerun": {
+    "schema": "waooaw.wc177-database-update-result/v1",
+    "login": "database_updater",
+    "applied": [],
+    "skipped": [
+      "99zzzzzzzz-wc177-zz-fixture.sql"
+    ],
+    "attempts": 0,
+    "login_owned_objects_before": 118,
+    "login_owned_objects_after": 118,
+    "identity_tables": 8,
+    "memberships": "bp_owner,wbe_owner",
+    "seconds": 0,
+    "status": "passed"
+  },
+  "lock_retry": {
+    "schema": "waooaw.wc177-database-update-result/v1",
+    "login": "database_updater",
+    "applied": [
+      "99zzzzzzzz-wc177-zzzz-lock-retry.sql"
+    ],
+    "skipped": [],
+    "attempts": 2,
+    "login_owned_objects_before": 118,
+    "login_owned_objects_after": 118,
+    "identity_tables": 8,
+    "memberships": "bp_owner,wbe_owner",
+    "seconds": 3,
+    "status": "passed"
+  },
+  "plan": {
+    "reuse": "reuse",
+    "update": "update",
+    "undeclared": "full",
+    "unclassified": "full",
+    "changed_digest": "full",
+    "forced": "full"
+  },
+  "schema_drift_lines_between_full_chain_and_base_plus_update": 0,
+  "refusals": [
+    "undeclared",
+    "unclassified",
+    "changed-digest",
+    "tampered-manifest"
+  ],
+  "lock": {
+    "bounded_failure": true,
+    "clean_retry": true,
+    "short_lock_retried": true
+  },
+  "pgbouncer": "transaction pooling",
+  "status": "passed"
+}

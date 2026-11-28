@@ -40,6 +40,7 @@ def make_record(**overrides: object) -> dict:
         provisioner_execution=succeeded("exec-1"),
         run_id="1",
         recorded_at=NOW - timedelta(days=1),
+        applied_init_files={"01.sql": "a" * 64},
     )
 
 
@@ -63,7 +64,7 @@ def seeded_repository(tmp_path: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(name, encoding="utf-8")
     init = tmp_path / chain.INIT_DIRECTORY
-    init.mkdir(parents=True)
+    init.mkdir(parents=True, exist_ok=True)
     (init / "01.sql").write_text("select 1;", encoding="utf-8")
     return tmp_path
 
@@ -119,7 +120,7 @@ def test_recorded_evidence_must_be_a_complete_unreset_provisioning(overrides: di
     assert reason in (reject(make_record(**overrides)) or "")
 
 
-def test_fingerprint_follows_inputs_and_rejects_unknown_environment(tmp_path: Path) -> None:
+def test_fingerprint_follows_chain_inputs_not_new_init_files_and_rejects_unknown_environment(tmp_path: Path) -> None:
     root = seeded_repository(tmp_path)
     first = chain.chain_fingerprint(root, "demo", {"foundation_fingerprint": "a"})
 
@@ -127,6 +128,8 @@ def test_fingerprint_follows_inputs_and_rejects_unknown_environment(tmp_path: Pa
     assert first != chain.chain_fingerprint(root, "demo", {"foundation_fingerprint": "b"})
     assert first != chain.chain_fingerprint(root, "uat", {"foundation_fingerprint": "a"})
     (root / chain.INIT_DIRECTORY / "01.sql").write_text("select 2;", encoding="utf-8")
+    assert first == chain.chain_fingerprint(root, "demo", {"foundation_fingerprint": "a"})
+    (root / chain.INIT_DIRECTORY / chain.BOOTSTRAP_FILE).write_text("changed", encoding="utf-8")
     assert first != chain.chain_fingerprint(root, "demo", {"foundation_fingerprint": "a"})
     with pytest.raises(ValueError, match="demo or uat"):
         chain.chain_fingerprint(root, "prod")
@@ -153,6 +156,7 @@ def run_evaluate(tmp_path: Path, record: Path, **overrides: str) -> tuple[dict, 
         "--transition", str(transition),
         "--reset-requested", "false",
         "--expected-spend-paise", "50000",
+        "--repository-root", str(ROOT),
         "--output-directory", str(tmp_path),
     ]  # fmt: skip
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -173,13 +177,14 @@ def test_reuse_restores_evidence_that_the_activation_gate_accepts(tmp_path: Path
         provisioner_execution=succeeded("exec-1"),
         run_id="1",
         recorded_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        applied_init_files=chain.init_file_digests(ROOT),
     )
     path = tmp_path / "record.json"
     path.write_text(json.dumps(record), encoding="utf-8")
 
     decision, completed = run_evaluate(tmp_path, path)
 
-    assert completed.returncode == 0 and decision["reuse"] is True
+    assert completed.returncode == 0 and decision["reuse"] is True and decision["path"] == "reuse"
     authority = json.loads((tmp_path / "wc124-reconciliation-authority.json").read_text())
     assert authority["status"] == "temporary-authority-revoked" and authority["reused_chain"] is True
     reuse = json.loads((tmp_path / "wc143-database-chain-reuse.json").read_text())
@@ -205,7 +210,8 @@ def test_reuse_restores_evidence_that_the_activation_gate_accepts(tmp_path: Path
 
 def test_missing_corrupt_or_mismatched_record_selects_the_full_chain(tmp_path: Path) -> None:
     decision, completed = run_evaluate(tmp_path, tmp_path / "absent.json")
-    assert completed.returncode == 0 and decision == {"reuse": False, "reason": "no record exists"}
+    assert completed.returncode == 0 and decision["reuse"] is False and decision["path"] == "full"
+    assert decision["reason"] == "no record exists"
 
     corrupt = tmp_path / "corrupt.json"
     corrupt.write_text("{not json", encoding="utf-8")
@@ -252,13 +258,16 @@ def test_chain_decision_is_taken_before_any_authority_is_opened_and_record_is_fe
     assert "continue-on-error" not in step_block("Decide WC-124 database chain reuse")
 
 
-def test_record_is_persisted_only_after_the_whole_job_succeeded_and_never_blocks_it() -> None:
+def test_record_is_persisted_at_the_checkpoint_after_migration_acceptance_and_never_blocks_the_job() -> None:
     persist = step_block("Persist completed WC-124 database chain record")
     assert "success()" in persist and "continue-on-error: true" in persist
-    assert "steps.database-chain.outputs.reuse != 'true'" in persist
-    assert WORKFLOW.index("Persist completed WC-124 database chain record") < WORKFLOW.index("Upload plans and evidence")
+    assert "steps.database-chain.outputs.path" in persist
+    assert (
+        WORKFLOW.index("Verify migration evidence before application activation")
+        < WORKFLOW.index("Persist completed WC-124 database chain record")
+        < WORKFLOW.index("Activate runtime dependencies before application revisions")
+    )
     assert "wc143-database-chain-reuse.json" in step_block("Verify migration evidence before application activation")
-    assert "Delete WC-124 database provisioner" in WORKFLOW[: WORKFLOW.index("Persist completed WC-124")]
 
 
 def test_verification_and_terminal_cleanup_run_whether_or_not_the_chain_was_reused() -> None:

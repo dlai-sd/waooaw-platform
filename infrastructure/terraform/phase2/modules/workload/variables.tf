@@ -67,10 +67,11 @@ variable "database_secret_uris" {
       toset(keys(var.database_secret_uris)) == toset(var.environment == "demo" ? [
         "constitutional-engine", "business-platform", "billing-engine",
         "billing-migration", "keycloak", "keycloak-migration", "pgbouncer",
-        "temporal", "temporal-migration",
+        "database-update", "temporal", "temporal-migration",
         ] : [
         "constitutional-engine", "business-platform", "billing-engine",
         "billing-migration", "keycloak", "keycloak-migration", "pgbouncer",
+        "database-update",
       ]) &&
       alltrue([for uri in values(var.database_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+/[^/]+$", uri))])
     )
