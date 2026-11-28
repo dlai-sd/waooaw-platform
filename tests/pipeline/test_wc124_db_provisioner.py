@@ -45,10 +45,10 @@ HANDOFF_SQL = (ROOT / "infrastructure/postgres/init/60-wc124-principal-handoff.s
 def test_demo_catalog_has_exact_distinct_database_credentials() -> None:
     specs = validate_catalog(CATALOG, "demo")
 
-    assert len(specs) == 17
-    assert len({spec.secret_id for spec in specs}) == 17
-    assert len({spec.vault_name for spec in specs}) == 17
-    assert len({spec.role for spec in specs}) == 17
+    assert len(specs) == 18
+    assert len({spec.secret_id for spec in specs}) == 18
+    assert len({spec.vault_name for spec in specs}) == 18
+    assert len({spec.role for spec in specs}) == 18
     assert {spec.database for spec in specs} == {
         APPLICATION_DATABASE,
         KEYCLOAK_DATABASE,
@@ -59,7 +59,7 @@ def test_demo_catalog_has_exact_distinct_database_credentials() -> None:
 def test_uat_excludes_demo_temporal_credential() -> None:
     specs = validate_catalog(CATALOG, "uat")
 
-    assert len(specs) == 15
+    assert len(specs) == 16
     assert TEMPORAL_DATABASE not in {spec.database for spec in specs}
 
 
@@ -126,7 +126,7 @@ def test_pgbouncer_authfile_contains_the_exact_distinct_credential_set() -> None
     passwords = {spec.role: f"{spec.role}-password" for spec in environment_specs("demo")}
     value = authfile_value(passwords)
 
-    assert value.count("\n") == 17
+    assert value.count("\n") == 18
     for role, password in passwords.items():
         assert f'"{role}" "{password}"' in value
 

@@ -160,6 +160,29 @@ behavioural probe executed as the runtime login role.
 3. `sh scripts/validation_control/run_wc123_session_contract.sh` (catalog gate
    `wc123:session-contract`, selected by `scoped_paths.web-session-store` for every init-chain
    change) — full `web_session` contract including definer ownership.
+4. `bash scripts/wc177_database_update_local.sh` (WC-177; release-qualification lane `database-update`) —
+   required when a file carries the `-- wc177-apply: update` header or the update path, the update
+   principal or the apply program changes: a non-superuser bootstrap replica, the real apply program
+   through a transaction-mode PgBouncer, zero schema drift between "full chain" and "base chain plus
+   update", refusal of undeclared, unclassified, changed-digest and tampered files, and the lock-timeout
+   cases. Evidence: `test-results/wc124/init-chain-local/wc177-database-update-local.json`.
+
+**Update class (WC-177).** The first line of a new init file declares its apply class:
+`-- wc177-apply: update` or `-- wc177-apply: full`. No header means `full`; the 144 files that existed
+when the class was introduced are treated as already applied and are never edited for the header. An
+`update` file is applied by the update job as `database_updater` (no default role, not a superuser, no
+`CREATEROLE`, `CREATEDB` or `BYPASSRLS`, `NOINHERIT`, a member of exactly `bp_owner` and `wbe_owner`),
+through PgBouncer, in one transaction with its ledger row, so it must: set `lock_timeout` and
+`statement_timeout`; run every statement after `SET LOCAL ROLE bp_owner` or `wbe_owner`; use no
+`BEGIN`/`COMMIT`, `SET ROLE`, psql meta command, `DROP` (other than `DROP POLICY|TRIGGER IF EXISTS`),
+`TRUNCATE`, `DELETE`, rename, column type change, NOT NULL column without a default, unbounded
+`UPDATE`, role creation or alteration, role membership grant, extension change, or any reference to
+`ce_owner`, `pr_owner`, `air_owner`, `billing_owner`, `web_session_owner`, `keycloak_owner` or
+`temporal_owner`. `wc124_init_chain_lint.py` enforces these rules (`update_rule_findings`) in addition to
+the idempotent standard. Anything that does not fit is a `full` file and goes to the Founder as a
+destructive or privileged change. A new file must also sort after every applied file. The update
+principal is created, and bootstrap-owned objects are moved to `bp_owner` (`REASSIGN OWNED`, ledger
+schema kept by the bootstrap), only by the full path while the bootstrap authority is open.
 
 **Local reproduction against the full chain.** `scripts/run_auth_preview.sh start` (Codespaces;
 web at `https://${CODESPACE_NAME}-3100.app.github.dev`) initialises a fresh compose PostgreSQL with
@@ -1227,6 +1250,26 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 - deterministic-first execution avoids unnecessary model/provider calls and broad repeated validation;
 - Founder acceptance after all applicable automated and author-review gates pass; any institutional review is Founder-requested.
 
+**Database path selection (WC-177).** A deployment's database work takes one of three paths, chosen by the
+read-only plan step "Decide WC-124 database chain reuse" (`scripts/wc143_database_chain_record.py evaluate`)
+from the repository, the sealed version 2 record and the live facts, never by connecting to the database:
+`reuse` (nothing changed: credential handoff verification and the terminal authority checks only),
+`update` (only new, declared, lint-clean `-- wc177-apply: update` files: the typed-template job
+`job-<env>-wc124-database-update` applies them as `database_updater` through PgBouncer, with the applications
+running and no bootstrap authority opened, then verifies the ledger, owners, the Business Platform identity
+object set and the principal's exact memberships) and `full` (the complete WC-124 chain; first deployment,
+unreadable or version 1 record, changed chain input or applied file, a new `full` or unclassified file, a
+reset, a failed live fact, or the dispatch input `database_path=full`). Any doubt selects `full`. Read the
+plan in the job summary and `wc143-database-chain-decision.json`; per-stage-group paths and seconds are in
+`wc177-stage-timings.json` against run 45983274213 (about 41 minutes). Vendor migrations and the Temporal
+qualification are skipped only when the migration plan proves their deployed definitions equal the recorded,
+successfully qualified ones (`wc177-vendor-plan.json`). The sealed record is written at the checkpoint after
+the migrations are verified, so `resume_from=activation` continues a failed run without repeating them.
+UAT uses the same paths and writes `wc177-restore-marker.json` before each update; Production is refused by
+the plan (Founder decisions D1 and D2 are recorded as approved; Production apply stays separately
+prohibited). After one refused or failed update, stop, read the job log, and use `database_path=full` only
+when the cause is a refused file.
+
 ---
 
 ### Skill 18: Workflow Control-Flow and State-Machine Engineering
@@ -1780,6 +1823,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.4.1 | 2026-10-20 | Founder / Platform IT Expert | Added §2.5 Idempotent Init-Chain SQL Standard with the `wc124_init_chain_lint.py` and `wc124_init_chain_local.sh` executable gates after WC-124 gap B showed 31 of 69 init files failed a second pass; no capability or Decision Space change |
 | 1.4.2 | 2026-10-29 | Founder / Platform IT Expert | Added the §2.5 SECURITY DEFINER ownership-handoff rule, the OIDC reservation probe, the `wc123:session-contract` gate and the `run_auth_preview.sh` local-reproduction procedure (including `AUTH_PREVIEW_IDP=local` and `verify-social`), plus flag-controlled `WAOOAW_DIAGNOSTIC_DETAIL` failure logging, after the Demo Google sign-in 42501 regression; no capability or Decision Space change |
 | 1.4.3 | 2026-11-26 | Founder / Platform IT Expert | Added Skill 24 Synthetic-Customer Integration Testing for the throwaway-customer utility, the browser walk, the journey-acceptance launcher and the Docker suites that cover them; Demo only, no new provider, spend, Production or merge authority |
+| 1.4.3 (WC-177 addendum) | 2026-11-28 | Founder / Platform IT Expert | Added the §2.5 update class and fourth executable gate, and the Skill 17 database path selection (`reuse`, `update`, `full`), without a new skill, version number, capability or Decision Space change; Release Qualification is OFF by default in PR bodies on Founder direction |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 

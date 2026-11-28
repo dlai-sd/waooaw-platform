@@ -303,12 +303,15 @@ qualified. Once implemented, UAT proves:
 - restored record counts, tenant/RLS controls, and application smoke behavior;
 - no Demo or Production identity, route, state, secret, or data access.
 
-The role and ownership floor is:
+The role and ownership floor is (Founder approved the two-owner membership of the update principal on
+2026-11-28; the Enterprise Architect is asked to rule on whether the "only its owned schemas" wording of
+the migration job row, or an ADR, needs amendment, and Platform IT does not create or amend an ADR):
 
 | Principal | Required database authority | Prohibited authority |
 |---|---|---|
 | Entra bootstrap administrator | Create the environment databases, NOLOGIN owners, extensions, and bounded grants; hand off and stop | Application traffic, routine migration, or standing secret read |
 | Digest-pinned EF migration job | DDL only in its owned application/constitutional schemas and migration history; additive migrations before traffic | Login reuse by workloads, database administration, destructive audit-ledger changes, or cross-database access |
+| Database update principal (`database_updater`, WC-177) | One generated LOGIN, `NOINHERIT`, no-default-role principal that is a member of exactly `bp_owner` and `wbe_owner`, with `CONNECT` and `SELECT, INSERT, UPDATE` on the init-chain ledger only; applies new additive init files (`-- wc177-apply: update`) through PgBouncer, each in one transaction with its ledger row, after `SET LOCAL ROLE` to one of those owners; created, and bootstrap-owned objects reassigned to `bp_owner`, only by the full path while the bootstrap authority is open; its secret is read only by the update job's identity | Superuser, `CREATEROLE`, `CREATEDB`, `BYPASSRLS`, any other owner role (`ce_owner`, `pr_owner`, `air_owner`, `billing_owner`, `web_session_owner`, `keycloak_owner`, `temporal_owner`), role or membership changes, extension changes, drops, renames, type changes, truncation, a standing human or workflow credential, or Production use before Production apply is separately authorized |
 | Application service roles | Separate LOGIN/NOBYPASSRLS roles with only required schema usage, DML, and exact ADR-003 function execution | Ownership, role creation, schema creation, BYPASSRLS, another service database, Keycloak, or Temporal |
 | Keycloak and Temporal | Separate generated non-admin roles limited to their separate databases; direct PostgreSQL only where accepted | Application/constitutional schemas, shared credentials, or cross-environment access |
 | Recovery verifier | Temporary isolated-restore connection with read/test grants needed for the approved checks | Source mutation, Production access, standing application use, or credential reuse |

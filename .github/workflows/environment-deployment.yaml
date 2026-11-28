@@ -58,6 +58,16 @@ on:
         required: false
         type: boolean
         default: false
+      database_path:
+        description: "auto lets the read-only database plan choose reuse, update or full; full forces the complete WC-124 chain."
+        required: false
+        type: string
+        default: auto
+      resume_from:
+        description: "start, or activation to continue a failed run after its recorded database and migration checkpoint."
+        required: false
+        type: string
+        default: start
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -1522,17 +1532,20 @@ jobs:
         id: database-chain
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
+          DATABASE_PATH: ${{ inputs.database_path }}
           FOUNDATION_FINGERPRINT: ${{ steps.foundation-cache.outputs.fingerprint }}
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
           RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          RESUME_FROM: ${{ inputs.resume_from }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           fingerprint=$(python3 scripts/wc143_database_chain_record.py fingerprint \
             --environment "$TARGET_ENVIRONMENT" \
             --context "foundation_fingerprint=$FOUNDATION_FINGERPRINT")
-          decision='{"reuse": false, "reason": "live facts could not be read"}'
+          decision='{"reuse": false, "path": "full", "reason": "live facts could not be read"}'
           if bash scripts/wc143_database_chain_live_facts.sh > wc143-database-chain-live-facts.json; then
             spend_arguments=()
             if [ "$TARGET_ENVIRONMENT" = demo ]; then
@@ -1546,14 +1559,27 @@ jobs:
               --live-facts wc143-database-chain-live-facts.json \
               --transition wc124-database-transition.json \
               --reset-requested "$RESET_DEMO_DATABASE" \
+              --database-path "$DATABASE_PATH" \
+              --resume-from "$RESUME_FROM" \
+              --release-sha "$RELEASE_SHA" \
               --output-directory . \
               "${spend_arguments[@]}")
           fi
           jq --arg fingerprint "$fingerprint" '. + {fingerprint: $fingerprint}' <<< "$decision" \
             > wc143-database-chain-decision.json
           cat wc143-database-chain-decision.json
-          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
-          echo "reuse=$(jq -r '.reuse' wc143-database-chain-decision.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "fingerprint=$fingerprint"
+            echo "reuse=$(jq -r '.reuse' wc143-database-chain-decision.json)"
+            echo "path=$(jq -r '.path' wc143-database-chain-decision.json)"
+            echo "manifest_sha256=$(jq -r '.manifest_sha256 // ""' wc143-database-chain-decision.json)"
+            echo "added_files=$(jq -r '(.added_files // []) | join(" ")' wc143-database-chain-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Database path: $(jq -r '.path' wc143-database-chain-decision.json)"
+            echo "- Reason: $(jq -r '.reason' wc143-database-chain-decision.json)"
+            echo "- Resume: $(jq -rc '.resume // {requested: "start"}' wc143-database-chain-decision.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open bounded WC-124 schema reconciliation authority
         if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && steps.database-transition.outputs.schema_reconciliation_required == 'true'
@@ -1716,18 +1742,6 @@ jobs:
           python3 scripts/goal006_application_lifecycle.py \
             --environment demo --action Stop --component database-reset \
             --output wc132-demo-maintenance.json
-
-      - name: Quiesce running Demo applications before migrations
-        id: demo-quiesce
-        if: inputs.apply && steps.database-chain.outputs.reuse == 'true' && inputs.environment == 'demo'
-        run: |
-          set -euo pipefail
-          # Without a database reset nothing else stops Demo, and the Temporal startup qualification needs a pool with
-          # no other client: it waits for ca-demo-temporal to reach zero replicas, which never happens while it runs.
-          # Stop the same consumers the reset path stops, so a deploy starts from the state the nightly stop leaves.
-          python3 scripts/goal006_application_lifecycle.py \
-            --environment demo --action Stop --component database-reset \
-            --output wc168-demo-quiesce.json
 
       - name: Create WC-124 database provisioner
         id: database-provisioner
@@ -2829,6 +2843,7 @@ jobs:
             "-target=module.workload.azurerm_container_app.pgbouncer[0]"
             "-target=module.workload.azurerm_container_app_job.keycloak_migration[0]"
             "-target=module.workload.azurerm_container_app_job.billing_migration[0]"
+            "-target=module.workload.azurerm_container_app_job.database_update[0]"
           )
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
             migration_targets+=(
@@ -2922,6 +2937,47 @@ jobs:
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
 
+      # WC-177: skip the vendor migrations and the Temporal qualification only when the migration plan proves
+      # their deployed definitions equal the recorded, successfully qualified ones. The plan is produced by the
+      # dormant apply above, so this is the first point where the proof exists.
+      - name: Decide vendor migration and Temporal qualification reuse
+        id: vendor-plan
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          DATABASE_PATH: ${{ steps.database-chain.outputs.path }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          decision=$(python3 scripts/wc143_database_chain_record.py vendor-plan \
+            --record wc143-database-chain-record.json \
+            --plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-migration-plan.json" \
+            --database-path "$DATABASE_PATH" \
+            --output-directory .)
+          echo "$decision" > wc177-vendor-plan.json
+          cat wc177-vendor-plan.json
+          {
+            echo "vendor_reuse=$(jq -r '.vendor_reuse' wc177-vendor-plan.json)"
+            echo "vendor_digest=$(jq -r '.vendor_digest' wc177-vendor-plan.json)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Vendor migrations and Temporal qualification"
+            echo "- Reused by proof: $(jq -r '.vendor_reuse' wc177-vendor-plan.json)"
+            echo "- Reason: $(jq -r '.reason' wc177-vendor-plan.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Quiesce running Demo applications before migrations
+        id: demo-quiesce
+        if: inputs.apply && steps.database-chain.outputs.reuse == 'true' && steps.vendor-plan.outputs.vendor_reuse != 'true' && inputs.environment == 'demo'
+        run: |
+          set -euo pipefail
+          # Without a database reset nothing else stops Demo, and the Temporal startup qualification needs a pool with
+          # no other client: it waits for ca-demo-temporal to reach zero replicas, which never happens while it runs.
+          # Stop the same consumers the reset path stops, so a deploy starts from the state the nightly stop leaves.
+          # WC-177: it runs only when that qualification will run, so a reused qualification stops nothing.
+          python3 scripts/goal006_application_lifecycle.py \
+            --environment demo --action Stop --component database-reset \
+            --output wc168-demo-quiesce.json
+
       - name: Resume PgBouncer before migration preflight
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
@@ -3013,8 +3069,111 @@ jobs:
             sleep 3
           done
 
+      - name: Apply additive database update through PgBouncer
+        id: database-update
+        if: inputs.apply && steps.database-chain.outputs.path == 'update'
+        env:
+          MANIFEST_SHA256: ${{ steps.database-chain.outputs.manifest_sha256 }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-database-update"
+          # Restore marker: the earliest recoverable point before this change, recorded before any SQL runs.
+          az postgres flexible-server show \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "psql-waooaw-${TARGET_ENVIRONMENT}-state" \
+            --query '{server: id, earliest_restore_date: backup.earliestRestoreDate}' \
+            --output json \
+            | jq --arg environment "$TARGET_ENVIRONMENT" --arg files "$(jq -r '.added_files | join(" ")' wc143-database-chain-decision.json)" \
+              '. + {schema: "waooaw.wc177-restore-marker/v1", environment: $environment, marked_at: (now | todate), files: ($files | split(" "))}' \
+            > wc177-restore-marker.json
+          az containerapp job show \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$job_name" \
+            --output json > wc177-database-update-job.before.json
+          python3 scripts/wc177_database_update_job.py \
+            --job wc177-database-update-job.before.json \
+            --environment "$TARGET_ENVIRONMENT" \
+            --subscription-id "$ARM_SUBSCRIPTION_ID" \
+            --script scripts/wc177_database_update.sh \
+            --payload wc177-database-update-payload.b64 \
+            --manifest wc177-database-update-manifest.txt \
+            --manifest-sha256 "$MANIFEST_SHA256" \
+            --output wc177-database-update-template.json
+          execution=$(az containerapp job start \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$job_name" \
+            --yaml wc177-database-update-template.json \
+            --query name \
+            --output tsv)
+          test -n "$execution"
+          echo "Database update execution: $execution"
+          capture_update_evidence() {
+            az containerapp job execution show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution" \
+              --output json > wc177-database-update-execution.json
+            az containerapp job logs show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --execution "$execution" \
+              --container database-update \
+              --tail 300 \
+              --format text > wc177-database-update.log 2>&1 || true
+          }
+          for attempt in $(seq 1 400); do
+            status=$(az containerapp job execution show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution" \
+              --query properties.status \
+              --output tsv)
+            case "$status" in
+              Succeeded)
+                capture_update_evidence
+                break
+                ;;
+              Failed|Stopped)
+                capture_update_evidence
+                cat wc177-database-update.log >&2
+                echo "Database update failed: $status. Nothing else changed; rerun with database_path=full if the cause is a refused file." >&2
+                exit 1
+                ;;
+              Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
+              *)
+                capture_update_evidence
+                cat wc177-database-update.log >&2
+                echo "Database update returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" = 400 ]; then
+              capture_update_evidence
+              cat wc177-database-update.log >&2
+              echo "Database update timed out with status: $status" >&2
+              exit 1
+            fi
+            sleep 3
+          done
+          result=$(grep -o 'WC177_UPDATE_RESULT {.*}' wc177-database-update.log | tail -n 1 | sed 's/^WC177_UPDATE_RESULT //')
+          test -n "$result"
+          jq -n \
+            --argjson result "$result" \
+            --arg execution "$execution" \
+            --arg manifest_sha256 "$MANIFEST_SHA256" \
+            --arg record_sha256 "$(jq -er '.record_sha256' wc143-database-chain-reuse.json)" \
+            '{schema: "waooaw.wc177-database-update/v1", status: "applied-verified", execution: $execution,
+              manifest_sha256: $manifest_sha256, record_sha256: $record_sha256, result: $result}' \
+            > wc177-database-update.json
+          test "$(jq -r '.result.status' wc177-database-update.json)" = passed
+
       - name: Reclaim PostgreSQL connection budget before vendor migrations
-        if: inputs.apply
+        if: inputs.apply && steps.vendor-plan.outputs.vendor_reuse != 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -3084,7 +3243,7 @@ jobs:
             | tee wc124-connection-budget.json
 
       - name: Run vendor schema migrations against private PostgreSQL
-        if: inputs.apply
+        if: inputs.apply && steps.vendor-plan.outputs.vendor_reuse != 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -3321,7 +3480,7 @@ jobs:
       # The OIDC client assertion expires 5 minutes after login; refresh before
       # the first Log Analytics token is required by Temporal qualification.
       - name: Refresh Azure login before Temporal qualification
-        if: inputs.apply && inputs.environment == 'demo'
+        if: inputs.apply && inputs.environment == 'demo' && steps.vendor-plan.outputs.vendor_reuse != 'true'
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
@@ -3329,7 +3488,7 @@ jobs:
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Qualify exact Temporal startup through PgBouncer
-        if: inputs.apply && inputs.environment == 'demo'
+        if: inputs.apply && inputs.environment == 'demo' && steps.vendor-plan.outputs.vendor_reuse != 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -3517,6 +3676,9 @@ jobs:
           if [ -f wc143-database-chain-reuse.json ]; then
             evidence_arguments+=(--chain-reuse wc143-database-chain-reuse.json)
           fi
+          if [ -f wc177-database-update.json ]; then
+            evidence_arguments+=(--database-update wc177-database-update.json)
+          fi
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
             evidence_arguments+=(
               --temporal wc124-temporal-pool-evidence.json
@@ -3564,6 +3726,81 @@ jobs:
                 )
               }
             }' > wc124-migration-acceptance.json
+
+      # Checkpoint (WC-177 R015): once the database and migration stage groups are verified, the sealed
+      # record is written so a failed later stage resumes here instead of repeating them.
+      - name: Refresh Azure login before recording the database chain checkpoint
+        if: >-
+          success() && inputs.apply &&
+          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
+          (steps.database-chain.outputs.path != 'reuse' || steps.vendor-plan.outputs.vendor_reuse != 'true') &&
+          (steps.database-chain.outputs.path != 'full' || steps.database-chain-facts.outcome == 'success')
+        continue-on-error: true
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Persist completed WC-124 database chain record
+        if: >-
+          success() && inputs.apply &&
+          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
+          (steps.database-chain.outputs.path != 'reuse' || steps.vendor-plan.outputs.vendor_reuse != 'true') &&
+          (steps.database-chain.outputs.path != 'full' || steps.database-chain-facts.outcome == 'success')
+        continue-on-error: true
+        env:
+          ADDED_FILES: ${{ steps.database-chain.outputs.added_files }}
+          DATABASE_PATH: ${{ steps.database-chain.outputs.path }}
+          FINGERPRINT: ${{ steps.database-chain.outputs.fingerprint }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          VENDOR_DIGEST: ${{ steps.vendor-plan.outputs.vendor_digest }}
+          VENDOR_REUSE: ${{ steps.vendor-plan.outputs.vendor_reuse }}
+        run: |
+          set -euo pipefail
+          vendor_arguments=()
+          if [ "$VENDOR_REUSE" != true ] && [ -n "$VENDOR_DIGEST" ] && [ -f wc124-vendor-migrations.json ]; then
+            vendor_arguments=(--vendor-digest "$VENDOR_DIGEST" --vendor-migrations wc124-vendor-migrations.json)
+            if [ -f wc124-temporal-pool-evidence.json ] && [ -f wc124-temporal-startup-execution.json ]; then
+              vendor_arguments+=(--temporal-pool wc124-temporal-pool-evidence.json \
+                --temporal-execution wc124-temporal-startup-execution.json)
+            fi
+          fi
+          if [ "$DATABASE_PATH" = full ]; then
+            python3 scripts/wc143_database_chain_record.py create \
+              --environment "$TARGET_ENVIRONMENT" \
+              --fingerprint "$FINGERPRINT" \
+              --live-facts wc143-database-chain-live-facts.json \
+              --provisioner-result wc124-db-provisioner-result.json \
+              --provisioner-execution wc124-db-provisioner-execution.json \
+              --run-id "$GITHUB_RUN_ID" \
+              --release-sha "$RELEASE_SHA" \
+              --output wc143-database-chain-record.json \
+              "${vendor_arguments[@]}"
+          else
+            added_arguments=()
+            for file in $ADDED_FILES; do
+              added_arguments+=(--added-file "$file")
+            done
+            python3 scripts/wc143_database_chain_record.py refresh \
+              --previous-record wc143-database-chain-record.json \
+              --run-id "$GITHUB_RUN_ID" \
+              --release-sha "$RELEASE_SHA" \
+              --output wc143-database-chain-record.next.json \
+              "${added_arguments[@]}" \
+              "${vendor_arguments[@]}"
+            mv wc143-database-chain-record.next.json wc143-database-chain-record.json
+          fi
+          az storage blob upload \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$DATABASE_CHAIN_RECORD_BLOB" \
+            --auth-mode login \
+            --file wc143-database-chain-record.json \
+            --overwrite \
+            --only-show-errors \
+            --output none
 
       - name: Activate runtime dependencies before application revisions
         if: inputs.apply
@@ -3671,8 +3908,10 @@ jobs:
 
       # The realm import overwrites Keycloak's database, but a replica that was already running keeps
       # stale cached realm/client models ("Client not found") while reporting Healthy (run 41014026210).
+      # The refresh is only needed when this run imported the realm; with the vendor migrations reused by
+      # proof (WC-177) no import happened, so there is nothing stale to refresh.
       - name: Refresh Keycloak replicas after realm import
-        if: inputs.apply
+        if: inputs.apply && steps.vendor-plan.outputs.vendor_reuse != 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -4196,49 +4435,26 @@ jobs:
             fi
           fi
 
-      - name: Record completed WC-124 database chain for reuse
-        if: >-
-          success() && inputs.apply &&
-          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
-          steps.database-chain.outputs.reuse != 'true' &&
-          steps.database-chain-facts.outcome == 'success'
-        # Last Azure-facing step: nothing after it needs the deployment identity.
-        continue-on-error: true
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
-        with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
-
-      - name: Persist completed WC-124 database chain record
-        if: >-
-          success() && inputs.apply &&
-          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
-          steps.database-chain.outputs.reuse != 'true' &&
-          steps.database-chain-facts.outcome == 'success'
+      - name: Record WC-177 stage timings
+        if: always() && inputs.apply
         continue-on-error: true
         env:
-          FINGERPRINT: ${{ steps.database-chain.outputs.fingerprint }}
+          GH_TOKEN: ${{ github.token }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          python3 scripts/wc143_database_chain_record.py create \
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+            > wc177-run-jobs.json
+          python3 scripts/wc177_stage_timings.py \
+            --jobs wc177-run-jobs.json \
+            --decision wc143-database-chain-decision.json \
             --environment "$TARGET_ENVIRONMENT" \
-            --fingerprint "$FINGERPRINT" \
-            --live-facts wc143-database-chain-live-facts.json \
-            --provisioner-result wc124-db-provisioner-result.json \
-            --provisioner-execution wc124-db-provisioner-execution.json \
             --run-id "$GITHUB_RUN_ID" \
-            --output wc143-database-chain-record.json
-          az storage blob upload \
-            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
-            --container-name "$CONFIG_CONTAINER" \
-            --name "$DATABASE_CHAIN_RECORD_BLOB" \
-            --auth-mode login \
-            --file wc143-database-chain-record.json \
-            --overwrite \
-            --only-show-errors \
-            --output none
+            --output wc177-stage-timings.json \
+            --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Upload plans and evidence
         if: always()
@@ -4292,6 +4508,15 @@ jobs:
             wc143-database-chain-decision.json
             wc143-database-chain-live-facts.json
             wc143-database-chain-reuse.json
+            wc177-restore-marker.json
+            wc177-database-update-job.before.json
+            wc177-database-update-template.json
+            wc177-database-update-manifest.txt
+            wc177-database-update-execution.json
+            wc177-database-update.log
+            wc177-database-update.json
+            wc177-stage-timings.json
+            wc177-vendor-plan.json
             wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
             whatsapp-autopilot/*.json

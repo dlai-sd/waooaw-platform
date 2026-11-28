@@ -28,6 +28,31 @@ authorization tuple.
 8. On failed or uncertain work, retain evidence and enter `FAILED_ACTIVATION`, `RECOVERY_HOLD`, or
    `SECURITY_HOLD`; never report success-shaped fallback state.
 
+## Database Paths (WC-177)
+
+Read the plan first, then act. Nothing here grants Azure, deployment, Production, approval or merge authority.
+
+1. **Read the plan.** The deployment job summary shows "Database path" and its reason;
+   `wc143-database-chain-decision.json` holds the full decision. The path is `reuse`, `update` or `full`.
+2. **When each path runs.** `reuse`: nothing database-related changed. `update`: only new init files
+   headed `-- wc177-apply: update` that pass the lint (additive: create, add nullable/defaulted columns,
+   policies, grants to existing roles, bounded backfills; no drops, renames, type changes, role or
+   extension changes). `full`: first deployment, unreadable or older record, a changed chain input or
+   applied file, a new file that is not update-class, a reset, or a failed live fact.
+3. **Force the full chain.** Dispatch the deployment with `database_path=full`. Use it for first setup,
+   role or secret changes, resets and destructive or privileged SQL; it is never chosen by assumption.
+4. **Recover from an update refusal.** A refused or failed update changes nothing beyond the files whose
+   transaction committed with their ledger row. Read `wc177-database-update.log` (the reason is
+   `WC177_UPDATE_REFUSED` or `WC177_UPDATE_FAILED`; a lock timeout is retried a bounded number of times).
+   Fix the file and redeploy; use `database_path=full` only when the file is not update-class. Do not retry
+   an unchanged failure.
+5. **The restore marker.** Before each update the workflow records `wc177-restore-marker.json`: the
+   server and its earliest restorable point at that moment. A real point-in-time restore still needs its
+   own Founder authority and the PITR procedure below.
+6. **Resume a failed run.** After the database and migration checkpoint, dispatch with
+   `resume_from=activation`; it is honoured only when the plan reports `reuse` and the checkpoint is bound
+   to the same release, otherwise the deployment starts from the beginning.
+
 ## Sleep
 
 1. Confirm terminal state `ACTIVE`, current Founder authority, lease, and complete PASS gate input.

@@ -72,6 +72,16 @@ These are component and workflow changes, not evidence that the full environment
 has succeeded. Runs `40660849211` and `40689458378` failed before activation at different gates
 described below; do not report a component PASS as a successful rollout.
 
+### Operator update - 2026-11-28 (WC-177)
+
+| Change | Operator impact |
+|---|---|
+| Database path plan: `reuse`, `update`, `full` | Read the job summary "Database path" and `wc143-database-chain-decision.json`. Dispatch input `database_path=full` forces the complete chain; it is never chosen by assumption. |
+| Update job for additive SQL (`-- wc177-apply: update`) | New additive SQL applies in minutes with applications running. A refused or failed update changes nothing else; fix the cause, or use `database_path=full` when a file is not update-class. |
+| Vendor/Temporal reuse by plan proof, checkpoint and `resume_from=activation` | Vendor work and the Temporal quiesce run only when the migration plan shows changed definitions; a failed run after the checkpoint need not repeat the database or migration groups. |
+| `wc177-stage-timings.json`, `wc177-restore-marker.json` | Per-stage seconds against run `45983274213`; the restore marker is the earliest recoverable point recorded before each update. |
+| Release Qualification is OFF by default in PR bodies | Founder instruction 2026-11-28; turn it ON only when the Founder asks. |
+
 ### Source-of-truth hierarchy
 
 | Question | Authoritative source |
@@ -98,10 +108,14 @@ its own gate. None of them independently authorizes a new cloud mutation.
 3. **Plan before mutation.** Foundation, migration dependencies, runtime dependencies, and
    application activation each produce saved Terraform plans. Policy and provenance bind
    authorization to the exact plan binary, JSON representation, state lineage/serial, backend,
-   environment, release, workflow run, and attempt.
+   environment, release, workflow run, and attempt. The database work is planned too (WC-177): the
+   read-only step "Decide WC-124 database chain reuse" chooses `reuse`, `update` or `full` from the
+   repository, the sealed record and the live facts, never from the database, and any doubt selects `full`.
 4. **Dependencies before applications.** Database migrations complete and are accepted before
    PgBouncer, Keycloak, Temporal, Redis, and Identity Edge are activated and readiness-gated.
-   Only then does the full plan apply the exact-seven application revisions.
+   Only then does the full plan apply the exact-seven application revisions. New additive SQL
+   (`-- wc177-apply: update`) is applied by the update job before those activations, with the
+   applications running and no bootstrap authority opened.
 5. **Verify independently.** Deployment success is not acceptance. A distinct environment-scoped
    OIDC identity runs live inventory, revision, endpoint, domain, and functional verification.
 6. **Clean up even on failure.** Private runner execution, registration, broker tokens, temporary
@@ -150,7 +164,11 @@ The following are pinned platform dependencies, not additional release members:
 | `wc124_deployment_bundle.py` | Activation authorization bundle | Requires current validated foundation and workload evidence |
 | `wc124_database_transition.py` | Database authority state machine | Unknown or inconsistent live facts produce `RECOVERY_HOLD` |
 | `wc124_db_provisioner.py` | Roles, grants, credentials, databases, the whole init chain through the `wc124_provisioning.init_chain_ledger` digest ledger | No secret values in logs; temporary authority only; unchanged files skipped, changed files re-applied (every file is idempotent by standard) |
-| `wc124_init_chain_lint.py` | Static form check of the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5) | Zero findings required for every `infrastructure/postgres/init/*.sql` change |
+| `wc124_init_chain_lint.py` | Static form check of the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5) and, for files headed `-- wc177-apply: update`, of the update-class rules | Zero findings required for every `infrastructure/postgres/init/*.sql` change |
+| `wc143_database_chain_record.py` (`fingerprint`, `evaluate`, `vendor-plan`, `create`, `refresh`) | WC-177 database path plan and sealed version 2 record (applied init-file digests, vendor qualification digest, checkpoint) | Read-only; any doubt, error or unreadable record selects `full`; Production is refused (exit 3) |
+| `wc177_database_update.sh` / `wc177_database_update_job.py` / `job-<env>-wc124-database-update` | Update path: apply program, typed ACA Job start template, Terraform-defined job | Runs as `database_updater` through PgBouncer; refuses undeclared, unclassified, changed-digest and tampered files; one transaction per file with its ledger row |
+| `wc177_stage_timings.py` | Per-stage-group path, reason and seconds (`wc177-stage-timings.json`) | Evidence only; baseline is run `45983274213` |
+| `wc177_database_update_local.sh` | Local qualification of the update path on a non-superuser bootstrap replica through transaction-mode PgBouncer | Release-qualification lane `database-update`; no cloud mutation |
 | `wc124_db_handoff.py` | Ownership and recovery verification | Proves ownership, sessions, dependencies, and revocation readiness |
 | `goal006_activation_readiness.py` | Post-activation revision readiness gate | Fails the deployment unless every latest revision is `Running`/`Healthy` and is the latest ready revision; writes `wc124-activation-readiness.json` |
 | `goal006_demo_revision_cleanup.py` | Demo obsolete-revision retirement after readiness | Read-only by default; deployment apply refuses traffic splits/labels, retains the healthy serving revision, verifies inactive/zero replicas, and records `demo-revision-cleanup.json` |
@@ -291,6 +309,41 @@ plan must match the intended environment, release SHA/run, workflow run/attempt,
 backend key, state lineage/serial, policy result, plan JSON digest, and saved-plan binary digest.
 
 ### Database and migration sequence
+
+**Database paths (WC-177).** The database stage group runs one of three paths. The sealed record
+(`<env>/wc143-database-chain-record.json`) is version 2; it supersedes WC143-R001's rule that only
+the full chain writes the record: it is now written at the checkpoint after the database and
+migration stage groups are verified (after a `full`, after an `update`, and after a vendor
+qualification), and a version 1 record selects `full` once.
+
+| Path | Chosen when | What runs |
+|---|---|---|
+| `reuse` | Chain fingerprint (chain scripts, secret catalog, `00-wc124-principal-bootstrap.sql`) unchanged, recorded init-file digests equal the repository's, live facts match, record intact and under 7 days old | Credential handoff verification and the terminal authority checks only |
+| `update` | As `reuse`, but the repository has new init files, each declared `-- wc177-apply: update`, lint-clean, sorting after every applied file, within the payload limit | `Apply additive database update through PgBouncer`: restore marker, typed job template, apply as `database_updater`, verification of ledger rows, owners, the identity object set and exact memberships (`bp_owner`, `wbe_owner`); applications keep running |
+| `full` | Anything else: first deployment, version 1 or unreadable record, changed chain input or applied file, new `full`/unclassified file, reset, failed live fact, `database_path=full` | The WC-124 chain exactly as before, plus the one-time update-principal setup and `REASSIGN OWNED BY` bootstrap |
+
+Vendor migrations (Keycloak, Temporal) and the Temporal startup qualification run only when
+`Decide vendor migration and Temporal qualification reuse` cannot prove, from the migration plan,
+that the deployed definitions of PgBouncer, the Keycloak and Temporal migration jobs and the Temporal
+qualification job equal the recorded, successfully qualified ones; the Temporal quiesce and the
+Keycloak realm refresh run only then. UAT uses the same paths; Production is refused by the plan until
+Production apply is separately authorized (design: `update` first with a point-in-time restore marker,
+`full` only with Founder approval in the PR; Founder decisions D1 and D2 approved 2026-11-28).
+`resume_from=activation` continues a failed run after the checkpoint when the plan reports `reuse`
+and the checkpoint is bound to the same release SHA.
+
+**Stage-time table (run 45983274213, 41 minutes of step time; measured, not claimed).** Database chain
+9.8 min (authority open 99 s, quiesce 74 s, provisioner 76 s, handoff 67 s, bootstrap removal 47 s);
+vendor, Billing and Temporal migrations 5.6 min (vendor 137 s, Billing 33 s, Temporal qualification
+145 s); activation, readiness and revision cleanup 7.5 min; broker, mirror, verify and cleanup jobs
+8.6 min; Terraform plans and applies 3.9 min; WhatsApp activation 3.6 min; other gates 2.5 min. Every
+later run records the same groups in `wc177-stage-timings.json`.
+
+Terraform (R013): the five stages refresh 386 resources each. A shared refresh was not implemented:
+reusing one refresh across stages would change the plan provenance inputs (state lineage and serial)
+that bind each saved plan, so each stage keeps its own refresh until a separate Founder-approved
+design (decision D3 stays "no"). WhatsApp activation (210 s, R014) is measured as its own group and
+keeps every proof gate.
 
 1. Applications use `ca-<environment>-pgbouncer:5432` for same-ACA-environment TCP service
    discovery. The internal-ingress FQDN is not the application connection hostname.

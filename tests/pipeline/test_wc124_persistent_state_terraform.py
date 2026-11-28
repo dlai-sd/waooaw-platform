@@ -166,7 +166,7 @@ def test_temporal_and_keycloak_use_pgbouncer_and_distinct_roles() -> None:
     assert 'resource "azurerm_container_app_job" "keycloak_migration"' in workload
     assert 'resource "azurerm_container_app_job" "temporal_migration"' in workload
     assert workload.count("replica_retry_limit          = 1") == 4
-    assert workload.count("replica_retry_limit          = 0") == 1
+    assert workload.count("replica_retry_limit          = 0") == 2  # the WC-177 update job joins the zero-retry jobs
     assert "sslmode=verify-full" in workload
     assert "--tls-ca-file /etc/ssl/certs/ca-certificates.crt" in workload
     assert 'name  = "KC_DB"' in workload

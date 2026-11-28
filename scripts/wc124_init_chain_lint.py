@@ -25,6 +25,8 @@ Rules (statement level, after comments/strings/dollar-quotes are honoured):
   an ``IF NOT EXISTS (SELECT 1 FROM pg_policy|pg_trigger ...)`` guard.
 * Shell (``*.sh``) init files are not applied by the Demo provisioner and are
   reported as informational.
+* A file whose first line is ``-- wc177-apply: update`` is also checked against the update-class
+  rules (``update_rule_findings``); a file without the header is ``full`` class and is unaffected.
 """
 
 from __future__ import annotations
@@ -49,6 +51,18 @@ IF_NOT_EXISTS_OBJECTS = (
 )
 OR_REPLACE_OBJECTS = ("FUNCTION", "PROCEDURE", "VIEW", "RULE", "TRIGGER")
 DO_GUARDED_OBJECTS = ("TYPE", "DOMAIN", "ROLE", "USER")
+APPLY_HEADER = re.compile(r"^-- wc177-apply: (update|full)\s*$")
+UPDATE_OWNERS = ("bp_owner", "wbe_owner")
+OTHER_OWNERS = (
+    "ce_owner",
+    "pr_owner",
+    "air_owner",
+    "billing_owner",
+    "web_session_owner",
+    "keycloak_owner",
+    "temporal_owner",
+)
+OTHER_OWNER_PATTERN = re.compile(r"\b(" + "|".join(OTHER_OWNERS) + r")\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -202,6 +216,101 @@ def _check_do_block(code: str) -> list[str]:
     return violations
 
 
+def declared_class(text: str) -> str:
+    """``update`` only when the first non-blank line is the update header; anything else is ``full``."""
+    for line in text.splitlines():
+        if line.strip():
+            match = APPLY_HEADER.match(line)
+            return match.group(1) if match else "full"
+    return "full"
+
+
+def update_rule_findings(file_name: str, text: str) -> list[Finding]:
+    """Rules an ``-- wc177-apply: update`` file must follow (WC-177 Design, file classes).
+
+    The update job wraps each file and its ledger row in one transaction as a login role that holds
+    ``bp_owner`` and ``wbe_owner`` without a default role, so every statement runs after
+    ``SET LOCAL ROLE`` to one of those owners and nothing destructive or privileged is allowed.
+    """
+    findings: list[Finding] = []
+
+    def add(line: int, rule: str, code: str) -> None:
+        findings.append(Finding(file_name, line, rule, re.sub(r"\s+", " ", code[:120])))
+
+    for number, line_text in enumerate(text.splitlines(), 1):
+        if line_text.lstrip().startswith("\\"):
+            add(number, "psql-meta-command", line_text)
+    role: str | None = None
+    lock_timeout = statement_timeout = False
+    for line, raw in split_statements(text):
+        code = strip_comments(raw)
+        if not code:
+            continue
+        flat = re.sub(r"\s+", " ", code)
+        if re.match(r"(BEGIN|COMMIT|END|ROLLBACK|ABORT|START TRANSACTION|SAVEPOINT|RELEASE|PREPARE TRANSACTION)\b", flat, re.I):
+            add(line, "transaction-control", code)
+            continue
+        set_role = re.match(r"SET\s+LOCAL\s+ROLE\s+\"?(\w+)\"?", flat, re.I)
+        if set_role:
+            role = set_role.group(1).lower()
+            if role not in UPDATE_OWNERS:
+                add(line, "set-role-outside-update-owners", code)
+            continue
+        if re.match(r"SET\s+(SESSION\s+)?ROLE\b", flat, re.I):
+            add(line, "set-role-without-local", code)
+            continue
+        if re.match(r"RESET\s+ROLE\b", flat, re.I):
+            role = None
+            continue
+        if re.match(r"SET\s+LOCAL\s+lock_timeout\b", flat, re.I):
+            lock_timeout = True
+            continue
+        if re.match(r"SET\s+LOCAL\s+statement_timeout\b", flat, re.I):
+            statement_timeout = True
+            continue
+        if re.match(r"(SET|SHOW|SELECT)\b", flat, re.I):
+            if OTHER_OWNER_PATTERN.search(flat):
+                add(line, "other-owner-referenced", code)
+            continue
+        if role is None:
+            add(line, "statement-without-set-local-role", code)
+        if not (lock_timeout and statement_timeout):
+            add(line, "missing-lock-or-statement-timeout", code)
+        if OTHER_OWNER_PATTERN.search(flat):
+            add(line, "other-owner-referenced", code)
+        if re.match(r"DROP\b", flat, re.I) and not re.match(r"DROP\s+(POLICY|TRIGGER)\s+IF\s+EXISTS\b", flat, re.I):
+            add(line, "drop-not-allowed", code)
+        if re.match(r"(TRUNCATE|DELETE)\b", flat, re.I):
+            add(line, "truncate-or-delete-not-allowed", code)
+        if re.match(r"ALTER\b", flat, re.I) and re.search(r"\bRENAME\b", flat, re.I):
+            add(line, "rename-not-allowed", code)
+        if re.match(r"ALTER\s+TABLE\b", flat, re.I):
+            if re.search(r"\bALTER\s+COLUMN\s+\S+\s+(SET\s+DATA\s+)?TYPE\b", flat, re.I):
+                add(line, "column-type-change-not-allowed", code)
+            if re.search(r"\bDROP\s+COLUMN\b", flat, re.I):
+                add(line, "drop-not-allowed", code)
+            for column in re.split(r"\bADD\s+COLUMN\b", flat, flags=re.I)[1:]:
+                clause = re.split(r"\s*,\s*(?=ADD|DROP|ALTER|OWNER|ENABLE|FORCE)", column, maxsplit=1, flags=re.I)[0]
+                if re.search(r"\bNOT\s+NULL\b", clause, re.I) and not re.search(r"\bDEFAULT\b", clause, re.I):
+                    add(line, "not-null-column-without-default", code)
+        if re.match(r"(CREATE|ALTER|DROP)\s+(ROLE|USER|GROUP)\b", flat, re.I):
+            add(line, "role-change-not-allowed", code)
+        if re.match(r"(GRANT|REVOKE)\b", flat, re.I) and not re.search(r"\bON\b", flat, re.I):
+            add(line, "role-membership-not-allowed", code)
+        if re.match(r"(CREATE|ALTER|DROP)\s+EXTENSION\b", flat, re.I):
+            add(line, "extension-not-allowed", code)
+        if re.match(
+            r"(ALTER\s+SYSTEM|COPY|CREATE\s+DATABASE|ALTER\s+DATABASE|REINDEX|VACUUM|CLUSTER|REASSIGN|LOCK)\b", flat, re.I
+        ):
+            add(line, "statement-not-allowed", code)
+        for owner in re.findall(r"\b(?:OWNER\s+TO|AUTHORIZATION|FOR\s+ROLE)\s+\"?(\w+)\"?", flat, re.I):
+            if owner.lower() not in UPDATE_OWNERS:
+                add(line, "owner-outside-update-owners", code)
+        if re.match(r"UPDATE\b", flat, re.I) and not re.search(r"\bWHERE\b", flat, re.I):
+            add(line, "unbounded-update", code)
+    return findings
+
+
 def lint_sql(file_name: str, text: str) -> list[Finding]:
     statements = split_statements(text)
     drops = _drop_statements(statements)
@@ -269,7 +378,10 @@ def lint_directory(init_directory: pathlib.Path) -> tuple[list[Finding], list[st
         if path.suffix == ".sh":
             shell_files.append(path.name)
         elif path.suffix == ".sql":
-            findings.extend(lint_sql(path.name, path.read_text(encoding="utf-8")))
+            text = path.read_text(encoding="utf-8")
+            findings.extend(lint_sql(path.name, text))
+            if declared_class(text) == "update":
+                findings.extend(update_rule_findings(path.name, text))
     return findings, shell_files
 
 

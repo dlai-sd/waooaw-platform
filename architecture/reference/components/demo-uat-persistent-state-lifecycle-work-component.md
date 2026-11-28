@@ -237,7 +237,12 @@ Bootstrap is an exact two-plan transition:
 
 Every schema uses a NOLOGIN owner. Runtime roles are LOGIN, NOBYPASSRLS, non-owner principals with
 only required schema/table/sequence/function rights. Migration authority is separately bounded and
-cannot grant itself runtime, owner, administrator or cross-environment rights. `PUBLIC` grants are
+cannot grant itself runtime, owner, administrator or cross-environment rights. The WC-177 update
+principal `database_updater` is the one login that holds two owner roles (`bp_owner`, `wbe_owner`),
+with no default role, `NOINHERIT`, no `CREATEROLE`/`CREATEDB`/`BYPASSRLS`, and ledger access only; it is
+created by the full path inside the bootstrap transaction, the same transaction reassigns
+bootstrap-owned application objects to `bp_owner`, and every update verifies its exact memberships.
+`PUBLIC` grants are
 revoked. Every tenant table has `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY`.
 Receiver-validated tenant context is transaction-local and PgBouncer must reset it before reuse.
 

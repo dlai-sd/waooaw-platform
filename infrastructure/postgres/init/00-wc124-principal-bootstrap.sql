@@ -35,7 +35,7 @@ BEGIN
         'air_migrator', 'air_runtime',
         'billing_migrator', 'billing_runtime',
         'web_session_migrator', 'web_session_app',
-        'pgbouncer_auth', 'recovery_verifier_ephemeral'
+        'pgbouncer_auth', 'recovery_verifier_ephemeral', 'database_updater'
     ]
     LOOP
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN

@@ -1127,8 +1127,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Insufficient PostgreSQL connection headroom for $group migration group" in workflow
     # Run 39539976383: a freshly started ACA job execution reports `Unknown` until its replica is
     # scheduled; every job poller must tolerate that for a bounded grace and fail only if it persists.
-    assert workflow.count("Processing|Running) ;;") == 8
-    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 6
+    assert workflow.count("Processing|Running) ;;") == 9
+    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 7
     assert workflow.count('Unknown) if [ "$poll" -le 6 ]; then sleep 10; continue; fi ;;&') == 2
     temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
     assert temporal.startswith('\n        value = "1"')

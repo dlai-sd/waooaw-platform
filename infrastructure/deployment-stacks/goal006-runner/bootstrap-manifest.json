@@ -35,8 +35,8 @@
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "f01d838b9d6a6aae2ab6478d4da34a4e0cd8cc4550d8925808f49d34ac24f02e",
     "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json": "d8bc2a520f658c7c9cda645f498b2d36b14d09df7bac9e364f78f83b741b09f0",
     "infrastructure/environment-readiness/secret-catalog.json":
-      "47a89b93f542470a06926b94e2e3eeb05033ac2858193197c06516a24a402681",
-    "infrastructure/postgres/init/00-wc124-principal-bootstrap.sql": "65053e4669143331be02f4fbe97b7e6785777a13a9eb19fc656673c9dcc6cd7c",
+      "5dd111deee5525ff50d66b44ae0061e938dab0834f690edb25ce2747bd4ad86d",
+    "infrastructure/postgres/init/00-wc124-principal-bootstrap.sql": "be8735aef5ba5c761aadda35ccf534db4e4052ce7adba89dbb325fddf948bce2",
     "infrastructure/postgres/init/01-schemas.sql": "6e24a7ac7db3b812a48ef4b6440ed0c549a1651e8d11aafaf1f8ed44691c1ec0",
     "infrastructure/postgres/init/02-users-and-permissions.sh": "138995d9eb8058559da4b7be575bd8909258272ab786fa9576bab0d571d9cffa",
     "infrastructure/postgres/init/03-enums-and-tables.sql": "3bee28defa30c603713354925212c4e14e99c44ba08271bebe327525624f8bfb",
@@ -124,7 +124,7 @@
     "scripts/goal006_runner_prerequisites.py": "28248c61bd31ccdcfb0d4811136e26387cedd3f4748bda06450de92959d25479",
     "scripts/goal006_runner_qualification.py": "0c04399cf6ea6395d07015d28fdc14484df90d1a3dc13632b9171432b6e5bfb0",
     "scripts/wc124_db_handoff.py": "2cd7e3aa0bd2203d47e9a5f62b798b940799bc8ae05a7dae8b9b9a16bc76753a",
-    "scripts/wc124_db_provisioner.py": "29df6a5661b546d22392fa7b1cae1f2ad0c1455e40a9f63734c897f43c3c83de"
+    "scripts/wc124_db_provisioner.py": "74da17d5ea3a9ede78cf6a7392eadbf3d49234e232edec906c38037602f7c544"
   },
   "schema_version": 3
 }

@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS {INIT_CHAIN_LEDGER_TABLE} (
     applied_by text NOT NULL DEFAULT current_user
 );
 """
+# WC-177: the one login role that applies new additive init files through PgBouncer. It holds exactly
+# these owner roles, has no default role, and cannot create roles, databases or extensions.
+UPDATE_PRINCIPAL = "database_updater"
+UPDATE_OWNER_ROLES = ("bp_owner", "wbe_owner")
 APPLICATION_MIGRATION_ROLES = {
     "ce_migrator": "ce_owner",
     "bp_migrator": "bp_owner",
@@ -166,6 +170,7 @@ SPECS = (
         APPLICATION_DATABASE,
         "url",
     ),
+    CredentialSpec("db-database-update", "db-database-update", UPDATE_PRINCIPAL, APPLICATION_DATABASE, "url"),
     CredentialSpec(
         "db-web-session-migration",
         "db-web-session-migration",
@@ -395,8 +400,13 @@ def read_credentials(
         raise ValueError("database credentials must be distinct")
     auth_spec = next(spec for spec in specs if spec.value_format == "authfile")
     auth_record = records[auth_spec.secret_id]
-    if auth_record is not None and parse_authfile(auth_record.get("value", "")) != passwords:
-        raise ValueError("db-pgbouncer-auth does not exactly match the database credential set")
+    if auth_record is not None:
+        # A principal added after the auth_file was written has no entry yet; the file is rewritten
+        # with it (write_secrets). Any other difference is an integrity failure.
+        existing = parse_authfile(auth_record.get("value", ""))
+        added = {spec.role for spec in specs if records[spec.secret_id] is None and spec.value_format != "authfile"}
+        if existing != {role: password for role, password in passwords.items() if role not in added}:
+            raise ValueError("db-pgbouncer-auth does not exactly match the database credential set")
     return passwords, records
 
 
@@ -880,6 +890,130 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
     return grant_digest, init_chain, identity_schema, database_reset
 
 
+def bootstrap_owned_objects_sql(bootstrap_name: str) -> str:
+    """Count of application objects the bootstrap principal owns, excluding its ledger schema and system schemas."""
+    owner = f"(SELECT oid FROM pg_roles WHERE rolname = {sql_literal(bootstrap_name)})"  # noqa: S608 quoted literal
+    # The ledger schema stays with the bootstrap; TOAST relations and catalogs follow their tables.
+    excluded = (
+        f"(SELECT oid FROM pg_namespace WHERE nspname = {sql_literal(PROVISIONING_SCHEMA)}"  # noqa: S608 constant
+        " OR nspname LIKE 'pg\\_%' OR nspname = 'information_schema')"
+    )
+    return (
+        f"SELECT (SELECT count(*) FROM pg_class WHERE relowner = {owner} AND relnamespace NOT IN {excluded})"  # noqa: S608
+        f" + (SELECT count(*) FROM pg_proc WHERE proowner = {owner} AND pronamespace NOT IN {excluded})"
+        f" + (SELECT count(*) FROM pg_namespace WHERE nspowner = {owner} AND oid NOT IN {excluded})"
+        f" + (SELECT count(*) FROM pg_type WHERE typowner = {owner} AND typrelid = 0 AND typelem = 0"
+        f" AND typnamespace NOT IN {excluded});"
+    )
+
+
+def update_principal_state_sql() -> str:
+    updater = sql_literal(UPDATE_PRINCIPAL)
+    return (
+        "SELECT json_build_object("  # noqa: S608 constants and quoted literals
+        "'memberships', (SELECT COALESCE(json_agg(r.rolname ORDER BY r.rolname), '[]'::json) "
+        "FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid "
+        f"WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = {updater})), "
+        "'superuser', rolsuper, 'createrole', rolcreaterole, 'createdb', rolcreatedb, "
+        "'bypassrls', rolbypassrls, 'inherit', rolinherit, 'login', rolcanlogin, "
+        "'wbe_owner_exists', EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wbe_owner')) "
+        f"FROM pg_roles WHERE rolname = {updater};"
+    )
+
+
+def provision_update_principal(
+    server_fqdn: str,
+    bootstrap_name: str,
+    token: str,
+) -> dict[str, Any]:
+    """Create the WC-177 update principal's authority and move bootstrap-owned objects to ``bp_owner``.
+
+    Runs while the bootstrap authority is open. Bootstrap-owned objects (created by init files with
+    no ``SET ROLE``) would otherwise block every later update, because the update principal can
+    only alter objects an owner role owns.
+    """
+    bootstrap = sql_identifier(bootstrap_name)
+    updater = sql_identifier(UPDATE_PRINCIPAL)
+    ledger_schema = sql_identifier(PROVISIONING_SCHEMA)
+
+    def count() -> int:
+        output = psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            token,
+            bootstrap_owned_objects_sql(bootstrap_name),
+            tuples_only=True,
+        )
+        return int(output.strip())
+
+    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, f"GRANT bp_owner TO {bootstrap};")
+    try:
+        before = count()
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            token,
+            f"""
+REASSIGN OWNED BY {bootstrap} TO bp_owner;
+DO $restore$
+DECLARE
+    item record;
+BEGIN
+    EXECUTE format('ALTER SCHEMA %I OWNER TO %I', {sql_literal(PROVISIONING_SCHEMA)}, current_user);
+    FOR item IN
+        SELECT c.oid::regclass AS relation FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = {sql_literal(PROVISIONING_SCHEMA)} AND c.relkind IN ('r', 'S', 'v')
+    LOOP
+        EXECUTE format('ALTER TABLE %s OWNER TO %I', item.relation, current_user);
+    END LOOP;
+END
+$restore$;
+""",  # noqa: S608 constants and quoted identifiers
+        )
+        after = count()
+    finally:
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, f"REVOKE bp_owner FROM {bootstrap};")
+    psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        token,
+        f"""
+-- The role is created NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE by the principal bootstrap; a non-superuser
+-- bootstrap may not even name SUPERUSER or BYPASSRLS here, and the verification below proves the attributes.
+ALTER ROLE {updater} NOINHERIT;
+ALTER ROLE {updater} IN DATABASE {sql_identifier(APPLICATION_DATABASE)} RESET role;
+GRANT bp_owner TO {updater};
+DO $owners$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wbe_owner') THEN
+        GRANT wbe_owner TO {updater};
+    END IF;
+END
+$owners$;
+GRANT USAGE ON SCHEMA {ledger_schema} TO {updater};
+GRANT SELECT, INSERT, UPDATE ON {INIT_CHAIN_LEDGER_TABLE} TO {updater};
+""",  # noqa: S608 constants and quoted identifiers
+    )
+    state = json.loads(
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, update_principal_state_sql(), tuples_only=True)
+    )
+    expected = sorted(UPDATE_OWNER_ROLES) if state["wbe_owner_exists"] else ["bp_owner"]
+    if state["memberships"] != expected or any(
+        state[flag] for flag in ("superuser", "createrole", "createdb", "bypassrls", "inherit")
+    ):
+        raise ValueError(f"{UPDATE_PRINCIPAL} holds authority beyond the update class: {json.dumps(state, sort_keys=True)}")
+    return {
+        "principal": UPDATE_PRINCIPAL,
+        "memberships": state["memberships"],
+        "bootstrap_owned_objects_before": before,
+        "bootstrap_owned_objects_after": after,
+    }
+
+
 def write_secrets(
     specs: tuple[CredentialSpec, ...],
     passwords: dict[str, str],
@@ -901,6 +1035,10 @@ def write_secrets(
             status = "created"
         elif spec.value_format in {"url", "npgsql"}:
             value = secret_value(spec, passwords[spec.role], pgbouncer_host)
+            if record.get("value") != value:
+                status = "updated"
+        elif spec.value_format == "authfile":
+            value = authfile_value(passwords)
             if record.get("value") != value:
                 status = "updated"
         if status in {"created", "updated"}:
@@ -983,6 +1121,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         force_init_chain=getattr(arguments, "force_init_chain", False),
         reset_demo=reset_demo,
     )
+    update_principal = provision_update_principal(arguments.server_fqdn, arguments.bootstrap_name, access_token())
     spend_paise = getattr(arguments, "demo_spend_authority_paise", None)
     spend_authority = None
     if spend_paise is not None:
@@ -1020,6 +1159,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "changed_files": init_chain["applied"] + init_chain["reapplied"],
         },
         "identity_schema": identity_schema,
+        "update_principal": update_principal,
         "credentials": evidence,
     }
 

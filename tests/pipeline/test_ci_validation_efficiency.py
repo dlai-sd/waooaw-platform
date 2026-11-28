@@ -271,7 +271,7 @@ def test_release_qualification_scopes_and_parallelizes_independent_lanes() -> No
         "test_verify_web_provider_start.py",
     ):
         assert source.count(test_file) == 1
-    assert source.count("_pid=$!") == 5
+    assert source.count("_pid=$!") == 6
     assert source.index("azure_pid=$!") < source.index('for lane_pid in "$tests_pid"')
 
 

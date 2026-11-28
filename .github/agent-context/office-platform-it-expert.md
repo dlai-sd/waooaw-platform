@@ -126,6 +126,15 @@ be resolved from the compact route.
   the problem in plain language with the options. Do not continue improvising.
 - Commit scope and order follow the Work Contract; commits go through the installed hooks only.
 
+## Release Qualification Is Off By Default
+
+Founder standing instruction (2026-11-28, WC-177 session): do not run release qualification
+(`scripts/run_release_qualification.sh`, the CI `release-qualification` gate) for a pull request, and
+keep `**Release Qualification:** OFF` with the template's Founder authority line in every PR body.
+Set it ON only when the Founder explicitly requests it for that PR. Pushes to `main` keep their
+qualification behavior. Docker validation runs once, after all stories of a Work Contract are
+implemented, unless the Founder directs otherwise.
+
 ## Founder Communication Preference
 
 - When the Founder asks for a short summary table, reply with at most 5 rows.
