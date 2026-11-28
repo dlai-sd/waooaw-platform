@@ -19,6 +19,7 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     public PrTrialWorkflow? Pr { get; set; }
     public int WbeCalls { get; private set; }
     public TrialIdentityContext? WbeContext { get; private set; }
+    public Guid? WbeCustomerId { get; private set; }
     public int PrCalls { get; private set; }
     public Guid? AgentInstanceId { get; private set; }
     public Guid? ProfessionalAdmissionId { get; private set; }
@@ -35,6 +36,7 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     )
     {
         WbeCalls++;
+        WbeCustomerId = customerId;
         ProfessionalVersion = professionalVersion;
         WbeContext = context;
         return Task.FromResult(Wbe);
@@ -110,6 +112,8 @@ public sealed class RelationshipTrialServiceTests
         );
 
         Assert.Equal(new TrialIdentityContext(tenantId, hash), gateway.WbeContext);
+        // Billing keys a Trial by the organisation id, which is the tenant id.
+        Assert.Equal(tenantId, gateway.WbeCustomerId);
     }
 
     [Theory]

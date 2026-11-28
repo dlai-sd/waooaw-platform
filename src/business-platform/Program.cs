@@ -318,7 +318,8 @@ if (
             new HttpRelationshipTrialOwnerGateway(
                 services.GetRequiredService<IHttpClientFactory>(),
                 workloadIdentity,
-                prWorkspaceUri
+                prWorkspaceUri,
+                services.GetService<ILogger<HttpRelationshipTrialOwnerGateway>>()
             ),
             new UnconfiguredRelationshipTrialOwnerGateway()
         )

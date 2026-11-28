@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Services.Spend;
 using Xunit;
@@ -441,6 +443,51 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         Assert.Contains($"\"tenant_id\":\"{tenantId:D}\"", body);
         Assert.Contains($"\"relationship_id\":\"{relationshipId:D}\"", body);
         Assert.Contains($"\"identity_subject_hash\":\"{hash}\"", body);
+    }
+
+    [Fact]
+    public async Task TrialOwner_RefusalIsLoggedWithItsStatusAndNoBody()
+    {
+        using var identity = fixture.CreateIdentity();
+        var logger = new Mock<ILogger<HttpRelationshipTrialOwnerGateway>>();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        using var gateway = new HttpRelationshipTrialOwnerGateway(
+            new StubClientFactory(
+                Handler(
+                    (_, _) =>
+                        Json(HttpStatusCode.InternalServerError, "{\"secret\":\"never logged\"}")
+                )
+            ),
+            identity,
+            new Uri("https://runtime.test"),
+            logger.Object
+        );
+
+        var result = await gateway.StartWbeTrialAsync(
+            Guid.NewGuid(),
+            "DIGITAL_MARKETING_LOCAL_SERVICE",
+            "1.0.0",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Null(result);
+        logger.Verify(
+            value =>
+                value.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (state, _) =>
+                            state.ToString()!.Contains("500")
+                            && !state.ToString()!.Contains("never logged")
+                    ),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]

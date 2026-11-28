@@ -582,11 +582,13 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }, local.provider_credentials_runtime["ai-runtime"])
     "web" = merge({
-      AUTH_ABUSE_LIMITS_JSON                = jsonencode(local.auth_abuse_limits)
-      AZURE_KEY_VAULT_URL                   = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
-      AZURE_KEY_VAULT_WRITER_CLIENT_ID      = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
-      AZURE_TENANT_ID                       = "0471534c-1bbe-40ab-ae65-3f721b62582c"
-      BUSINESS_PLATFORM_URL                 = local.service_urls.business_platform
+      AUTH_ABUSE_LIMITS_JSON           = jsonencode(local.auth_abuse_limits)
+      AZURE_KEY_VAULT_URL              = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
+      AZURE_KEY_VAULT_WRITER_CLIENT_ID = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
+      AZURE_TENANT_ID                  = "0471534c-1bbe-40ab-ae65-3f721b62582c"
+      BUSINESS_PLATFORM_URL            = local.service_urls.business_platform
+      # Hire checkout and its confirmation call the billing engine from the web server.
+      BILLING_ENGINE_URL                    = local.service_urls.billing_engine
       KEYCLOAK_CLIENT_ID                    = "waooaw-web"
       KEYCLOAK_ISSUER                       = "${local.service_urls.identity_edge}/realms/waooaw"
       KEYCLOAK_READINESS_ISSUER             = "${local.verification_urls.identity_edge}/realms/waooaw"
@@ -627,6 +629,9 @@ locals {
       GST_RATE_PERCENT = "18"
       GST_SAC_CODE     = "9984"
       GST_STATE_CODE   = "27"
+      # A Trial grants only free local classification (no paid provider call, no spend), so the 14-day Trial can start.
+      # Without an entry for the agent type the billing engine refuses every Trial start with TRIAL_CONFIG_MISSING.
+      TRIAL_FREE_UNITS = jsonencode({ DIGITAL_MARKETING_LOCAL_SERVICE = { llm_local = 200 } })
     } : {}, local.feature_settings_runtime["billing-engine"])
     "agent-runtime-adapter-digital-marketing" = {
       DMA_ADMISSION_CONTENT_DIGEST = var.dma_admission_content_digest
