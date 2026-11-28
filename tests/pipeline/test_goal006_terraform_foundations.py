@@ -1135,8 +1135,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 47  # includes WC-134 dispatch rollout fencing, Demo WhatsApp activation and its Azure login refresh (#600), the WC-143 chain record fetch, decision and fact capture, the ADR-046 workload credential issuance gate, and the WC-168 Demo quiesce for a reused database chain
-    assert workflow.count("always() && inputs.apply") == 6  # includes the three WC-132 recovery/window guards
+    assert workflow.count("if: inputs.apply") == 49  # WC-177 adds the database update and the vendor reuse decision; includes WC-134 dispatch rollout fencing, Demo WhatsApp activation and its Azure login refresh (#600), the WC-143 chain record fetch, decision and fact capture, the ADR-046 workload credential issuance gate, and the WC-168 Demo quiesce for a reused database chain
+    assert workflow.count("always() && inputs.apply") == 7  # includes the three WC-132 recovery/window guards and the WC-177 stage timings
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
